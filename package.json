@@ -4,5 +4,11 @@
   "description": "An interactive CLI for generating license files",
   "type": "module",
   "author": "Erdem Bircan",
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }
