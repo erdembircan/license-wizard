@@ -1,6 +1,6 @@
 {
   "name": "license-wizard",
-  "version": "0.0.0",
+  "version": "1.0.0-dev",
   "description": "An interactive CLI for generating license files",
   "type": "module",
   "author": "Erdem Bircan",
