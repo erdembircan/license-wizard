@@ -32,6 +32,12 @@ Using native ES Modules (`"type": "module"`) — no CommonJS.
 
 Using [esbuild](https://esbuild.github.io) to bundle the TypeScript source into a single distributable JS file for npx usage. Type checking is handled separately via `tsc --noEmit`.
 
+## package.json
+
+- **description**: TBD (short description to be added)
+- **author**: Erdem Bircan
+- **license**: Apache-2.0
+
 ## Minimum Node.js Version
 
 Minimum required Node.js version is determined by the most restrictive built-in API in use. This will be pinned once all built-in APIs are finalized.
