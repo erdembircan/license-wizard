@@ -64,6 +64,7 @@ Use the following format for all commit messages:
 
 - For any GitHub-related operation (PRs, issues, releases, checks, repos, projects, etc.), always prefer the `gh` CLI first if it supports the action
 - `gh pr merge --squash` includes all branch commits in the merge body by default — always pass `--body ""` to keep squash merge commits clean
+- When reporting PR or issue activity to the user (opened, merged, updated, etc.), always include the full GitHub URL as a clickable markdown link so the user can navigate directly from the terminal
 
 ### Issue Creation
 
