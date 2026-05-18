@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+## Knowledge Base
+
+`docs/knowledge-base/` contains reference material used to inform the design and implementation of license-wizard. Covers open source licensing concepts, SPDX standards, license file conventions, and data sources the tool relies on. This is background research — agents and contributors should consult it when making decisions about how the tool should behave.
+
 ## Git Workflow
 
 Stage and commit files in logical groups (per Commit Granularity rules) to the current branch's upstream remote. If no upstream is found, ask for the remote branch name.
