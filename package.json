@@ -1,0 +1,8 @@
+{
+  "name": "license-wizard",
+  "version": "0.0.0",
+  "description": "An interactive CLI for generating license files",
+  "type": "module",
+  "author": "Erdem Bircan",
+  "license": "Apache-2.0"
+}
