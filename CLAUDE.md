@@ -95,6 +95,8 @@ Tasks are GitHub Issues managed in the GitHub project associated with this repo.
 
 **"Work on tasks" and "Work on PRs" are two separate operations**, triggered by explicit user statements. Task agents only do task implementation and open PRs. PR agents only respond to comments on existing PRs. Never mix these roles.
 
+When instructed to **"Work on tasks"**, always enter plan mode first to present the dependency analysis and session plan for user approval before spawning any agents.
+
 When instructed to **"Work on tasks"**:
 
 1. **Sync master**: `git checkout master && git pull origin master` before doing anything else — task agents must branch from the latest master
