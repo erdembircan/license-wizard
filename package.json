@@ -5,10 +5,18 @@
   "type": "module",
   "author": "Erdem Bircan",
   "license": "Apache-2.0",
+  "bin": {
+    "license-wizard": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "node scripts/build.js",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "typescript": "^6.0.3"
   }
 }
