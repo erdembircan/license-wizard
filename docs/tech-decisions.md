@@ -19,3 +19,11 @@ Project is written in TypeScript.
 ## Testing: Vitest
 
 Using [Vitest](https://www.npmjs.com/package/vitest) for unit testing.
+
+## Linting: ESLint
+
+Using [ESLint](https://www.npmjs.com/package/eslint) for static analysis and code quality enforcement.
+
+## Formatting: Prettier
+
+Using [Prettier](https://www.npmjs.com/package/prettier) for opinionated, automatic code formatting.
