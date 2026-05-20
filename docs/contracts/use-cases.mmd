@@ -1,0 +1,32 @@
+flowchart TD
+    A([User runs: license-wizard]) --> LW[License Wizard]
+    A -.->|flags| FL([Flags])
+    FL -.-> LW
+    LW -.->|reads| LC[/License config file/]
+
+    LW --> M{--verify flag?}
+
+    %% ─── Interactive / generation path ───
+    M -->|No| C
+
+    subgraph IO [Input Orchestrator]
+        C[Prepare question]
+        C --> D[Ask question]
+        D --> E[Receive answer<br/>user accepts default or provides value]
+        E --> F{more questions?}
+        F -->|Yes| C
+        F -->|No| OG[Generate options object]
+    end
+
+    OG -->|options object| LW
+    LW --> G[License is generated]
+    G --> H([Done])
+
+    %% ─── Verification path ───
+    M -->|Yes| V[Verify]
+    V -.->|reads| EL[/Existing LICENSE file/]
+    V --> R{License matches config?}
+    R -->|Yes| PASS([Pass])
+    R -->|No| AG{Auto-generate enabled?}
+    AG -->|Yes| G
+    AG -->|No| FAIL([Fail])
