@@ -93,10 +93,7 @@ Use the following format for all commit messages:
 ### Issue Creation
 
 - Title must follow the commit message format: `[TYPE]: description` (e.g. `[FEAT]: add rate limiting to auth endpoint`)
-- Body defines scope, motivation, and architectural guidance
-- Include technical approach and design decisions when relevant — this prevents unnecessary PR back-and-forth
-- Never include step-by-step implementation instructions — implementation is the agent's responsibility
-- Acceptance criteria as checkboxes to define the boundary of done
+- Body contains exactly what the user stated — no more, no less. Do not infer motivation, add structure, or fill in details the user did not provide
 
 ## Agent General Guidelines
 
