@@ -1,0 +1,11 @@
+classDiagram
+  class LicenseWizard {
+    +LicenseWizard(args: string[])
+  }
+
+  class FlagParser {
+    +FlagParser(flags: object)
+    +parse(args: string[]) object
+  }
+
+  LicenseWizard ..> FlagParser : uses
