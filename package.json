@@ -10,7 +10,7 @@
   "author": "Erdem Bircan",
   "license": "Apache-2.0",
   "bin": {
-    "license-wizard": "dist/index.js"
+    "license-wizard": "bin/license-wizard.js"
   },
   "files": [
     "dist"
