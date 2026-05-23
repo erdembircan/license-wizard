@@ -4,6 +4,26 @@
 
 `docs/knowledge-base/` contains reference material used to inform the design and implementation of license-wizard. Covers open source licensing concepts, SPDX standards, license file conventions, and data sources the tool relies on. This is background research — agents and contributors should consult it when making decisions about how the tool should behave.
 
+## Architectural Charts
+
+Charts in `docs/contracts/` are **contracts**, not implementation details. They define the authoritative picture of the application's architecture and the interactions between its modules. Treat them with the same weight as API contracts — they describe what the system is, not how it happens to be built right now.
+
+### Content Rules
+
+Charts show **contracts**, not internals:
+
+- Show only **public APIs** — methods and properties that a class or module exposes to other modules
+- **Never** include private methods, internal helpers, or implementation details
+- Show **relationships**: associations, dependencies, composition, aggregation
+- Show **hierarchy**: inheritance and interface implementation
+- Mark **abstractions**: abstract classes and interfaces must be visually distinguished
+
+### Keeping Charts Current
+
+Charts must always reflect the current state of the software. Any change to the codebase that affects architecture, module interactions, data flow, or use case behavior **must** include a corresponding update to the relevant chart(s) in the same commit or PR. There are no exceptions — a chart that does not match the code is actively misleading.
+
+Before closing out any implementation task, verify whether the change warrants a chart update. If it does and the chart has not been updated, the task is not done.
+
 ## Git Workflow
 
 Stage and commit files in logical groups (per Commit Granularity rules) to the current branch's upstream remote. If no upstream is found, ask for the remote branch name.
