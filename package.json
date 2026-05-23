@@ -4,6 +4,9 @@
   "description": "An interactive CLI for generating license files",
   "type": "module",
   "packageManager": "pnpm@11.2.2",
+  "engines": {
+    "node": ">=20.12.0"
+  },
   "author": "Erdem Bircan",
   "license": "Apache-2.0",
   "bin": {
