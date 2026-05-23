@@ -1,21 +1,36 @@
 import { parseArgs } from "node:util";
 
-type FlagDefinitions = Record<string, { default: boolean }>;
-type ParsedFlags = Record<string, boolean>;
+type FlagType = "boolean" | "string";
 
-export class FlagParser {
-  readonly #flags: FlagDefinitions;
+type FlagValueType<T extends FlagType> = T extends "boolean" ? boolean : string;
 
-  constructor(flags: FlagDefinitions) {
+type FlagDefinition<T extends FlagType = FlagType> = {
+  type: T;
+  default: FlagValueType<T>;
+};
+
+type FlagDefinitions = Record<string, FlagDefinition>;
+
+type ParsedFlags<T extends FlagDefinitions> = {
+  [K in keyof T]: FlagValueType<T[K]["type"]>;
+};
+
+export class FlagParser<T extends FlagDefinitions> {
+  readonly #flags: T;
+
+  constructor(flags: T) {
     this.#flags = flags;
   }
 
-  parse(args: string[]): ParsedFlags {
-    const options: Record<string, { type: "boolean"; default: boolean }> = {};
-    const definedNames = new Set(Object.keys(this.#flags));
+  parse(args: string[]): ParsedFlags<T> {
+    const options: Record<
+      string,
+      { type: "boolean" | "string"; default: boolean | string }
+    > = {};
+    const definedNames = Object.keys(this.#flags);
 
     for (const [name, config] of Object.entries(this.#flags)) {
-      options[name] = { type: "boolean", default: config.default };
+      options[name] = { type: config.type, default: config.default };
     }
 
     const { values } = parseArgs({
@@ -24,10 +39,11 @@ export class FlagParser {
       allowPositionals: false,
     });
 
-    const result: ParsedFlags = {};
+    const result = {} as ParsedFlags<T>;
     for (const name of definedNames) {
-      result[name] =
-        (values[name] as boolean | undefined) ?? this.#flags[name].default;
+      (result as Record<string, boolean | string>)[name] =
+        (values[name] as boolean | string | undefined) ??
+        this.#flags[name].default;
     }
 
     return result;
