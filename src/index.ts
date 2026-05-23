@@ -6,7 +6,6 @@ const flagParser = new FlagParser({
 
 export class LicenseWizard {
   constructor(args: string[]) {
-    const flags = flagParser.parse(args);
-    console.log("license-wizard started with flags:", flags);
+    flagParser.parse(args);
   }
 }
