@@ -63,8 +63,18 @@ describe("FlagParser", () => {
     });
   });
 
-  it("throws for flags not defined in the flag definitions", () => {
-    const parser = new FlagParser({ verbose: { type: "boolean", default: true } });
-    expect(() => parser.parse(["--unknown"])).toThrow();
+  it("silently ignores boolean-style unknown flags", () => {
+    const parser = new FlagParser({ verbose: { type: "boolean", default: false } });
+    expect(parser.parse(["--unknown"])).toEqual({ verbose: false });
+  });
+
+  it("silently ignores string-style unknown flags and their values", () => {
+    const parser = new FlagParser({ verbose: { type: "boolean", default: false } });
+    expect(parser.parse(["--unknown", "value"])).toEqual({ verbose: false });
+  });
+
+  it("keeps defined flags when unknown flags are also present", () => {
+    const parser = new FlagParser({ verbose: { type: "boolean", default: false } });
+    expect(parser.parse(["--verbose", "--unknown"])).toEqual({ verbose: true });
   });
 });
