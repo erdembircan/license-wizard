@@ -3,6 +3,7 @@
   "version": "1.0.0-dev",
   "description": "An interactive CLI for generating license files",
   "type": "module",
+  "packageManager": "pnpm@11.2.2",
   "author": "Erdem Bircan",
   "license": "Apache-2.0",
   "bin": {
