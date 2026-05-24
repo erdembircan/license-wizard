@@ -34,5 +34,8 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.3",
     "vitest": "^4.1.6"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.4.0"
   }
 }
