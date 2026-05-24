@@ -4,23 +4,6 @@ import type { IRenderer } from "./IRenderer.js";
 import type { Question, QuestionType } from "./Question.js";
 
 /**
- * Maps a QuestionType to its corresponding Clack prompt function.
- *
- * @param question - The question whose type determines the prompt to use.
- * @returns The user's raw answer string from the Clack prompt.
- */
-async function promptForQuestion(question: Question): Promise<string | symbol> {
-  const promptMap: Record<
-    QuestionType,
-    (q: Question) => Promise<string | symbol>
-  > = {
-    text: (q) => clack.text({ message: q.text }),
-  };
-
-  return promptMap[question.type](question);
-}
-
-/**
  * Renders questions to the terminal using the Clack prompt library.
  */
 export class ClackRenderer implements IRenderer {
@@ -42,7 +25,7 @@ export class ClackRenderer implements IRenderer {
    * @param question - The question to display.
    */
   async render(question: Question): Promise<Answer> {
-    const value = await promptForQuestion(question);
+    const value = await this.#promptForQuestion(question);
 
     if (clack.isCancel(value)) {
       clack.cancel(this.onCancel());
@@ -57,5 +40,27 @@ export class ClackRenderer implements IRenderer {
    */
   onCancel(): string {
     return "Operation cancelled.";
+  }
+
+  /**
+   * Maps a question's type to its corresponding Clack prompt and invokes it.
+   *
+   * @param question - The question whose type determines the prompt to use.
+   * @returns The user's raw answer string from the Clack prompt.
+   */
+  async #promptForQuestion(question: Question): Promise<string | symbol> {
+    const promptMap: Partial<
+      Record<QuestionType, (q: Question) => Promise<string | symbol>>
+    > = {
+      text: (q) => clack.text({ message: q.text }),
+    };
+
+    const prompt = promptMap[question.type];
+
+    if (!prompt) {
+      throw new Error(`Unsupported question type: "${question.type}"`);
+    }
+
+    return prompt(question);
   }
 }
