@@ -24,6 +24,39 @@ Charts must always reflect the current state of the software. Any change to the 
 
 Before closing out any implementation task, verify whether the change warrants a chart update. If it does and the chart has not been updated, the task is not done.
 
+## Testing Philosophy
+
+**Test behavior, not implementation.**
+
+Tests verify that code works correctly for its consumers. Focus on **what** the code does, not **how** it does it internally.
+
+### Core Rules
+
+1. **Test through the public interface.** Never assert on private methods, internal state, or implementation details.
+2. **Consumer-oriented.** When a component's consumer is another component, treat that consumer as the end user. Test what it sees and relies on.
+3. **Implementation-proof.** If an implementation changes but behavior stays the same, tests MUST still pass.
+4. **All code changes need tests.** New features, bug fixes, refactors.
+
+### What to Assert
+
+- Return values from public methods
+- Side effects visible to consumers
+- Exception/error behavior on invalid input
+- Interface compliance
+
+### What NOT to Assert
+
+- Private property values or internal state
+- Internal data structures or storage format
+- Which private helper methods were called
+- How a value was computed (only that the result is correct)
+
+### Checklist Before Writing a Test
+
+1. Am I testing a public method or observable side effect?
+2. Would this test break if I refactored internals without changing behavior? If yes, rewrite the test.
+3. Am I asserting the **result** or the **mechanism**? Assert the result.
+
 ## JSDoc
 
 Classes and functions must be documented with JSDoc comments. Do **not** add JSDoc to types or interfaces — TypeScript makes them self-explanatory. Since the codebase uses TypeScript, also omit `@param {type}` and `@returns {type}` annotations. Descriptions only:
