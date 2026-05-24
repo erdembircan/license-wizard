@@ -1,86 +1,91 @@
 classDiagram
+  direction TB
+
   class LicenseWizard {
     +LicenseWizard(args: string[])
     +run() Promise~Answer[]~
   }
 
-  class FlagParser {
-    +FlagParser(flags: object)
-    +parse(args: string[]) object
+  namespace CLI {
+    class FlagParser {
+      +FlagParser(flags: object)
+      +parse(args: string[]) object
+    }
+
+    class Orchestrator {
+      +Orchestrator(repository: QuestionRepository, renderer: IRenderer)
+      +run() Promise~Answer[]~
+    }
+
+    class IRenderer {
+      <<interface>>
+      +render(question: Question) Promise~Answer~
+      +onCancel() string
+    }
+
+    class ClackRenderer {
+      +ClackRenderer(introLabel: string)
+    }
+
+    class QuestionRepository {
+      +QuestionRepository(questions: Question[])
+      +getByIndex(index: number) Question | null
+    }
+
+    class Question {
+      +id: string
+      +text: string
+      +type: QuestionType
+    }
+
+    class Answer {
+      +questionId: string
+      +value: string
+    }
   }
 
-  class Orchestrator {
-    +Orchestrator(repository: QuestionRepository, renderer: IRenderer)
-    +run() Promise~Answer[]~
-  }
+  namespace Licensing {
+    class LicenseRepository {
+      +LicenseRepository(source: ILicenseSource)
+      +search(query: string) Promise~LicenseIndexEntry[]~
+      +getLicense(licenseId: string) Promise~LicenseDetail~
+    }
 
-  class IRenderer {
-    <<interface>>
-    +render(question: Question) Promise~Answer~
-    +onCancel() string
-  }
+    class ILicenseSource {
+      <<interface>>
+      +search(query: string) Promise~LicenseIndexEntry[]~
+      +fetchLicense(licenseId: string) Promise~LicenseDetail~
+    }
 
-  class ClackRenderer {
-    +ClackRenderer(introLabel: string)
+    class SpdxLicenseSource {
+      +SpdxLicenseSource()
+    }
+
+    class LicenseIndexEntry {
+      +licenseId: string
+      +name: string
+    }
+
+    class LicenseDetail {
+      +licenseId: string
+      +name: string
+      +licenseText: string
+    }
   }
 
   ClackRenderer ..|> IRenderer : implements
-
-  class QuestionRepository {
-    +QuestionRepository(questions: Question[])
-    +getByIndex(index: number) Question | null
-  }
-
-  class Question {
-    +id: string
-    +text: string
-    +type: QuestionType
-  }
-
-  class Answer {
-    +questionId: string
-    +value: string
-  }
-
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
   LicenseWizard ..> Orchestrator : creates
+  LicenseWizard ..> SpdxLicenseSource : creates
+  LicenseWizard ..> LicenseRepository : creates
   Orchestrator ..> QuestionRepository : gets questions from
   Orchestrator ..> IRenderer : feeds questions to
   ClackRenderer ..> Question : renders
   QuestionRepository ..> Question : produces
   Orchestrator ..> Answer : collects
-
-  class LicenseIndexEntry {
-    +licenseId: string
-    +name: string
-  }
-
-  class LicenseDetail {
-    +licenseId: string
-    +name: string
-    +licenseText: string
-  }
-
-  class ILicenseSource {
-    <<interface>>
-    +search(query: string) Promise~LicenseIndexEntry[]~
-    +fetchLicense(licenseId: string) Promise~LicenseDetail~
-  }
-
-  class SpdxLicenseSource {
-    +SpdxLicenseSource()
-  }
-
-  class LicenseRepository {
-    +LicenseRepository(source: ILicenseSource)
-    +search(query: string) Promise~LicenseIndexEntry[]~
-    +getLicense(licenseId: string) Promise~LicenseDetail~
-  }
-
   SpdxLicenseSource ..|> ILicenseSource : implements
   LicenseRepository ..> ILicenseSource : uses
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
-  LicenseWizard ..> LicenseRepository : creates
