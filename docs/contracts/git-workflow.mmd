@@ -1,0 +1,22 @@
+%%{init: { 'theme': 'base', 'gitGraph': { 'parallelCommits': true, 'showCommitLabel': false }, 'themeVariables': { 'git0': '#6366f1', 'git1': '#10b981', 'git2': '#f59e0b', 'gitBranchLabel0': '#ffffff', 'gitBranchLabel1': '#ffffff', 'gitBranchLabel2': '#ffffff', 'commitLabelColor': 'transparent', 'commitLabelBackground': 'transparent' } } }%%
+gitGraph
+    commit
+
+    branch task/N
+    checkout main
+    branch task/M
+
+    checkout task/N
+    commit
+    commit
+
+    checkout task/M
+    commit
+
+    checkout main
+    commit
+
+    merge task/N type: HIGHLIGHT
+    merge task/M type: HIGHLIGHT
+
+    commit
