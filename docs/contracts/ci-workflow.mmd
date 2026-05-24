@@ -25,7 +25,7 @@ sequenceDiagram
         Note over M,NPM: Push → master (post-merge)
         activate M
         M->>M: build
-        M->>M: commit build/<br/>[BUILD]: update build output
+        M->>M: commit build
         deactivate M
         Dev->>NPM: npm publish (manual)
     end
