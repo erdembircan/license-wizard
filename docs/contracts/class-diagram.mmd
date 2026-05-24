@@ -16,9 +16,11 @@ classDiagram
   class IRenderer {
     <<interface>>
     +render(question: Question) Promise~Answer~
+    +onCancel() string
   }
 
   class ClackRenderer {
+    +ClackRenderer(introLabel: string)
   }
 
   ClackRenderer ..|> IRenderer : implements
