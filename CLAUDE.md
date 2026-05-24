@@ -26,7 +26,7 @@ Before closing out any implementation task, verify whether the change warrants a
 
 ## JSDoc
 
-All classes and functions must be documented with JSDoc comments. Since the codebase uses TypeScript, do **not** duplicate type information in JSDoc — omit `@param {type}` and `@returns {type}` annotations. Descriptions only:
+Classes and functions must be documented with JSDoc comments. Do **not** add JSDoc to types or interfaces — TypeScript makes them self-explanatory. Since the codebase uses TypeScript, also omit `@param {type}` and `@returns {type}` annotations. Descriptions only:
 
 ```ts
 /**
