@@ -19,5 +19,4 @@ export class QuestionRepository {
   getByIndex(index: number): Question | null {
     return this.#questions[index] ?? null;
   }
-
 }

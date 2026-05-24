@@ -37,5 +37,4 @@ describe("QuestionRepository", () => {
       expect(repo.getByIndex(0)).toBeNull();
     });
   });
-
 });
