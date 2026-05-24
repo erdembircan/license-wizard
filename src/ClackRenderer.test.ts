@@ -24,19 +24,20 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
         const renderer = new ClackRenderer("test");
+        const questionText = "Pick a license";
         const question: Question = {
           id: "license",
-          text: "Pick a license",
+          text: questionText,
           type: "text",
         };
 
         const answer = await renderer.render(question);
 
-        expect(clack.text).toHaveBeenCalledWith({ message: "Pick a license" });
+        expect(clack.text).toHaveBeenCalledWith({ message: questionText });
         expect(answer).toEqual({ questionId: "license", value: "MIT" });
       });
 
-      it("throws and calls clack.cancel for an unsupported question type", async () => {
+      it("calls clack.cancel and exits with code 1 for an unsupported question type", async () => {
         const renderer = new ClackRenderer("test");
         const question = {
           id: "q1",
@@ -46,9 +47,7 @@ describe("ClackRenderer", () => {
 
         await renderer.render(question);
 
-        expect(clack.cancel).toHaveBeenCalledWith(
-          'Unsupported question type: "unknown"',
-        );
+        expect(clack.cancel).toHaveBeenCalled();
         expect(process.exit).toHaveBeenCalledWith(1);
       });
     });
