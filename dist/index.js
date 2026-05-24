@@ -1,4 +1,4 @@
-// src/flag-parser.ts
+// src/FlagParser.ts
 import { parseArgs } from "node:util";
 var FlagParser = class {
   #flags;
