@@ -127,7 +127,7 @@ When instructed to **"Work on tasks"**:
    - On start: move the task to **In Progress** status
    - Implement the task
    - On completion: open a PR for the task with `Closes #<issueNumber>` in the description, then move the task to **In Review** status
-   - After opening the PR, wait for all CI checks to finish — if any fail, fix the failures and push again, repeating until CI is green
+   - After opening the PR, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
 
 ## PR Workflow
 
@@ -147,7 +147,7 @@ When instructed to **"Work on PRs"**:
 - `gh pr view --comments` does **not** include inline file review comments — you must check both
 - If there are no new user comments since the last `[agent]` comment (or no user comments at all), do nothing and exit immediately — do not post a comment or take any action
 - Identify any unaddressed user comments and implement what they ask for
-- After pushing changes, wait for all CI checks to finish — if any fail, fix the failures and push again, repeating until CI is green
+- After pushing changes, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
 - After each implementation, post a comment reporting what was done
 
 ### Merge rules
