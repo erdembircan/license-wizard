@@ -1,10 +1,7 @@
 import * as clack from "@clack/prompts";
-import type { Answer, Question } from "./types.js";
-
-export interface IRenderer {
-  render(question: Question): Promise<Answer>;
-  onCancel(): string;
-}
+import type { Answer } from "./Answer.js";
+import type { IRenderer } from "./IRenderer.js";
+import type { Question } from "./Question.js";
 
 export class ClackRenderer implements IRenderer {
   readonly #introLabel: string;
