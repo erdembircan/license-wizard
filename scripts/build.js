@@ -1,12 +1,12 @@
-import * as esbuild from 'esbuild';
+import * as esbuild from "esbuild";
 
 await esbuild.build({
-  entryPoints: ['src/index.ts'],
+  entryPoints: ["src/index.ts"],
   bundle: true,
-  platform: 'node',
-  format: 'esm',
-  outfile: 'dist/index.js',
+  platform: "node",
+  format: "esm",
+  outfile: "dist/index.js",
   banner: {
-    js: '#!/usr/bin/env node',
+    js: "#!/usr/bin/env node",
   },
 });
