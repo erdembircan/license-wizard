@@ -7,25 +7,25 @@ import type { Question, QuestionType } from "./Question.js";
  * Renders questions to the terminal using the Clack prompt library.
  */
 export class ClackRenderer implements IRenderer {
-  readonly #introLabel: string;
-
   /**
    * Creates a new ClackRenderer and immediately displays the intro label.
-   *
-   * @param introLabel - The label shown at the top of the prompt session.
    */
   constructor(introLabel: string) {
-    this.#introLabel = introLabel;
-    clack.intro(this.#introLabel);
+    clack.intro(introLabel);
   }
 
   /**
    * Renders a question to the terminal and returns the user's answer.
-   *
-   * @param question - The question to display.
    */
   async render(question: Question): Promise<Answer> {
-    const value = await this.#promptForQuestion(question);
+    let value: string | symbol;
+
+    try {
+      value = await this.#promptForQuestion(question);
+    } catch (err) {
+      clack.cancel(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
 
     if (clack.isCancel(value)) {
       clack.cancel(this.onCancel());
@@ -44,9 +44,6 @@ export class ClackRenderer implements IRenderer {
 
   /**
    * Maps a question's type to its corresponding Clack prompt and invokes it.
-   *
-   * @param question - The question whose type determines the prompt to use.
-   * @returns The user's raw answer string from the Clack prompt.
    */
   async #promptForQuestion(question: Question): Promise<string | symbol> {
     const promptMap: Partial<
