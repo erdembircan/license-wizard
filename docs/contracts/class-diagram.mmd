@@ -51,3 +51,36 @@ classDiagram
   ClackRenderer ..> Question : renders
   QuestionRepository ..> Question : produces
   Orchestrator ..> Answer : collects
+
+  class LicenseIndexEntry {
+    +licenseId: string
+    +name: string
+  }
+
+  class LicenseDetail {
+    +licenseId: string
+    +name: string
+    +licenseText: string
+  }
+
+  class ILicenseSource {
+    <<interface>>
+    +search(query: string) Promise~LicenseIndexEntry[]~
+    +fetchLicense(licenseId: string) Promise~LicenseDetail~
+  }
+
+  class SpdxLicenseSource {
+    +SpdxLicenseSource()
+  }
+
+  class LicenseRepository {
+    +LicenseRepository(source: ILicenseSource)
+    +search(query: string) Promise~LicenseIndexEntry[]~
+    +getLicense(licenseId: string) Promise~LicenseDetail~
+  }
+
+  SpdxLicenseSource ..|> ILicenseSource : implements
+  LicenseRepository ..> ILicenseSource : uses
+  LicenseRepository ..> LicenseIndexEntry : produces
+  LicenseRepository ..> LicenseDetail : produces
+  LicenseWizard ..> LicenseRepository : creates
