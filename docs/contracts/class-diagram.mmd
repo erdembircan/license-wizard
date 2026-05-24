@@ -8,4 +8,44 @@ classDiagram
     +parse(args: string[]) object
   }
 
+  class Orchestrator {
+    +Orchestrator(repository: QuestionRepository, renderer: IRenderer)
+    +run() Promise~Answer[]~
+  }
+
+  class IRenderer {
+    <<interface>>
+    +render(question: Question) Promise~Answer~
+  }
+
+  class ClackRenderer {
+  }
+
+  ClackRenderer ..|> IRenderer : implements
+
+  class QuestionRepository {
+    +QuestionRepository(questions: Question[])
+    +getByIndex(index: number) Question | null
+    +reset()
+  }
+
+  class Question {
+    +id: string
+    +text: string
+    +type: QuestionType
+  }
+
+  class Answer {
+    +questionId: string
+    +value: string
+  }
+
   LicenseWizard ..> FlagParser : uses
+  LicenseWizard ..> QuestionRepository : creates
+  LicenseWizard ..> ClackRenderer : creates
+  LicenseWizard ..> Orchestrator : creates
+  Orchestrator ..> QuestionRepository : gets questions from
+  Orchestrator ..> IRenderer : feeds questions to
+  ClackRenderer ..> Question : renders
+  QuestionRepository ..> Question : produces
+  Orchestrator ..> Answer : collects
