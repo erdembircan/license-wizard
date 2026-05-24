@@ -691,7 +691,7 @@ var ClackRenderer = class {
    * Creates a new ClackRenderer and immediately displays the intro label.
    */
   constructor(introLabel) {
-    ge(styleText("inverse", introLabel));
+    ge(styleText("inverse", ` ${introLabel} `));
   }
   /**
    * Renders a question to the terminal and returns the user's answer.
