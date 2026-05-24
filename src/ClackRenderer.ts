@@ -1,4 +1,5 @@
 import * as clack from "@clack/prompts";
+import { styleText } from "node:util";
 import type { Answer } from "./Answer.js";
 import type { IRenderer } from "./IRenderer.js";
 import type { Question, QuestionType } from "./Question.js";
@@ -11,7 +12,7 @@ export class ClackRenderer implements IRenderer {
    * Creates a new ClackRenderer and immediately displays the intro label.
    */
   constructor(introLabel: string) {
-    clack.intro(introLabel);
+    clack.intro(styleText("inverse", ` ${introLabel} `));
   }
 
   /**
