@@ -6,7 +6,4 @@ await esbuild.build({
   platform: "node",
   format: "esm",
   outfile: "dist/index.js",
-  banner: {
-    js: "#!/usr/bin/env node",
-  },
 });
