@@ -24,6 +24,10 @@ Charts must always reflect the current state of the software. Any change to the 
 
 Before closing out any implementation task, verify whether the change warrants a chart update. If it does and the chart has not been updated, the task is not done.
 
+## File Naming
+
+All source files under `src/` must use **CamelCase** (e.g. `ClackRenderer.ts`, `IRenderer.ts`, `QuestionType.ts`). This applies to every file regardless of what it exports — classes, interfaces, types, constants, or utilities.
+
 ## Git Workflow
 
 Stage and commit files in logical groups (per Commit Granularity rules) to the current branch's upstream remote. If no upstream is found, ask for the remote branch name.
