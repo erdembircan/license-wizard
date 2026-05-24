@@ -1,4 +1,4 @@
-import { FlagParser } from "./flag-parser.js";
+import { FlagParser } from "./FlagParser.js";
 
 const flagParser = new FlagParser({
   verify: { type: "boolean", default: false },
