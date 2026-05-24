@@ -12,7 +12,7 @@ export class ClackRenderer implements IRenderer {
    * Creates a new ClackRenderer and immediately displays the intro label.
    */
   constructor(introLabel: string) {
-    clack.intro(styleText("inverse", introLabel));
+    clack.intro(styleText("inverse", ` ${introLabel} `));
   }
 
   /**
