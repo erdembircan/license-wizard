@@ -20,10 +20,4 @@ export class QuestionRepository {
     return this.#questions[index] ?? null;
   }
 
-  /**
-   * Resets the repository to its initial state.
-   */
-  reset(): void {
-    // No iteration state is tracked; method is a no-op provided for interface completeness.
-  }
 }

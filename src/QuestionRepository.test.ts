@@ -38,14 +38,4 @@ describe("QuestionRepository", () => {
     });
   });
 
-  describe("reset", () => {
-    it("does not affect question retrieval after being called", () => {
-      const q0 = makeQuestion("q0");
-      const repo = new QuestionRepository([q0]);
-
-      repo.reset();
-
-      expect(repo.getByIndex(0)).toEqual(q0);
-    });
-  });
 });
