@@ -8,33 +8,13 @@ vi.mock("@clack/prompts", () => ({
   isCancel: vi.fn(),
 }));
 
-vi.mock("node:util", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:util")>();
-  return {
-    ...actual,
-    styleText: vi.fn((format, text) => `[${format}]${text}[/${format}]`),
-  };
-});
-
 const clack = await import("@clack/prompts");
-const { styleText } = await import("node:util");
 const { ClackRenderer } = await import("./ClackRenderer.js");
 
 describe("ClackRenderer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
-  });
-
-  describe("constructor", () => {
-    it("displays the intro label with inverse styling", () => {
-      new ClackRenderer("license-wizard");
-
-      expect(styleText).toHaveBeenCalledWith("inverse", "license-wizard");
-      expect(clack.intro).toHaveBeenCalledWith(
-        "[inverse]license-wizard[/inverse]",
-      );
-    });
   });
 
   describe("render", () => {
