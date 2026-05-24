@@ -24,6 +24,19 @@ Charts must always reflect the current state of the software. Any change to the 
 
 Before closing out any implementation task, verify whether the change warrants a chart update. If it does and the chart has not been updated, the task is not done.
 
+## JSDoc
+
+All classes and functions must be documented with JSDoc comments. Since the codebase uses TypeScript, do **not** duplicate type information in JSDoc — omit `@param {type}` and `@returns {type}` annotations. Descriptions only:
+
+```ts
+/**
+ * Renders a question to the terminal using the Clack prompt library.
+ *
+ * @param question - The question to display.
+ * @returns The user's answer.
+ */
+```
+
 ## File Naming
 
 All source files under `src/` must use **CamelCase** (e.g. `ClackRenderer.ts`, `IRenderer.ts`, `QuestionType.ts`). This applies to every file regardless of what it exports — classes, interfaces, types, constants, or utilities.
