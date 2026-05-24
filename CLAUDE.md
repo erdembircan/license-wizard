@@ -168,6 +168,15 @@ When instructed to **"Work on PRs"**:
 - After pushing changes, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
 - After each implementation, post a comment reporting what was done
 
+### Agent git discipline — worktree isolation
+
+PR agents run inside an isolated git worktree. **Never `cd` to the main repo directory for any git operation** — the main repo tracks `master` and running git commands there will corrupt it.
+
+- All git commands must run in the **current working directory** (the worktree). Do not prefix them with `cd /path/to/main/repo`.
+- To get the PR branch into the worktree: `git fetch origin <branch> && git reset --hard origin/<branch>`
+- To push changes back: `git push origin HEAD:<branch>`
+- Never run `git checkout <branch>` — if the branch is already checked out in the main repo, git will refuse it and the agent may fall back to the main directory
+
 ### Merge rules
 
 - **An agent may only merge a PR when the user has explicitly approved it via a PR comment** (e.g., "LGTM", "looks good to me", "go ahead and merge")
