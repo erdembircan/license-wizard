@@ -1,0 +1,31 @@
+---
+title: GitHub CI Workflows
+---
+sequenceDiagram
+    actor Dev as Developer
+    participant FB as Feature Branch
+    participant M as master
+    participant NPM as npm registry
+
+    rect rgb(230, 240, 255)
+        Note over FB,M: PR → master
+        Dev->>FB: push changes
+        FB->>M: open PR
+        activate M
+        M->>M: lint
+        M->>M: test
+        M->>M: typecheck
+        M->>M: build
+        deactivate M
+        M-->>FB: checks pass
+        Dev->>M: merge PR
+    end
+
+    rect rgb(224, 255, 230)
+        Note over M,NPM: Push → master (post-merge)
+        activate M
+        M->>M: build
+        M->>M: commit build/<br/>[BUILD]: update build output
+        deactivate M
+        Dev->>NPM: npm publish (manual)
+    end
