@@ -1,4 +1,4 @@
-import type { QuestionType } from "./QuestionType.js";
+export type QuestionType = "text";
 
 export type Question = {
   id: string;
