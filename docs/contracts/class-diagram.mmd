@@ -51,6 +51,12 @@ classDiagram
       +getLicense(licenseId: string) Promise~LicenseDetail~
     }
 
+    class LicenseRepositoryError {
+      +name: string
+      +cause: unknown
+      +LicenseRepositoryError(message: string, cause?: unknown)
+    }
+
     class ILicenseSource {
       <<interface>>
       +search(query: string) Promise~LicenseIndexEntry[]~
@@ -58,7 +64,7 @@ classDiagram
     }
 
     class SpdxLicenseSource {
-      +SpdxLicenseSource()
+      +SpdxLicenseSource(ttlMs: number)
     }
 
     class LicenseIndexEntry {
@@ -89,3 +95,4 @@ classDiagram
   LicenseRepository ..> ILicenseSource : uses
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
+  LicenseRepository ..> LicenseRepositoryError : throws
