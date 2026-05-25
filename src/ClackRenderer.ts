@@ -46,7 +46,9 @@ export class ClackRenderer implements IRenderer {
   /**
    * Maps a question's type to its corresponding Clack prompt and invokes it.
    */
-  async #promptForQuestion(question: Question): Promise<string | boolean | symbol> {
+  async #promptForQuestion(
+    question: Question,
+  ): Promise<string | boolean | symbol> {
     const promptMap: Partial<
       Record<QuestionType, (q: Question) => Promise<string | boolean | symbol>>
     > = {
