@@ -19,7 +19,7 @@ export class ClackRenderer implements IRenderer {
    * Renders a question to the terminal and returns the user's answer.
    */
   async render(question: Question): Promise<Answer> {
-    let value: string | symbol;
+    let value: string | boolean | symbol;
 
     try {
       value = await this.#promptForQuestion(question);
@@ -33,7 +33,7 @@ export class ClackRenderer implements IRenderer {
       process.exit(0);
     }
 
-    return { questionId: question.id, value: value as string };
+    return { questionId: question.id, value: value as string | boolean };
   }
 
   /**
@@ -46,11 +46,12 @@ export class ClackRenderer implements IRenderer {
   /**
    * Maps a question's type to its corresponding Clack prompt and invokes it.
    */
-  async #promptForQuestion(question: Question): Promise<string | symbol> {
+  async #promptForQuestion(question: Question): Promise<string | boolean | symbol> {
     const promptMap: Partial<
-      Record<QuestionType, (q: Question) => Promise<string | symbol>>
+      Record<QuestionType, (q: Question) => Promise<string | boolean | symbol>>
     > = {
       text: (q) => clack.text({ message: q.text }),
+      confirm: (q) => clack.confirm({ message: q.text }),
     };
 
     const prompt = promptMap[question.type];
