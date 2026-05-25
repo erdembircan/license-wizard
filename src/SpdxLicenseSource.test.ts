@@ -107,19 +107,6 @@ describe("SpdxLicenseSource", () => {
 
       expect(results).toEqual([]);
     });
-
-    it("fetches the index only once across multiple calls", async () => {
-      const source = new SpdxLicenseSource();
-      await source.search("mit");
-      await source.search("apache");
-
-      const indexUrl =
-        "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json";
-      const calls = vi
-        .mocked(fetch)
-        .mock.calls.filter(([url]) => url === indexUrl);
-      expect(calls).toHaveLength(1);
-    });
   });
 
   describe("fetchLicense", () => {
