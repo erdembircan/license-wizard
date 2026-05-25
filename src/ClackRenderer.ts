@@ -4,6 +4,8 @@ import type { Answer } from "./Answer.js";
 import type { IRenderer } from "./IRenderer.js";
 import type { Question, QuestionType } from "./Question.js";
 
+const MIN_SEARCH_LENGTH = 3;
+
 /**
  * Renders questions to the terminal using the Clack prompt library.
  */
@@ -54,6 +56,7 @@ export class ClackRenderer implements IRenderer {
     > = {
       text: (q) => clack.text({ message: q.text }),
       confirm: (q) => clack.confirm({ message: q.text }),
+      autocomplete: (q) => this.#promptAutocomplete(q),
     };
 
     const prompt = promptMap[question.type];
@@ -63,5 +66,62 @@ export class ClackRenderer implements IRenderer {
     }
 
     return prompt(question);
+  }
+
+  /**
+   * Renders an autocomplete prompt backed by the question's search callback.
+   * Options are only fetched and displayed once the user has typed at least
+   * three characters, so the prompt is immediately interactive with no
+   * upfront loading delay.
+   */
+  async #promptAutocomplete(question: Question): Promise<string | symbol> {
+    type ClackOption = { value: string; label: string; hint?: string };
+    type PromptContext = { userInput: string; render: () => void };
+
+    let cachedOptions: ClackOption[] = [];
+    let lastQuery: string | null = null;
+    let fetchInFlight = false;
+
+    const optionsFn = function (this: PromptContext): ClackOption[] {
+      const input = this.userInput;
+
+      if (input.length < MIN_SEARCH_LENGTH || !question.search) {
+        return [];
+      }
+
+      if (input !== lastQuery && !fetchInFlight) {
+        fetchInFlight = true;
+        const triggerRender = this.render.bind(this);
+        question.search!(input)
+          .then((results) => {
+            cachedOptions = results.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+              hint: opt.hint,
+            }));
+            lastQuery = input;
+            fetchInFlight = false;
+            triggerRender();
+          })
+          .catch(() => {
+            cachedOptions = [];
+            lastQuery = input;
+            fetchInFlight = false;
+          });
+      }
+
+      return cachedOptions;
+    };
+
+    return clack.autocomplete({
+      message: question.text,
+      // Cast required: the clack type expects `this: AutocompletePrompt` (with
+      // private members) but at runtime we only access `userInput` and `render`.
+      options: optionsFn as unknown as Parameters<
+        typeof clack.autocomplete<string>
+      >[0]["options"],
+      filter: () => true,
+      placeholder: `Type at least ${MIN_SEARCH_LENGTH} characters to search…`,
+    });
   }
 }
