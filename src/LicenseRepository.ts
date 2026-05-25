@@ -1,6 +1,7 @@
 import type { ILicenseSource } from "./ILicenseSource.js";
 import type { LicenseDetail } from "./LicenseDetail.js";
 import type { LicenseIndexEntry } from "./LicenseIndexEntry.js";
+import { LicenseRepositoryError } from "./LicenseRepositoryError.js";
 
 /**
  * Facade over a license source, providing search and retrieval capabilities
@@ -22,17 +23,33 @@ export class LicenseRepository {
    * Searches for licenses matching the given query string.
    *
    * @param query - The search term to match against license identifiers and names.
+   * @throws {LicenseRepositoryError} When the underlying source fails to perform the search.
    */
   async search(query: string): Promise<LicenseIndexEntry[]> {
-    return this.#source.search(query);
+    try {
+      return await this.#source.search(query);
+    } catch (cause) {
+      throw new LicenseRepositoryError(
+        `Failed to search licenses for query "${query}"`,
+        cause,
+      );
+    }
   }
 
   /**
    * Returns the full license detail for the given SPDX identifier.
    *
    * @param licenseId - The SPDX identifier of the license to retrieve.
+   * @throws {LicenseRepositoryError} When the underlying source fails to fetch the license.
    */
   async getLicense(licenseId: string): Promise<LicenseDetail> {
-    return this.#source.fetchLicense(licenseId);
+    try {
+      return await this.#source.fetchLicense(licenseId);
+    } catch (cause) {
+      throw new LicenseRepositoryError(
+        `Failed to fetch license "${licenseId}"`,
+        cause,
+      );
+    }
   }
 }
