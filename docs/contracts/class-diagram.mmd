@@ -91,6 +91,18 @@ classDiagram
       +write(path: string, content: string) Promise~void~
     }
 
+    class FileSystemReaderError {
+      +name: string
+      +cause: unknown
+      +FileSystemReaderError(message: string, cause?: unknown)
+    }
+
+    class FileSystemWriterError {
+      +name: string
+      +cause: unknown
+      +FileSystemWriterError(message: string, cause?: unknown)
+    }
+
     class ConfigReader {
       +ConfigReader(fs: IFileSystemReader)
       +read() Promise~object | null~
@@ -121,3 +133,5 @@ classDiagram
   LicenseRepository ..> LicenseRepositoryError : throws
   ConfigReader ..> IFileSystemReader : uses
   ConfigWriter ..> IFileSystemWriter : uses
+  ConfigReader ..> FileSystemReaderError : throws
+  ConfigWriter ..> FileSystemWriterError : throws
