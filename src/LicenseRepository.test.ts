@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { LicenseRepository } from "./LicenseRepository.js";
+import { LicenseRepositoryError } from "./LicenseRepositoryError.js";
 import type { ILicenseSource } from "./ILicenseSource.js";
 import type { LicenseDetail } from "./LicenseDetail.js";
 import type { LicenseIndexEntry } from "./LicenseIndexEntry.js";
@@ -76,16 +77,49 @@ describe("LicenseRepository", () => {
       expect(source.fetchLicense).toHaveBeenCalledWith("Apache-2.0");
     });
 
-    it("propagates errors thrown by the source", async () => {
+    it("throws LicenseRepositoryError when the source fails", async () => {
       const source = makeSource();
-      vi.mocked(source.fetchLicense).mockRejectedValueOnce(
-        new Error("License not found: FAKE-LICENSE"),
-      );
+      const cause = new Error("License not found: FAKE-LICENSE");
+      vi.mocked(source.fetchLicense).mockRejectedValueOnce(cause);
       const repo = new LicenseRepository(source);
 
       await expect(repo.getLicense("FAKE-LICENSE")).rejects.toThrow(
-        "License not found: FAKE-LICENSE",
+        LicenseRepositoryError,
       );
+    });
+
+    it("preserves the original error as cause", async () => {
+      const source = makeSource();
+      const cause = new Error("License not found: FAKE-LICENSE");
+      vi.mocked(source.fetchLicense).mockRejectedValueOnce(cause);
+      const repo = new LicenseRepository(source);
+
+      const error = await repo.getLicense("FAKE-LICENSE").catch((e) => e);
+
+      expect(error.cause).toBe(cause);
+    });
+  });
+
+  describe("search error handling", () => {
+    it("throws LicenseRepositoryError when the source fails", async () => {
+      const source = makeSource();
+      vi.mocked(source.search).mockRejectedValueOnce(
+        new Error("Network error"),
+      );
+      const repo = new LicenseRepository(source);
+
+      await expect(repo.search("mit")).rejects.toThrow(LicenseRepositoryError);
+    });
+
+    it("preserves the original error as cause", async () => {
+      const source = makeSource();
+      const cause = new Error("Network error");
+      vi.mocked(source.search).mockRejectedValueOnce(cause);
+      const repo = new LicenseRepository(source);
+
+      const error = await repo.search("mit").catch((e) => e);
+
+      expect(error.cause).toBe(cause);
     });
   });
 });
