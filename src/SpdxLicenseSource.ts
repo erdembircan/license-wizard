@@ -27,7 +27,6 @@ type SpdxDetailResponse = {
 type IndexCache = {
   data: SpdxIndexItem[];
   cachedAt: number;
-  ttlMs: number;
 };
 
 /**
@@ -55,7 +54,7 @@ export class SpdxLicenseSource implements ILicenseSource {
    */
   #isCacheValid(): boolean {
     if (this.#cache === null) return false;
-    return Date.now() - this.#cache.cachedAt < this.#cache.ttlMs;
+    return Date.now() - this.#cache.cachedAt < this.#ttlMs;
   }
 
   /**
@@ -77,7 +76,6 @@ export class SpdxLicenseSource implements ILicenseSource {
     this.#cache = {
       data: data.licenses.filter((l) => !l.isDeprecatedLicenseId),
       cachedAt: Date.now(),
-      ttlMs: this.#ttlMs,
     };
     return this.#cache.data;
   }
