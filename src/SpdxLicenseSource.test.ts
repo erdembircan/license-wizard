@@ -80,7 +80,11 @@ describe("SpdxLicenseSource", () => {
       vi.mocked(fetch).mockResolvedValueOnce(
         makeIndexResponse([
           makeLicenseItem("MIT", "MIT License"),
-          makeLicenseItem("GPL-1.0", "GNU General Public License v1.0 only", true),
+          makeLicenseItem(
+            "GPL-1.0",
+            "GNU General Public License v1.0 only",
+            true,
+          ),
         ]),
       );
 
@@ -144,7 +148,11 @@ describe("SpdxLicenseSource", () => {
           makeIndexResponse([makeLicenseItem("MIT", "MIT License")]),
         )
         .mockResolvedValueOnce(
-          makeDetailResponse("MIT", "MIT License", "Permission is hereby granted..."),
+          makeDetailResponse(
+            "MIT",
+            "MIT License",
+            "Permission is hereby granted...",
+          ),
         );
 
       const source = new SpdxLicenseSource();
