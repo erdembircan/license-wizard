@@ -35,7 +35,10 @@ export class LicenseWizard {
     flagParser.parse(args);
 
     const renderer = new ClackRenderer("license-wizard");
-    const repository = new QuestionRepository([licenseQuestion, saveConfigQuestion]);
+    const repository = new QuestionRepository([
+      licenseQuestion,
+      saveConfigQuestion,
+    ]);
     this.#orchestrator = new Orchestrator(repository, renderer);
   }
 
