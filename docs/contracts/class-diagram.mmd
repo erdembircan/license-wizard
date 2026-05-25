@@ -79,6 +79,29 @@ classDiagram
     }
   }
 
+  namespace Config {
+    class IFileSystemReader {
+      <<interface>>
+      +read(path: string) Promise~string~
+      +exists(path: string) Promise~boolean~
+    }
+
+    class IFileSystemWriter {
+      <<interface>>
+      +write(path: string, content: string) Promise~void~
+    }
+
+    class ConfigReader {
+      +ConfigReader(fs: IFileSystemReader)
+      +read() Promise~object | null~
+    }
+
+    class ConfigWriter {
+      +ConfigWriter(fs: IFileSystemWriter)
+      +write(config: object) Promise~void~
+    }
+  }
+
   ClackRenderer ..|> IRenderer : implements
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> QuestionRepository : creates
@@ -96,3 +119,5 @@ classDiagram
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
   LicenseRepository ..> LicenseRepositoryError : throws
+  ConfigReader ..> IFileSystemReader : uses
+  ConfigWriter ..> IFileSystemWriter : uses
