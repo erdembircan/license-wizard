@@ -14,6 +14,12 @@ const licenseQuestion: Question = {
   type: "text",
 };
 
+const saveConfigQuestion: Question = {
+  id: "saveConfig",
+  text: "Save config file?",
+  type: "confirm",
+};
+
 /**
  * Entry point for the license-wizard CLI application.
  */
@@ -29,7 +35,7 @@ export class LicenseWizard {
     flagParser.parse(args);
 
     const renderer = new ClackRenderer("license-wizard");
-    const repository = new QuestionRepository([licenseQuestion]);
+    const repository = new QuestionRepository([licenseQuestion, saveConfigQuestion]);
     this.#orchestrator = new Orchestrator(repository, renderer);
   }
 
