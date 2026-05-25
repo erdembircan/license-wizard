@@ -5,6 +5,8 @@ import type { LicenseIndexEntry } from "./LicenseIndexEntry.js";
 const INDEX_URL =
   "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json";
 
+const DEFAULT_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 type SpdxIndexItem = {
   licenseId: string;
   name: string;
@@ -22,22 +24,46 @@ type SpdxDetailResponse = {
   licenseText: string;
 };
 
+type IndexCache = {
+  data: SpdxIndexItem[];
+  cachedAt: number;
+  ttlMs: number;
+};
+
 /**
  * Fetches license data from the SPDX License List Data repository.
  *
  * Uses the master index to discover available licenses and fetches
- * individual license details on demand. The index is fetched once
- * per instance and cached in memory for the lifetime of the object.
+ * individual license details on demand. The index is cached in memory
+ * with a configurable TTL; stale entries are re-fetched automatically.
  */
 export class SpdxLicenseSource implements ILicenseSource {
-  #index: SpdxIndexItem[] | null = null;
+  #cache: IndexCache | null = null;
+  readonly #ttlMs: number;
 
   /**
-   * Loads the SPDX license index if it has not already been loaded.
+   * Creates a new SpdxLicenseSource.
+   *
+   * @param ttlMs - How long the in-memory index cache is considered fresh, in milliseconds. Defaults to one hour.
+   */
+  constructor(ttlMs: number = DEFAULT_TTL_MS) {
+    this.#ttlMs = ttlMs;
+  }
+
+  /**
+   * Returns true when the cache exists and has not yet exceeded its TTL.
+   */
+  #isCacheValid(): boolean {
+    if (this.#cache === null) return false;
+    return Date.now() - this.#cache.cachedAt < this.#cache.ttlMs;
+  }
+
+  /**
+   * Loads the SPDX license index, using the cache when it is still fresh.
    */
   async #loadIndex(): Promise<SpdxIndexItem[]> {
-    if (this.#index !== null) {
-      return this.#index;
+    if (this.#isCacheValid()) {
+      return this.#cache!.data;
     }
 
     const response = await fetch(INDEX_URL);
@@ -48,8 +74,12 @@ export class SpdxLicenseSource implements ILicenseSource {
     }
 
     const data = (await response.json()) as SpdxIndex;
-    this.#index = data.licenses.filter((l) => !l.isDeprecatedLicenseId);
-    return this.#index;
+    this.#cache = {
+      data: data.licenses.filter((l) => !l.isDeprecatedLicenseId),
+      cachedAt: Date.now(),
+      ttlMs: this.#ttlMs,
+    };
+    return this.#cache.data;
   }
 
   /**
