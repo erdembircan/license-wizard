@@ -79,7 +79,7 @@ classDiagram
     }
   }
 
-  namespace Config {
+  namespace Configuration {
     class IFileSystemReader {
       <<interface>>
       +read(path: string) Promise~string~
@@ -103,14 +103,14 @@ classDiagram
       +FileSystemWriterError(message: string, cause?: unknown)
     }
 
-    class ConfigReader {
-      +ConfigReader(fs: IFileSystemReader)
-      +read() Promise~object | null~
+    class WizardConfig {
+      +licenseId: string
     }
 
-    class ConfigWriter {
-      +ConfigWriter(fs: IFileSystemWriter)
-      +write(config: object) Promise~void~
+    class Config {
+      +Config(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +read() Promise~WizardConfig | null~
+      +write(config: WizardConfig) Promise~void~
     }
   }
 
@@ -131,7 +131,8 @@ classDiagram
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
   LicenseRepository ..> LicenseRepositoryError : throws
-  ConfigReader ..> IFileSystemReader : uses
-  ConfigWriter ..> IFileSystemWriter : uses
-  ConfigReader ..> FileSystemReaderError : throws
-  ConfigWriter ..> FileSystemWriterError : throws
+  Config ..> IFileSystemReader : uses
+  Config ..> IFileSystemWriter : uses
+  Config ..> WizardConfig : produces
+  Config ..> FileSystemReaderError : throws
+  Config ..> FileSystemWriterError : throws
