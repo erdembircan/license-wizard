@@ -1,24 +1,14 @@
 import { ClackRenderer } from "./ClackRenderer.js";
 import { FlagParser } from "./FlagParser.js";
+import { LicenseRepository } from "./LicenseRepository.js";
 import { Orchestrator } from "./Orchestrator.js";
-import { QuestionRepository } from "./QuestionRepository.js";
 import type { Question } from "./Question.js";
+import { QuestionRepository } from "./QuestionRepository.js";
+import { SpdxLicenseSource } from "./SpdxLicenseSource.js";
 
 const flagParser = new FlagParser({
   verify: { type: "boolean", default: false },
 });
-
-const licenseQuestion: Question = {
-  id: "license",
-  text: "License?",
-  type: "text",
-};
-
-const saveConfigQuestion: Question = {
-  id: "saveConfig",
-  text: "Save config file?",
-  type: "confirm",
-};
 
 /**
  * Entry point for the license-wizard CLI application.
@@ -33,6 +23,29 @@ export class LicenseWizard {
    */
   constructor(args: string[]) {
     flagParser.parse(args);
+
+    const licenseSource = new SpdxLicenseSource();
+    const licenseRepository = new LicenseRepository(licenseSource);
+
+    const licenseQuestion: Question = {
+      id: "license",
+      text: "Which license do you want to use?",
+      type: "autocomplete",
+      search: async (query) => {
+        const results = await licenseRepository.search(query);
+        return results.map((entry) => ({
+          value: entry.licenseId,
+          label: entry.name,
+          hint: entry.licenseId,
+        }));
+      },
+    };
+
+    const saveConfigQuestion: Question = {
+      id: "saveConfig",
+      text: "Save config file?",
+      type: "confirm",
+    };
 
     const renderer = new ClackRenderer("license-wizard");
     const repository = new QuestionRepository([
