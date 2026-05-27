@@ -229,9 +229,6 @@ describe("ClackRenderer", () => {
 
         // While fetch is in flight, filteredOptions should contain a spinner frame entry
         expect(handle.filteredOptions).toHaveLength(1);
-        expect(handle.filteredOptions[0]).toEqual(
-          expect.objectContaining({ disabled: true }),
-        );
         expect((handle.filteredOptions[0] as { label: string }).label).toMatch(
           /^[◒◐◓◑•oO0] Searching…$/,
         );

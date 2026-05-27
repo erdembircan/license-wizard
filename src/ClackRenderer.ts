@@ -107,7 +107,6 @@ export class ClackRenderer implements IRenderer {
           {
             value: "__loading__",
             label: `${frame} Searching…`,
-            disabled: true,
           },
         ];
         handle.render();
