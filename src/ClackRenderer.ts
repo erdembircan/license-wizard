@@ -106,12 +106,13 @@ export class ClackRenderer implements IRenderer {
 
       if (input !== lastQuery && !fetchInFlight) {
         fetchInFlight = true;
-        const prompt = this;
 
         // Show a non-blocking loading indicator in the option list.
-        prompt.filteredOptions = [LOADING_OPTION];
-        prompt.render();
+        this.filteredOptions = [LOADING_OPTION];
+        this.render();
 
+        // Arrow functions below capture `this` lexically from optionsFn so
+        // the prompt handle is accessible after the async operation settles.
         question.search!(input)
           .then((results) => {
             cachedOptions = results.map((opt) => ({
@@ -123,16 +124,16 @@ export class ClackRenderer implements IRenderer {
             fetchInFlight = false;
 
             // Update the visible list with real results and re-render.
-            prompt.filteredOptions = cachedOptions;
-            prompt.render();
+            this.filteredOptions = cachedOptions;
+            this.render();
           })
           .catch(() => {
             cachedOptions = [];
             lastQuery = input;
             fetchInFlight = false;
 
-            prompt.filteredOptions = [];
-            prompt.render();
+            this.filteredOptions = [];
+            this.render();
           });
       }
 

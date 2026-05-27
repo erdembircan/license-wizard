@@ -151,7 +151,9 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
 
         const handle = makePromptHandle("mi");
         const result = optionsFn.call(handle);
@@ -180,7 +182,9 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
 
         const handle = makePromptHandle("MIT");
         optionsFn.call(handle);
@@ -194,7 +198,11 @@ describe("ClackRenderer", () => {
 
         // Keep the search pending so we can observe mid-flight state
         let resolveSearch!: (r: unknown[]) => void;
-        const search = vi.fn().mockReturnValue(new Promise<unknown[]>((res) => { resolveSearch = res; }));
+        const search = vi.fn().mockReturnValue(
+          new Promise<unknown[]>((res) => {
+            resolveSearch = res;
+          }),
+        );
 
         const renderer = new ClackRenderer("test");
         const question: Question = {
@@ -207,7 +215,9 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
 
         const handle = makePromptHandle("MIT");
         optionsFn.call(handle);
@@ -241,7 +251,9 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
 
         const handle = makePromptHandle("MIT");
 
@@ -253,7 +265,7 @@ describe("ClackRenderer", () => {
         await vi.waitFor(() =>
           expect(handle.filteredOptions).toEqual([
             { value: "MIT", label: "MIT License", hint: "MIT" },
-          ])
+          ]),
         );
 
         // render() should have been called once for loading and once for results
@@ -274,7 +286,9 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
 
         const handle = makePromptHandle("MIT");
         const result = optionsFn.call(handle);
