@@ -902,10 +902,10 @@ ${c}
   }
 } }).prompt();
 
-// src/ClackRenderer.ts
+// src/cli/ClackRenderer.ts
 import { styleText } from "node:util";
 
-// src/Spinner.ts
+// src/cli/Spinner.ts
 var SPINNER_FRAMES_UNICODE = ["\u25D2", "\u25D0", "\u25D3", "\u25D1"];
 var SPINNER_FRAMES_ASCII = ["\u2022", "o", "O", "0"];
 var SPINNER_DELAY_MS = 80;
@@ -935,7 +935,7 @@ var Spinner = class {
   }
 };
 
-// src/ClackRenderer.ts
+// src/cli/ClackRenderer.ts
 var MIN_SEARCH_LENGTH = 3;
 var ClackRenderer = class {
   #spinner;
@@ -1040,7 +1040,7 @@ var ClackRenderer = class {
   }
 };
 
-// src/FlagParser.ts
+// src/cli/FlagParser.ts
 import { parseArgs } from "node:util";
 var FlagParser = class {
   #flags;
@@ -1077,7 +1077,52 @@ var FlagParser = class {
   }
 };
 
-// src/LicenseRepositoryError.ts
+// src/cli/Orchestrator.ts
+var Orchestrator = class {
+  #repository;
+  #renderer;
+  /**
+   * Creates a new Orchestrator with the given repository and renderer.
+   */
+  constructor(repository, renderer) {
+    this.#repository = repository;
+    this.#renderer = renderer;
+  }
+  /**
+   * Iterates all questions in the repository, renders each one, and returns the collected answers.
+   */
+  async run() {
+    const answers = [];
+    let index = 0;
+    while (true) {
+      const question = this.#repository.getByIndex(index);
+      if (question === null) break;
+      const answer = await this.#renderer.render(question);
+      answers.push(answer);
+      index++;
+    }
+    return answers;
+  }
+};
+
+// src/cli/QuestionRepository.ts
+var QuestionRepository = class {
+  #questions;
+  /**
+   * Creates a new QuestionRepository with the given questions.
+   */
+  constructor(questions) {
+    this.#questions = [...questions];
+  }
+  /**
+   * Returns the question at the given index, or null if the index is out of bounds.
+   */
+  getByIndex(index) {
+    return this.#questions[index] ?? null;
+  }
+};
+
+// src/licensing/errors/LicenseRepositoryError.ts
 var LicenseRepositoryError = class extends Error {
   /**
    * Creates a new LicenseRepositoryError.
@@ -1091,7 +1136,7 @@ var LicenseRepositoryError = class extends Error {
   }
 };
 
-// src/LicenseRepository.ts
+// src/licensing/LicenseRepository.ts
 var LicenseRepository = class {
   #source;
   /**
@@ -1136,52 +1181,7 @@ var LicenseRepository = class {
   }
 };
 
-// src/Orchestrator.ts
-var Orchestrator = class {
-  #repository;
-  #renderer;
-  /**
-   * Creates a new Orchestrator with the given repository and renderer.
-   */
-  constructor(repository, renderer) {
-    this.#repository = repository;
-    this.#renderer = renderer;
-  }
-  /**
-   * Iterates all questions in the repository, renders each one, and returns the collected answers.
-   */
-  async run() {
-    const answers = [];
-    let index = 0;
-    while (true) {
-      const question = this.#repository.getByIndex(index);
-      if (question === null) break;
-      const answer = await this.#renderer.render(question);
-      answers.push(answer);
-      index++;
-    }
-    return answers;
-  }
-};
-
-// src/QuestionRepository.ts
-var QuestionRepository = class {
-  #questions;
-  /**
-   * Creates a new QuestionRepository with the given questions.
-   */
-  constructor(questions) {
-    this.#questions = [...questions];
-  }
-  /**
-   * Returns the question at the given index, or null if the index is out of bounds.
-   */
-  getByIndex(index) {
-    return this.#questions[index] ?? null;
-  }
-};
-
-// src/SpdxLicenseSource.ts
+// src/licensing/SpdxLicenseSource.ts
 var INDEX_URL = "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json";
 var DEFAULT_TTL_MS = 60 * 60 * 1e3;
 var SpdxLicenseSource = class {
