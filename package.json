@@ -20,6 +20,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.js",
+    "dev:start": "pnpm run build && chmod +x bin/license-wizard.js && bin/license-wizard.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
