@@ -187,7 +187,7 @@ When instructed to **"Work on PRs"**:
 ### Orchestrator role
 
 - Fetch open PRs and pass **only the PR ID** to the agent
-- After all PR agents finish, if any PRs were merged, sync master: `git checkout master && git pull origin master`
+- After all PR agents finish, if any PRs were merged, wait for all CI runs on master to complete (`gh run watch`) before syncing — the Build workflow commits rebuilt dist output back to master, so pulling before it finishes will miss that commit. Once CI is green: `git checkout master && git pull origin master`
 
 ### Agent role
 
