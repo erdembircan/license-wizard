@@ -12,7 +12,15 @@ vi.mock("@clack/prompts", () => ({
   unicode: true,
 }));
 
+vi.mock("./Spinner.js", () => {
+  const SpinnerMock = vi.fn(function (this: { start: ReturnType<typeof vi.fn> }) {
+    this.start = vi.fn().mockReturnValue(vi.fn());
+  });
+  return { Spinner: SpinnerMock };
+});
+
 const clack = await import("@clack/prompts");
+const { Spinner } = await import("./Spinner.js");
 const { ClackRenderer } = await import("./ClackRenderer.js");
 
 /**
@@ -191,6 +199,67 @@ describe("ClackRenderer", () => {
         optionsFn.call(handle);
 
         expect(search).toHaveBeenCalledWith("MIT");
+      });
+
+      it("starts the spinner when a search is triggered", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const search = vi.fn().mockResolvedValue([]);
+        const spinnerInstance = new Spinner();
+
+        const renderer = new ClackRenderer("test", spinnerInstance);
+        const question: Question = {
+          id: "license",
+          text: "Which license?",
+          type: "autocomplete",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
+
+        const handle = makePromptHandle("MIT");
+        optionsFn.call(handle);
+
+        expect(spinnerInstance.start).toHaveBeenCalledWith(handle);
+      });
+
+      it("stops the spinner after search resolves", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const searchResults = [
+          { value: "MIT", label: "MIT License", hint: "MIT" },
+        ];
+        const search = vi.fn().mockResolvedValue(searchResults);
+        const stopSpinner = vi.fn();
+        const spinnerInstance = new Spinner();
+        (spinnerInstance.start as ReturnType<typeof vi.fn>).mockReturnValue(stopSpinner);
+
+        const renderer = new ClackRenderer("test", spinnerInstance);
+        const question: Question = {
+          id: "license",
+          text: "Which license?",
+          type: "autocomplete",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
+
+        const handle = makePromptHandle("MIT");
+        optionsFn.call(handle);
+
+        await vi.waitFor(() => expect(stopSpinner).toHaveBeenCalled());
       });
 
       it("updates filteredOptions with results and re-renders after search resolves", async () => {
