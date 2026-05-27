@@ -448,7 +448,17 @@ function w(r, t) {
   const s = r;
   s.isTTY && s.setRawMode(t);
 }
+var A = (r) => "columns" in r && typeof r.columns == "number" ? r.columns : 80;
 var L = (r) => "rows" in r && typeof r.rows == "number" ? r.rows : 20;
+function W(r, t, s, e2 = s, i = s, n) {
+  const o = A(r ?? x);
+  return wrapAnsi(t, o - s.length, { hard: true, trim: false }).split(`
+`).map((u, a, l) => {
+    const c = n ? n(u, a) : u;
+    return a === 0 ? `${e2}${c}` : a === l.length - 1 ? `${i}${c}` : `${s}${c}`;
+  }).join(`
+`);
+}
 var m = class {
   input;
   output;
@@ -574,6 +584,23 @@ var m = class {
     }
   }
 };
+var X = class extends m {
+  get cursor() {
+    return this.value ? 0 : 1;
+  }
+  get _value() {
+    return this.cursor === 0;
+  }
+  constructor(t) {
+    super(t, false), this.value = !!t.initialValue, this.on("userInput", () => {
+      this.value = this._value;
+    }), this.on("confirm", (s) => {
+      this.output.write(import_sisteransi.cursor.move(0, -1)), this.value = s, this.state = "submit", this.close();
+    }), this.on("cursor", () => {
+      this.value = !this.value;
+    });
+  }
+};
 var ht = class extends m {
   get userInputWithCursor() {
     if (this.state === "submit") return this.userInput;
@@ -640,6 +667,33 @@ var P = (t) => {
     case "submit":
       return e("green", H);
   }
+};
+var ue = (t) => {
+  const i = t.active ?? "Yes", s = t.inactive ?? "No";
+  return new X({ active: i, inactive: s, signal: t.signal, input: t.input, output: t.output, initialValue: t.initialValue ?? true, render() {
+    const r = t.withGuide ?? h.withGuide, u = `${P(this.state)}  `, n = r ? `${e("gray", $)}  ` : "", a = W(t.output, t.message, n, u), c = `${r ? `${e("gray", $)}
+` : ""}${a}
+`, o = this.value ? i : s;
+    switch (this.state) {
+      case "submit": {
+        const l = r ? `${e("gray", $)}  ` : "";
+        return `${c}${l}${e("dim", o)}`;
+      }
+      case "cancel": {
+        const l = r ? `${e("gray", $)}  ` : "";
+        return `${c}${l}${e(["strikethrough", "dim"], o)}${r ? `
+${e("gray", $)}` : ""}`;
+      }
+      default: {
+        const l = r ? `${e("cyan", $)}  ` : "", d = r ? e("cyan", x2) : "";
+        return `${c}${l}${this.value ? `${e("green", z2)} ${i}` : `${e("dim", U)} ${e("dim", i)}`}${t.vertical ? r ? `
+${e("cyan", $)}  ` : `
+` : ` ${e("dim", "/")} `}${this.value ? `${e("dim", U)} ${e("dim", s)}` : `${e("green", z2)} ${s}`}
+${d}
+`;
+      }
+    }
+  } }).prompt();
 };
 var me = (t = "", i) => {
   const s = i?.output ?? process.stdout, r = i?.withGuide ?? h.withGuide ? `${e("gray", x2)}  ` : "";
@@ -721,7 +775,8 @@ var ClackRenderer = class {
    */
   async #promptForQuestion(question) {
     const promptMap = {
-      text: (q2) => Pe({ message: q2.text })
+      text: (q2) => Pe({ message: q2.text }),
+      confirm: (q2) => ue({ message: q2.text })
     };
     const prompt = promptMap[question.type];
     if (!prompt) {
@@ -822,6 +877,11 @@ var licenseQuestion = {
   text: "License?",
   type: "text"
 };
+var saveConfigQuestion = {
+  id: "saveConfig",
+  text: "Save config file?",
+  type: "confirm"
+};
 var LicenseWizard = class {
   #orchestrator;
   /**
@@ -832,7 +892,10 @@ var LicenseWizard = class {
   constructor(args) {
     flagParser.parse(args);
     const renderer = new ClackRenderer("license-wizard");
-    const repository = new QuestionRepository([licenseQuestion]);
+    const repository = new QuestionRepository([
+      licenseQuestion,
+      saveConfigQuestion
+    ]);
     this.#orchestrator = new Orchestrator(repository, renderer);
   }
   /**
