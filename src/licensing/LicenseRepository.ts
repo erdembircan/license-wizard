@@ -1,7 +1,7 @@
-import type { ILicenseSource } from "./ILicenseSource.js";
-import type { LicenseDetail } from "./LicenseDetail.js";
-import type { LicenseIndexEntry } from "./LicenseIndexEntry.js";
-import { LicenseRepositoryError } from "./LicenseRepositoryError.js";
+import type { ILicenseSource } from "@licensing/interfaces/ILicenseSource.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
+import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
+import { LicenseRepositoryError } from "@licensing/errors/LicenseRepositoryError.js";
 
 /**
  * Facade over a license source, providing search and retrieval capabilities

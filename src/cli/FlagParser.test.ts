@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FlagParser } from "./FlagParser.js";
+import { FlagParser } from "@cli/FlagParser.js";
 
 describe("FlagParser", () => {
   describe("boolean flags", () => {

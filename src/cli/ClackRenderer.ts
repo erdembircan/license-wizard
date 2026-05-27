@@ -1,14 +1,14 @@
 import * as clack from "@clack/prompts";
 import { styleText } from "node:util";
-import type { Answer } from "./Answer.js";
-import type { IRenderer } from "./IRenderer.js";
+import type { Answer } from "@cli/Answer.js";
+import type { IRenderer } from "@cli/interfaces/IRenderer.js";
 import type {
   AutocompleteOption,
   AutocompleteQuestion,
   Question,
   QuestionType,
-} from "./Question.js";
-import { Spinner } from "./Spinner.js";
+} from "@cli/Question.js";
+import { Spinner } from "@cli/Spinner.js";
 
 const MIN_SEARCH_LENGTH = 3;
 

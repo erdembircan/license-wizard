@@ -1,10 +1,10 @@
-import { ClackRenderer } from "./cli/ClackRenderer.js";
-import { FlagParser } from "./cli/FlagParser.js";
-import { Orchestrator } from "./cli/Orchestrator.js";
-import type { Question } from "./cli/Question.js";
-import { QuestionRepository } from "./cli/QuestionRepository.js";
-import { LicenseRepository } from "./licensing/LicenseRepository.js";
-import { SpdxLicenseSource } from "./licensing/SpdxLicenseSource.js";
+import { ClackRenderer } from "@cli/ClackRenderer.js";
+import { FlagParser } from "@cli/FlagParser.js";
+import { Orchestrator } from "@cli/Orchestrator.js";
+import type { Question } from "@cli/Question.js";
+import { QuestionRepository } from "@cli/QuestionRepository.js";
+import { LicenseRepository } from "@licensing/LicenseRepository.js";
+import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 
 const flagParser = new FlagParser({
   verify: { type: "boolean", default: false },

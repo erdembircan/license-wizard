@@ -1,6 +1,6 @@
-import type { Answer } from "./Answer.js";
-import type { IRenderer } from "./IRenderer.js";
-import type { QuestionRepository } from "./QuestionRepository.js";
+import type { Answer } from "@cli/Answer.js";
+import type { IRenderer } from "@cli/interfaces/IRenderer.js";
+import type { QuestionRepository } from "@cli/QuestionRepository.js";
 
 /**
  * Drives the question-and-answer session by iterating all questions

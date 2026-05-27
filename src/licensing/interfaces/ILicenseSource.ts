@@ -1,5 +1,5 @@
-import type { LicenseDetail } from "./LicenseDetail.js";
-import type { LicenseIndexEntry } from "./LicenseIndexEntry.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
+import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 
 /**
  * Contract for a source that provides license data.
