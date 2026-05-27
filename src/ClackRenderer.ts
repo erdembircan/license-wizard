@@ -7,21 +7,25 @@ import type {
   Question,
   QuestionType,
 } from "./Question.js";
+import { Spinner } from "./Spinner.js";
 
 const MIN_SEARCH_LENGTH = 3;
-const SPINNER_FRAMES_UNICODE = ["◒", "◐", "◓", "◑"];
-const SPINNER_FRAMES_ASCII = ["•", "o", "O", "0"];
-const SPINNER_DELAY_MS = 80;
 
 /**
  * Renders questions to the terminal using the Clack prompt library.
  */
 export class ClackRenderer implements IRenderer {
+  readonly #spinner: Spinner;
+
   /**
    * Creates a new ClackRenderer and immediately displays the intro label.
+   *
+   * @param introLabel - The label shown in the intro banner.
+   * @param spinner - Optional spinner instance; defaults to a new Spinner.
    */
-  constructor(introLabel: string) {
+  constructor(introLabel: string, spinner: Spinner = new Spinner()) {
     clack.intro(styleText("inverse", ` ${introLabel} `));
+    this.#spinner = spinner;
   }
 
   /**
@@ -78,8 +82,8 @@ export class ClackRenderer implements IRenderer {
   /**
    * Renders an autocomplete prompt backed by the question's search callback.
    * Options are only fetched when the user has typed at least three characters.
-   * While a fetch is in progress Clack's spinner frames animate in the option
-   * list so the prompt stays interactive throughout.
+   * While a fetch is in progress the spinner animates in the option list so
+   * the prompt stays interactive throughout.
    */
   async #promptAutocomplete(
     question: AutocompleteQuestion,
@@ -88,7 +92,6 @@ export class ClackRenderer implements IRenderer {
       value: string;
       label: string;
       hint?: string;
-      disabled?: boolean;
     };
     type PromptHandle = {
       userInput: string;
@@ -96,30 +99,7 @@ export class ClackRenderer implements IRenderer {
       render: () => void;
     };
 
-    const spinnerFrames = clack.unicode
-      ? SPINNER_FRAMES_UNICODE
-      : SPINNER_FRAMES_ASCII;
-
-    /**
-     * Starts animating Clack's spinner frames in the options list while a
-     * search is in flight. Returns a stop function that clears the interval.
-     */
-    function startSpinner(handle: PromptHandle): () => void {
-      let frameIndex = 0;
-      const interval = setInterval(() => {
-        const frame = spinnerFrames[frameIndex % spinnerFrames.length];
-        frameIndex++;
-        handle.filteredOptions = [
-          {
-            value: "__loading__",
-            label: `${frame} Searching…`,
-          },
-        ];
-        handle.render();
-      }, SPINNER_DELAY_MS);
-      return () => clearInterval(interval);
-    }
-
+    const spinner = this.#spinner;
     let cachedOptions: ClackOption[] = [];
     let lastQuery: string | null = null;
     let fetchInFlight = false;
@@ -135,7 +115,7 @@ export class ClackRenderer implements IRenderer {
         fetchInFlight = true;
 
         // Start the spinner animation in the option list.
-        const stopSpinner = startSpinner(this);
+        const stopSpinner = spinner.start(this);
 
         // Arrow functions below capture `this` lexically from optionsFn so
         // the prompt handle is accessible after the async operation settles.

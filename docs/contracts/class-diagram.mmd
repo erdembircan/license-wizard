@@ -24,7 +24,11 @@ classDiagram
     }
 
     class ClackRenderer {
-      +ClackRenderer(introLabel: string)
+      +ClackRenderer(introLabel: string, spinner: Spinner)
+    }
+
+    class Spinner {
+      +start(handle: object) Function
     }
 
     class QuestionRepository {
@@ -141,6 +145,7 @@ classDiagram
   ConfirmQuestion ..|> Question : member of
   AutocompleteQuestion ..|> Question : member of
   ClackRenderer ..|> IRenderer : implements
+  ClackRenderer ..> Spinner : uses
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
