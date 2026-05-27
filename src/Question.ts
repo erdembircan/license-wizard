@@ -1,14 +1,28 @@
-export type QuestionType = "text" | "confirm" | "autocomplete";
-
 export type AutocompleteOption = {
   value: string;
   label: string;
   hint?: string;
 };
 
-export type Question = {
+export type TextQuestion = {
   id: string;
   text: string;
-  type: QuestionType;
+  type: "text";
+};
+
+export type ConfirmQuestion = {
+  id: string;
+  text: string;
+  type: "confirm";
+};
+
+export type AutocompleteQuestion = {
+  id: string;
+  text: string;
+  type: "autocomplete";
   search?: (query: string) => Promise<AutocompleteOption[]>;
 };
+
+export type Question = TextQuestion | ConfirmQuestion | AutocompleteQuestion;
+
+export type QuestionType = Question["type"];

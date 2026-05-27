@@ -33,9 +33,25 @@ classDiagram
     }
 
     class Question {
+      <<union>>
+    }
+
+    class TextQuestion {
       +id: string
       +text: string
-      +type: QuestionType
+      +type: "text"
+    }
+
+    class ConfirmQuestion {
+      +id: string
+      +text: string
+      +type: "confirm"
+    }
+
+    class AutocompleteQuestion {
+      +id: string
+      +text: string
+      +type: "autocomplete"
       +search(query: string) Promise~AutocompleteOption[]~
     }
 
@@ -121,6 +137,9 @@ classDiagram
     }
   }
 
+  TextQuestion ..|> Question : member of
+  ConfirmQuestion ..|> Question : member of
+  AutocompleteQuestion ..|> Question : member of
   ClackRenderer ..|> IRenderer : implements
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> QuestionRepository : creates
@@ -132,7 +151,7 @@ classDiagram
   Orchestrator ..> IRenderer : feeds questions to
   ClackRenderer ..> Question : renders
   QuestionRepository ..> Question : produces
-  Question ..> AutocompleteOption : search produces
+  AutocompleteQuestion ..> AutocompleteOption : search produces
   Orchestrator ..> Answer : collects
   SpdxLicenseSource ..|> ILicenseSource : implements
   LicenseRepository ..> ILicenseSource : uses

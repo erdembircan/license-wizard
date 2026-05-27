@@ -2,7 +2,11 @@ import * as clack from "@clack/prompts";
 import { styleText } from "node:util";
 import type { Answer } from "./Answer.js";
 import type { IRenderer } from "./IRenderer.js";
-import type { Question, QuestionType } from "./Question.js";
+import type {
+  AutocompleteQuestion,
+  Question,
+  QuestionType,
+} from "./Question.js";
 
 const MIN_SEARCH_LENGTH = 3;
 const SPINNER_FRAMES_UNICODE = ["◒", "◐", "◓", "◑"];
@@ -77,7 +81,9 @@ export class ClackRenderer implements IRenderer {
    * While a fetch is in progress Clack's spinner frames animate in the option
    * list so the prompt stays interactive throughout.
    */
-  async #promptAutocomplete(question: Question): Promise<string | symbol> {
+  async #promptAutocomplete(
+    question: AutocompleteQuestion,
+  ): Promise<string | symbol> {
     type ClackOption = {
       value: string;
       label: string;
@@ -133,7 +139,7 @@ export class ClackRenderer implements IRenderer {
 
         // Arrow functions below capture `this` lexically from optionsFn so
         // the prompt handle is accessible after the async operation settles.
-        question.search!(input)
+        question.search(input)
           .then((results) => {
             stopSpinner();
             cachedOptions = results.map((opt) => ({
