@@ -24,7 +24,11 @@ classDiagram
     }
 
     class ClackRenderer {
-      +ClackRenderer(introLabel: string)
+      +ClackRenderer(introLabel: string, spinner: Spinner)
+    }
+
+    class Spinner {
+      +start(handle: object) Function
     }
 
     class QuestionRepository {
@@ -33,9 +37,32 @@ classDiagram
     }
 
     class Question {
+      <<union>>
+    }
+
+    class TextQuestion {
       +id: string
       +text: string
-      +type: QuestionType
+      +type: "text"
+    }
+
+    class ConfirmQuestion {
+      +id: string
+      +text: string
+      +type: "confirm"
+    }
+
+    class AutocompleteQuestion {
+      +id: string
+      +text: string
+      +type: "autocomplete"
+      +search(query: string) Promise~AutocompleteOption[]~
+    }
+
+    class AutocompleteOption {
+      +value: string
+      +label: string
+      +hint: string
     }
 
     class Answer {
@@ -114,7 +141,11 @@ classDiagram
     }
   }
 
+  TextQuestion ..|> Question : member of
+  ConfirmQuestion ..|> Question : member of
+  AutocompleteQuestion ..|> Question : member of
   ClackRenderer ..|> IRenderer : implements
+  ClackRenderer ..> Spinner : uses
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
@@ -125,6 +156,7 @@ classDiagram
   Orchestrator ..> IRenderer : feeds questions to
   ClackRenderer ..> Question : renders
   QuestionRepository ..> Question : produces
+  AutocompleteQuestion ..> AutocompleteOption : search produces
   Orchestrator ..> Answer : collects
   SpdxLicenseSource ..|> ILicenseSource : implements
   LicenseRepository ..> ILicenseSource : uses
