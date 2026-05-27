@@ -6,12 +6,10 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "paths": {
-      "@cli/*": ["src/cli/*"],
-      "@licensing/*": ["src/licensing/*"],
-      "@configuration/*": ["src/configuration/*"]
+      "@cli/*": ["./src/cli/*"],
+      "@licensing/*": ["./src/licensing/*"],
+      "@configuration/*": ["./src/configuration/*"]
     }
   },
   "include": ["src/**/*.ts", "vitest.config.ts"]
