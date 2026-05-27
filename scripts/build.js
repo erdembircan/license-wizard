@@ -8,6 +8,7 @@ const srcDir = path.resolve(__dirname, "../src");
 await esbuild.build({
   entryPoints: ["src/index.ts"],
   bundle: true,
+  minify: true,
   platform: "node",
   format: "esm",
   outfile: "dist/index.js",
