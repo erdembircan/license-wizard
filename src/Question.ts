@@ -1,4 +1,4 @@
-export type QuestionType = "text";
+export type QuestionType = "text" | "confirm";
 
 export type Question = {
   id: string;

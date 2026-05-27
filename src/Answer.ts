@@ -1,4 +1,4 @@
 export type Answer = {
   questionId: string;
-  value: string;
+  value: string | boolean;
 };
