@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { SpdxLicenseSource } from "./SpdxLicenseSource.js";
+import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 
 const makeLicenseItem = (
   licenseId: string,

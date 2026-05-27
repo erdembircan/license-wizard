@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { QuestionRepository } from "./QuestionRepository.js";
-import type { Question } from "./Question.js";
+import { QuestionRepository } from "@cli/QuestionRepository.js";
+import type { Question } from "@cli/Question.js";
 
 const makeQuestion = (id: string): Question => ({
   id,

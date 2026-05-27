@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import { Orchestrator } from "./Orchestrator.js";
-import { QuestionRepository } from "./QuestionRepository.js";
-import type { IRenderer } from "./IRenderer.js";
-import type { Question } from "./Question.js";
-import type { Answer } from "./Answer.js";
+import { Orchestrator } from "@cli/Orchestrator.js";
+import { QuestionRepository } from "@cli/QuestionRepository.js";
+import type { IRenderer } from "@cli/interfaces/IRenderer.js";
+import type { Question } from "@cli/Question.js";
+import type { Answer } from "@cli/Answer.js";
 
 const makeQuestion = (id: string): Question => ({
   id,

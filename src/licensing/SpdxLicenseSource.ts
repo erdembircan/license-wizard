@@ -1,6 +1,6 @@
-import type { ILicenseSource } from "./ILicenseSource.js";
-import type { LicenseDetail } from "./LicenseDetail.js";
-import type { LicenseIndexEntry } from "./LicenseIndexEntry.js";
+import type { ILicenseSource } from "@licensing/interfaces/ILicenseSource.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
+import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 
 const INDEX_URL =
   "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json";

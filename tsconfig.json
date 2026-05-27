@@ -5,7 +5,12 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "noEmit": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@cli/*": ["./src/cli/*"],
+      "@licensing/*": ["./src/licensing/*"],
+      "@configuration/*": ["./src/configuration/*"]
+    }
   },
   "include": ["src/**/*.ts", "vitest.config.ts"]
 }

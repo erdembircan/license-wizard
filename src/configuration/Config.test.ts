@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { Config } from "./Config.js";
-import { FileSystemReaderError } from "./FileSystemReaderError.js";
-import { FileSystemWriterError } from "./FileSystemWriterError.js";
-import type { IFileSystemReader } from "./IFileSystemReader.js";
-import type { IFileSystemWriter } from "./IFileSystemWriter.js";
-import type { WizardConfig } from "./WizardConfig.js";
+import { Config } from "@configuration/Config.js";
+import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
+import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
+import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
 
 const RC_FILE = ".licensewizardrc.json";
 const PACKAGE_JSON = "package.json";

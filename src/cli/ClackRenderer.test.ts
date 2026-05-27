@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Question } from "./Question.js";
+import type { Question } from "@cli/Question.js";
 
 vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("@clack/prompts", () => ({
   unicode: true,
 }));
 
-vi.mock("./Spinner.js", () => {
+vi.mock("@cli/Spinner.js", () => {
   const SpinnerMock = vi.fn(function (this: {
     start: ReturnType<typeof vi.fn>;
   }) {
@@ -22,8 +22,8 @@ vi.mock("./Spinner.js", () => {
 });
 
 const clack = await import("@clack/prompts");
-const { Spinner } = await import("./Spinner.js");
-const { ClackRenderer } = await import("./ClackRenderer.js");
+const { Spinner } = await import("@cli/Spinner.js");
+const { ClackRenderer } = await import("@cli/ClackRenderer.js");
 
 /**
  * Creates a mock prompt handle that simulates the AutocompletePrompt context

@@ -1,5 +1,5 @@
-import type { Answer } from "./Answer.js";
-import type { Question } from "./Question.js";
+import type { Answer } from "@cli/Answer.js";
+import type { Question } from "@cli/Question.js";
 
 /**
  * Contract for rendering questions and collecting user answers.

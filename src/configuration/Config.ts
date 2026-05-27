@@ -1,8 +1,8 @@
-import type { IFileSystemReader } from "./IFileSystemReader.js";
-import type { IFileSystemWriter } from "./IFileSystemWriter.js";
-import type { WizardConfig } from "./WizardConfig.js";
-import { FileSystemReaderError } from "./FileSystemReaderError.js";
-import { FileSystemWriterError } from "./FileSystemWriterError.js";
+import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
+import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
+import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
 const RC_FILE = ".licensewizardrc.json";
 const PACKAGE_JSON = "package.json";
