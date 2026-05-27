@@ -198,6 +198,7 @@ When instructed to **"Work on PRs"**:
 - `gh pr view --comments` does **not** include inline file review comments — you must check both
 - If there are no new user comments since the last `[agent]` comment (or no user comments at all), do nothing and exit immediately — do not post a comment or take any action
 - Identify any unaddressed user comments and implement what they ask for
+- After pushing changes, check for merge conflicts before waiting on CI — if the PR branch has conflicts with master, GitHub will not trigger CI runs. Detect this with `gh pr view <number> --json mergeable` and check the `mergeable` field. If it is `"CONFLICTING"`, rebase the branch onto master (`git fetch origin master && git rebase origin/master`), resolve all conflicts, force-push, and only then wait for CI. Do not enter a `gh run watch` loop on a conflicting branch — CI will never start
 - After pushing changes, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
 - After each implementation, post a comment reporting what was done
 
