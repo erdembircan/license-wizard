@@ -13,7 +13,9 @@ vi.mock("@clack/prompts", () => ({
 }));
 
 vi.mock("./Spinner.js", () => {
-  const SpinnerMock = vi.fn(function (this: { start: ReturnType<typeof vi.fn> }) {
+  const SpinnerMock = vi.fn(function (this: {
+    start: ReturnType<typeof vi.fn>;
+  }) {
     this.start = vi.fn().mockReturnValue(vi.fn());
   });
   return { Spinner: SpinnerMock };
@@ -239,7 +241,9 @@ describe("ClackRenderer", () => {
         const search = vi.fn().mockResolvedValue(searchResults);
         const stopSpinner = vi.fn();
         const spinnerInstance = new Spinner();
-        (spinnerInstance.start as ReturnType<typeof vi.fn>).mockReturnValue(stopSpinner);
+        (spinnerInstance.start as ReturnType<typeof vi.fn>).mockReturnValue(
+          stopSpinner,
+        );
 
         const renderer = new ClackRenderer("test", spinnerInstance);
         const question: Question = {

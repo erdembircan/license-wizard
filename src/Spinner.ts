@@ -22,7 +22,9 @@ export class Spinner {
    * @returns A function that stops the spinner and clears the interval.
    */
   start(handle: SpinnerHandle): () => void {
-    const frames = clack.unicode ? SPINNER_FRAMES_UNICODE : SPINNER_FRAMES_ASCII;
+    const frames = clack.unicode
+      ? SPINNER_FRAMES_UNICODE
+      : SPINNER_FRAMES_ASCII;
     let frameIndex = 0;
     const interval = setInterval(() => {
       const frame = frames[frameIndex % frames.length];
