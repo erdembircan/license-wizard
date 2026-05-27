@@ -3,6 +3,9 @@ import { FlagParser } from "@cli/FlagParser.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
 import type { Question } from "@cli/Question.js";
 import { QuestionRepository } from "@cli/QuestionRepository.js";
+import { Config } from "@configuration/Config.js";
+import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
+import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 
@@ -15,6 +18,7 @@ const flagParser = new FlagParser({
  */
 export class LicenseWizard {
   readonly #orchestrator: Orchestrator;
+  readonly #config: Config;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -23,6 +27,11 @@ export class LicenseWizard {
    */
   constructor(args: string[]) {
     flagParser.parse(args);
+
+    this.#config = new Config(
+      new NodeFileSystemReader(),
+      new NodeFileSystemWriter(),
+    );
 
     const licenseSource = new SpdxLicenseSource();
     const licenseRepository = new LicenseRepository(licenseSource);
@@ -56,9 +65,22 @@ export class LicenseWizard {
   }
 
   /**
-   * Runs the interactive wizard and returns the collected answers.
+   * Runs the interactive wizard, collects answers, and persists configuration
+   * when the user opts in. Returns the collected answers.
    */
   async run() {
-    return this.#orchestrator.run();
+    const answers = await this.#orchestrator.run();
+
+    const licenseAnswer = answers.find((a) => a.questionId === "license");
+    const saveConfigAnswer = answers.find((a) => a.questionId === "saveConfig");
+
+    if (
+      saveConfigAnswer?.value === true &&
+      typeof licenseAnswer?.value === "string"
+    ) {
+      await this.#config.write({ licenseId: licenseAnswer.value });
+    }
+
+    return answers;
   }
 }
