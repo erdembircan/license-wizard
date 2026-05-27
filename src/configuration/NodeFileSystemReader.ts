@@ -20,7 +20,10 @@ export class NodeFileSystemReader implements IFileSystemReader {
     try {
       return await fs.readFile(resolved, "utf-8");
     } catch (cause) {
-      throw new FileSystemReaderError(`Failed to read file: ${resolved}`, cause);
+      throw new FileSystemReaderError(
+        `Failed to read file: ${resolved}`,
+        cause,
+      );
     }
   }
 
