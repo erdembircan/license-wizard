@@ -9,6 +9,7 @@ vi.mock("@clack/prompts", () => ({
   spinner: vi.fn(),
   cancel: vi.fn(),
   isCancel: vi.fn(),
+  unicode: true,
 }));
 
 const clack = await import("@clack/prompts");
@@ -192,7 +193,8 @@ describe("ClackRenderer", () => {
         expect(search).toHaveBeenCalledWith("MIT");
       });
 
-      it("shows a loading indicator in filteredOptions and re-renders when search starts", async () => {
+      it("shows a spinner loading indicator in filteredOptions and re-renders while search is in flight", async () => {
+        vi.useFakeTimers();
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -222,13 +224,21 @@ describe("ClackRenderer", () => {
         const handle = makePromptHandle("MIT");
         optionsFn.call(handle);
 
-        // While fetch is in flight, filteredOptions should contain the loading indicator
-        expect(handle.filteredOptions).toEqual([
-          expect.objectContaining({ label: "Searching…", disabled: true }),
-        ]);
-        expect(handle.render).toHaveBeenCalledTimes(1);
+        // Advance one spinner tick so the interval fires
+        vi.advanceTimersByTime(80);
+
+        // While fetch is in flight, filteredOptions should contain a spinner frame entry
+        expect(handle.filteredOptions).toHaveLength(1);
+        expect(handle.filteredOptions[0]).toEqual(
+          expect.objectContaining({ disabled: true }),
+        );
+        expect((handle.filteredOptions[0] as { label: string }).label).toMatch(
+          /^[◒◐◓◑•oO0] Searching…$/,
+        );
+        expect(handle.render).toHaveBeenCalled();
 
         resolveSearch([]);
+        vi.useRealTimers();
       });
 
       it("updates filteredOptions with results and re-renders after search resolves", async () => {
@@ -268,8 +278,8 @@ describe("ClackRenderer", () => {
           ]),
         );
 
-        // render() should have been called once for loading and once for results
-        expect(handle.render).toHaveBeenCalledTimes(2);
+        // render() should have been called at least once for results
+        expect(handle.render).toHaveBeenCalled();
       });
 
       it("options function returns empty array when no search callback is provided", async () => {

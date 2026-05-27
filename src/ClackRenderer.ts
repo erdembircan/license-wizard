@@ -5,6 +5,9 @@ import type { IRenderer } from "./IRenderer.js";
 import type { Question, QuestionType } from "./Question.js";
 
 const MIN_SEARCH_LENGTH = 3;
+const SPINNER_FRAMES_UNICODE = ["◒", "◐", "◓", "◑"];
+const SPINNER_FRAMES_ASCII = ["•", "o", "O", "0"];
+const SPINNER_DELAY_MS = 80;
 
 /**
  * Renders questions to the terminal using the Clack prompt library.
@@ -71,8 +74,8 @@ export class ClackRenderer implements IRenderer {
   /**
    * Renders an autocomplete prompt backed by the question's search callback.
    * Options are only fetched when the user has typed at least three characters.
-   * While a fetch is in progress a "Searching…" placeholder entry appears in
-   * the list so the prompt stays interactive throughout.
+   * While a fetch is in progress Clack's spinner frames animate in the option
+   * list so the prompt stays interactive throughout.
    */
   async #promptAutocomplete(question: Question): Promise<string | symbol> {
     type ClackOption = {
@@ -87,11 +90,30 @@ export class ClackRenderer implements IRenderer {
       render: () => void;
     };
 
-    const LOADING_OPTION: ClackOption = {
-      value: "__loading__",
-      label: "Searching…",
-      disabled: true,
-    };
+    const spinnerFrames = clack.unicode
+      ? SPINNER_FRAMES_UNICODE
+      : SPINNER_FRAMES_ASCII;
+
+    /**
+     * Starts animating Clack's spinner frames in the options list while a
+     * search is in flight. Returns a stop function that clears the interval.
+     */
+    function startSpinner(handle: PromptHandle): () => void {
+      let frameIndex = 0;
+      const interval = setInterval(() => {
+        const frame = spinnerFrames[frameIndex % spinnerFrames.length];
+        frameIndex++;
+        handle.filteredOptions = [
+          {
+            value: "__loading__",
+            label: `${frame} Searching…`,
+            disabled: true,
+          },
+        ];
+        handle.render();
+      }, SPINNER_DELAY_MS);
+      return () => clearInterval(interval);
+    }
 
     let cachedOptions: ClackOption[] = [];
     let lastQuery: string | null = null;
@@ -107,14 +129,14 @@ export class ClackRenderer implements IRenderer {
       if (input !== lastQuery && !fetchInFlight) {
         fetchInFlight = true;
 
-        // Show a non-blocking loading indicator in the option list.
-        this.filteredOptions = [LOADING_OPTION];
-        this.render();
+        // Start the spinner animation in the option list.
+        const stopSpinner = startSpinner(this);
 
         // Arrow functions below capture `this` lexically from optionsFn so
         // the prompt handle is accessible after the async operation settles.
         question.search!(input)
           .then((results) => {
+            stopSpinner();
             cachedOptions = results.map((opt) => ({
               value: opt.value,
               label: opt.label,
@@ -128,6 +150,7 @@ export class ClackRenderer implements IRenderer {
             this.render();
           })
           .catch(() => {
+            stopSpinner();
             cachedOptions = [];
             lastQuery = input;
             fetchInFlight = false;
