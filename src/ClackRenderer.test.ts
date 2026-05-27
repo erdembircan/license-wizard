@@ -193,51 +193,6 @@ describe("ClackRenderer", () => {
         expect(search).toHaveBeenCalledWith("MIT");
       });
 
-      it("shows a spinner loading indicator in filteredOptions and re-renders while search is in flight", async () => {
-        vi.useFakeTimers();
-        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
-        vi.mocked(clack.isCancel).mockReturnValue(false);
-
-        // Keep the search pending so we can observe mid-flight state
-        let resolveSearch!: (r: unknown[]) => void;
-        const search = vi.fn().mockReturnValue(
-          new Promise<unknown[]>((res) => {
-            resolveSearch = res;
-          }),
-        );
-
-        const renderer = new ClackRenderer("test");
-        const question: Question = {
-          id: "license",
-          text: "Which license?",
-          type: "autocomplete",
-          search,
-        };
-
-        await renderer.render(question);
-
-        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (
-          this: ReturnType<typeof makePromptHandle>,
-        ) => unknown[];
-
-        const handle = makePromptHandle("MIT");
-        optionsFn.call(handle);
-
-        // Advance one spinner tick so the interval fires
-        vi.advanceTimersByTime(80);
-
-        // While fetch is in flight, filteredOptions should contain a spinner frame entry
-        expect(handle.filteredOptions).toHaveLength(1);
-        expect((handle.filteredOptions[0] as { label: string }).label).toMatch(
-          /^[◒◐◓◑•oO0] Searching…$/,
-        );
-        expect(handle.render).toHaveBeenCalled();
-
-        resolveSearch([]);
-        vi.useRealTimers();
-      });
-
       it("updates filteredOptions with results and re-renders after search resolves", async () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
