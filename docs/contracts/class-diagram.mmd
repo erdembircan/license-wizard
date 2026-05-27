@@ -118,6 +118,14 @@ classDiagram
       +write(path: string, content: string) Promise~void~
     }
 
+    class NodeFileSystemReader {
+      +NodeFileSystemReader()
+    }
+
+    class NodeFileSystemWriter {
+      +NodeFileSystemWriter()
+    }
+
     class FileSystemReaderError {
       +name: string
       +cause: unknown
@@ -163,8 +171,15 @@ classDiagram
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
   LicenseRepository ..> LicenseRepositoryError : throws
+  NodeFileSystemReader ..|> IFileSystemReader : implements
+  NodeFileSystemWriter ..|> IFileSystemWriter : implements
+  NodeFileSystemReader ..> FileSystemReaderError : throws
+  NodeFileSystemWriter ..> FileSystemWriterError : throws
   Config ..> IFileSystemReader : uses
   Config ..> IFileSystemWriter : uses
   Config ..> WizardConfig : produces
   Config ..> FileSystemReaderError : throws
   Config ..> FileSystemWriterError : throws
+  LicenseWizard ..> NodeFileSystemReader : creates
+  LicenseWizard ..> NodeFileSystemWriter : creates
+  LicenseWizard ..> Config : creates
