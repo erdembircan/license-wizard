@@ -63,7 +63,7 @@ export class ClackRenderer implements IRenderer {
     > = {
       text: (q) => clack.text({ message: q.text }),
       confirm: (q) => clack.confirm({ message: q.text }),
-      autocomplete: (q) => this.#promptAutocomplete(q),
+      autocomplete: (q) => this.#promptAutocomplete(q as AutocompleteQuestion),
     };
 
     const prompt = promptMap[question.type];
@@ -139,7 +139,8 @@ export class ClackRenderer implements IRenderer {
 
         // Arrow functions below capture `this` lexically from optionsFn so
         // the prompt handle is accessible after the async operation settles.
-        question.search(input)
+        question
+          .search(input)
           .then((results) => {
             stopSpinner();
             cachedOptions = results.map((opt) => ({
