@@ -423,6 +423,11 @@ function wrapAnsi(string, columns, options) {
 
 // node_modules/.pnpm/@clack+core@1.3.1/node_modules/@clack/core/dist/index.mjs
 var import_sisteransi = __toESM(require_src(), 1);
+function f(r, t, s) {
+  if (!s.some((o) => !o.disabled)) return r;
+  const e2 = r + t, i = Math.max(s.length - 1, 0), n = e2 < 0 ? i : e2 > i ? 0 : e2;
+  return s[n].disabled ? f(n, t < 0 ? -1 : 1, s) : n;
+}
 var G = ["up", "down", "left", "right", "space", "enter", "cancel"];
 var K = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 var h = { actions: new Set(G), aliases: /* @__PURE__ */ new Map([["k", "up"], ["j", "down"], ["h", "left"], ["l", "right"], ["", "cancel"], ["escape", "cancel"]]), messages: { cancel: "Canceled", error: "Something went wrong" }, withGuide: true, date: { monthNames: [...K], messages: { required: "Please enter a valid date", invalidMonth: "There are only 12 months in a year", invalidDay: (r, t) => `There are only ${r} days in ${t}`, afterMin: (r) => `Date must be on or after ${r.toISOString().slice(0, 10)}`, beforeMax: (r) => `Date must be on or before ${r.toISOString().slice(0, 10)}` } } };
@@ -584,6 +589,80 @@ var m = class {
     }
   }
 };
+function B(r, t) {
+  if (r === void 0 || t.length === 0) return 0;
+  const s = t.findIndex((e2) => e2.value === r);
+  return s !== -1 ? s : 0;
+}
+function J(r, t) {
+  return (t.label ?? String(t.value)).toLowerCase().includes(r.toLowerCase());
+}
+function H(r, t) {
+  if (t) return r ? t : t[0];
+}
+var Q = class extends m {
+  filteredOptions;
+  multiple;
+  isNavigating = false;
+  selectedValues = [];
+  focusedValue;
+  #s = 0;
+  #r = "";
+  #t;
+  #n;
+  #u;
+  get cursor() {
+    return this.#s;
+  }
+  get userInputWithCursor() {
+    if (!this.userInput) return v(["inverse", "hidden"], "_");
+    if (this._cursor >= this.userInput.length) return `${this.userInput}\u2588`;
+    const t = this.userInput.slice(0, this._cursor), [s, ...e2] = this.userInput.slice(this._cursor);
+    return `${t}${v("inverse", s)}${e2.join("")}`;
+  }
+  get options() {
+    return typeof this.#n == "function" ? this.#n() : this.#n;
+  }
+  constructor(t) {
+    super(t), this.#n = t.options, this.#u = t.placeholder;
+    const s = this.options;
+    this.filteredOptions = [...s], this.multiple = t.multiple === true, this.#t = typeof t.options == "function" ? t.filter : t.filter ?? J;
+    let e2;
+    if (t.initialValue && Array.isArray(t.initialValue) ? this.multiple ? e2 = t.initialValue : e2 = t.initialValue.slice(0, 1) : !this.multiple && this.options.length > 0 && (e2 = [this.options[0].value]), e2) for (const i of e2) {
+      const n = s.findIndex((o) => o.value === i);
+      n !== -1 && (this.toggleSelected(i), this.#s = n);
+    }
+    this.focusedValue = this.options[this.#s]?.value, this.on("key", (i, n) => this.#e(i, n)), this.on("userInput", (i) => this.#i(i));
+  }
+  _isActionKey(t, s) {
+    return t === "	" || this.multiple && this.isNavigating && s.name === "space" && t !== void 0 && t !== "";
+  }
+  #e(t, s) {
+    const e2 = s.name === "up", i = s.name === "down", n = s.name === "return", o = this.userInput === "" || this.userInput === "	", u = this.#u, a = this.options, l = u !== void 0 && u !== "" && a.some((c) => !c.disabled && (this.#t ? this.#t(u, c) : true));
+    if (s.name === "tab" && o && l) {
+      this.userInput === "	" && this._clearUserInput(), this._setUserInput(u, true), this.isNavigating = false;
+      return;
+    }
+    e2 || i ? (this.#s = f(this.#s, e2 ? -1 : 1, this.filteredOptions), this.focusedValue = this.filteredOptions[this.#s]?.value, this.multiple || (this.selectedValues = [this.focusedValue]), this.isNavigating = true) : n ? this.value = H(this.multiple, this.selectedValues) : this.multiple ? this.focusedValue !== void 0 && (s.name === "tab" || this.isNavigating && s.name === "space") ? this.toggleSelected(this.focusedValue) : this.isNavigating = false : (this.focusedValue && (this.selectedValues = [this.focusedValue]), this.isNavigating = false);
+  }
+  deselectAll() {
+    this.selectedValues = [];
+  }
+  toggleSelected(t) {
+    this.filteredOptions.length !== 0 && (this.multiple ? this.selectedValues.includes(t) ? this.selectedValues = this.selectedValues.filter((s) => s !== t) : this.selectedValues = [...this.selectedValues, t] : this.selectedValues = [t]);
+  }
+  #i(t) {
+    if (t !== this.#r) {
+      this.#r = t;
+      const s = this.options;
+      t && this.#t ? this.filteredOptions = s.filter((n) => this.#t?.(t, n)) : this.filteredOptions = [...s];
+      const e2 = B(this.focusedValue, this.filteredOptions);
+      this.#s = f(e2, 0, this.filteredOptions);
+      const i = this.filteredOptions[this.#s];
+      i && !i.disabled ? this.focusedValue = i.value : this.focusedValue = void 0, this.multiple || (this.focusedValue !== void 0 ? this.toggleSelected(this.focusedValue) : this.deselectAll());
+    }
+  }
+};
 var X = class extends m {
   get cursor() {
     return this.value ? 0 : 1;
@@ -633,7 +712,7 @@ var w2 = (t, i) => tt ? t : i;
 var Tt = w2("\u25C6", "*");
 var at2 = w2("\u25A0", "x");
 var ut2 = w2("\u25B2", "x");
-var H = w2("\u25C7", "o");
+var H2 = w2("\u25C7", "o");
 var lt = w2("\u250C", "T");
 var $ = w2("\u2502", "|");
 var x2 = w2("\u2514", "\u2014");
@@ -665,9 +744,94 @@ var P = (t) => {
     case "error":
       return e("yellow", ut2);
     case "submit":
-      return e("green", H);
+      return e("green", H2);
   }
 };
+var Ot = (t, i, s, r, u, n = false) => {
+  let a = i, c = 0;
+  if (n) for (let o = r - 1; o >= s && (a -= t[o].length, c++, !(a <= u)); o--) ;
+  else for (let o = s; o < r && (a -= t[o].length, c++, !(a <= u)); o++) ;
+  return { lineCount: a, removals: c };
+};
+var F = ({ cursor: t, options: i, style: s, output: r = process.stdout, maxItems: u = Number.POSITIVE_INFINITY, columnPadding: n = 0, rowPadding: a = 4 }) => {
+  const c = A(r) - n, o = L(r), l = e("dim", "..."), d = Math.max(o - a, 0), g = Math.max(Math.min(u, d), 5);
+  let p2 = 0;
+  t >= g - 3 && (p2 = Math.max(Math.min(t - g + 3, i.length - g), 0));
+  let f2 = g < i.length && p2 > 0, h2 = g < i.length && p2 + g < i.length;
+  const I = Math.min(p2 + g, i.length), m2 = [];
+  let y = 0;
+  f2 && y++, h2 && y++;
+  const v2 = p2 + (f2 ? 1 : 0), C2 = I - (h2 ? 1 : 0);
+  for (let b = v2; b < C2; b++) {
+    const G2 = wrapAnsi(s(i[b], b === t), c, { hard: true, trim: false }).split(`
+`);
+    m2.push(G2), y += G2.length;
+  }
+  if (y > d) {
+    let b = 0, G2 = 0, M = y;
+    const N = t - v2;
+    let O = d;
+    const j2 = () => Ot(m2, M, 0, N, O), k2 = () => Ot(m2, M, N + 1, m2.length, O, true);
+    f2 ? ({ lineCount: M, removals: b } = j2(), M > O && (h2 || (O -= 1), { lineCount: M, removals: G2 } = k2())) : (h2 || (O -= 1), { lineCount: M, removals: G2 } = k2(), M > O && (O -= 1, { lineCount: M, removals: b } = j2())), b > 0 && (f2 = true, m2.splice(0, b)), G2 > 0 && (h2 = true, m2.splice(m2.length - G2, G2));
+  }
+  const S = [];
+  f2 && S.push(l);
+  for (const b of m2) for (const G2 of b) S.push(G2);
+  return h2 && S.push(l), S;
+};
+function Pt(t) {
+  return t.label ?? String(t.value ?? "");
+}
+function Rt(t, i) {
+  if (!t) return true;
+  const s = (i.label ?? String(i.value ?? "")).toLowerCase(), r = (i.hint ?? "").toLowerCase(), u = String(i.value).toLowerCase(), n = t.toLowerCase();
+  return s.includes(n) || r.includes(n) || u.includes(n);
+}
+function se(t, i) {
+  const s = [];
+  for (const r of i) t.includes(r.value) && s.push(r);
+  return s;
+}
+var At = (t) => new Q({ options: t.options, initialValue: t.initialValue ? [t.initialValue] : void 0, initialUserInput: t.initialUserInput, placeholder: t.placeholder, filter: t.filter ?? ((i, s) => Rt(i, s)), signal: t.signal, input: t.input, output: t.output, validate: t.validate, render() {
+  const i = t.withGuide ?? h.withGuide, s = i ? [`${e("gray", $)}`, `${P(this.state)}  ${t.message}`] : [`${P(this.state)}  ${t.message}`], r = this.userInput, u = this.options, n = t.placeholder, a = r === "" && n !== void 0, c = (o, l) => {
+    const d = Pt(o), g = o.hint && o.value === this.focusedValue ? e("dim", ` (${o.hint})`) : "";
+    switch (l) {
+      case "active":
+        return `${e("green", z2)} ${d}${g}`;
+      case "inactive":
+        return `${e("dim", U)} ${e("dim", d)}`;
+      case "disabled":
+        return `${e("gray", U)} ${e(["strikethrough", "gray"], d)}`;
+    }
+  };
+  switch (this.state) {
+    case "submit": {
+      const o = se(this.selectedValues, u), l = o.length > 0 ? `  ${e("dim", o.map(Pt).join(", "))}` : "", d = i ? e("gray", $) : "";
+      return `${s.join(`
+`)}
+${d}${l}`;
+    }
+    case "cancel": {
+      const o = r ? `  ${e(["strikethrough", "dim"], r)}` : "", l = i ? e("gray", $) : "";
+      return `${s.join(`
+`)}
+${l}${o}`;
+    }
+    default: {
+      const o = this.state === "error" ? "yellow" : "cyan", l = i ? `${e(o, $)}  ` : "", d = i ? e(o, x2) : "";
+      let g = "";
+      if (this.isNavigating || a) {
+        const v2 = a ? n : r;
+        g = v2 !== "" ? ` ${e("dim", v2)}` : "";
+      } else g = ` ${this.userInputWithCursor}`;
+      const p2 = this.filteredOptions.length !== u.length ? e("dim", ` (${this.filteredOptions.length} match${this.filteredOptions.length === 1 ? "" : "es"})`) : "", f2 = this.filteredOptions.length === 0 && r ? [`${l}${e("yellow", "No matches found")}`] : [], h2 = this.state === "error" ? [`${l}${e("yellow", this.error)}`] : [];
+      i && s.push(`${l.trimEnd()}`), s.push(`${l}${e("dim", "Search:")}${g}${p2}`, ...f2, ...h2);
+      const I = [`${e("dim", "\u2191/\u2193")} to select`, `${e("dim", "Enter:")} confirm`, `${e("dim", "Type:")} to search`], m2 = [`${l}${I.join(" \u2022 ")}`, d], y = this.filteredOptions.length === 0 ? [] : F({ cursor: this.cursor, options: this.filteredOptions, columnPadding: i ? 3 : 0, rowPadding: s.length + m2.length, style: (v2, C2) => c(v2, v2.disabled ? "disabled" : C2 ? "active" : "inactive"), maxItems: t.maxItems, output: t.output });
+      return [...s, ...y.map((v2) => `${l}${v2}`), ...m2].join(`
+`);
+    }
+  }
+} }).prompt();
 var ue = (t) => {
   const i = t.active ?? "Yes", s = t.inactive ?? "No";
   return new X({ active: i, inactive: s, signal: t.signal, input: t.input, output: t.output, initialValue: t.initialValue ?? true, render() {
@@ -740,12 +904,50 @@ ${c}
 
 // src/ClackRenderer.ts
 import { styleText } from "node:util";
+
+// src/Spinner.ts
+var SPINNER_FRAMES_UNICODE = ["\u25D2", "\u25D0", "\u25D3", "\u25D1"];
+var SPINNER_FRAMES_ASCII = ["\u2022", "o", "O", "0"];
+var SPINNER_DELAY_MS = 80;
+var Spinner = class {
+  /**
+   * Starts the spinner animation on the given prompt handle and returns a
+   * function that stops it when called.
+   *
+   * @param handle - The autocomplete prompt context to animate.
+   * @returns A function that stops the spinner and clears the interval.
+   */
+  start(handle) {
+    const frames = tt ? SPINNER_FRAMES_UNICODE : SPINNER_FRAMES_ASCII;
+    let frameIndex = 0;
+    const interval = setInterval(() => {
+      const frame = frames[frameIndex % frames.length];
+      frameIndex++;
+      handle.filteredOptions = [
+        {
+          value: "__loading__",
+          label: `${frame} Searching\u2026`
+        }
+      ];
+      handle.render();
+    }, SPINNER_DELAY_MS);
+    return () => clearInterval(interval);
+  }
+};
+
+// src/ClackRenderer.ts
+var MIN_SEARCH_LENGTH = 3;
 var ClackRenderer = class {
+  #spinner;
   /**
    * Creates a new ClackRenderer and immediately displays the intro label.
+   *
+   * @param introLabel - The label shown in the intro banner.
+   * @param spinner - Optional spinner instance; defaults to a new Spinner.
    */
-  constructor(introLabel) {
+  constructor(introLabel, spinner = new Spinner()) {
     ge(styleText("inverse", ` ${introLabel} `));
+    this.#spinner = spinner;
   }
   /**
    * Renders a question to the terminal and returns the user's answer.
@@ -776,13 +978,65 @@ var ClackRenderer = class {
   async #promptForQuestion(question) {
     const promptMap = {
       text: (q2) => Pe({ message: q2.text }),
-      confirm: (q2) => ue({ message: q2.text })
+      confirm: (q2) => ue({ message: q2.text }),
+      autocomplete: (q2) => this.#promptAutocomplete(q2)
     };
     const prompt = promptMap[question.type];
     if (!prompt) {
       throw new Error(`Unsupported question type: "${question.type}"`);
     }
     return prompt(question);
+  }
+  /**
+   * Renders an autocomplete prompt backed by the question's search callback.
+   * Options are only fetched when the user has typed at least three characters.
+   * While a fetch is in progress the spinner animates in the option list so
+   * the prompt stays interactive throughout.
+   */
+  async #promptAutocomplete(question) {
+    const spinner = this.#spinner;
+    let cachedOptions = [];
+    let lastQuery = null;
+    let fetchInFlight = false;
+    const optionsFn = function() {
+      const input = this.userInput;
+      if (input.length < MIN_SEARCH_LENGTH || !question.search) {
+        return [];
+      }
+      if (input !== lastQuery && !fetchInFlight) {
+        fetchInFlight = true;
+        const stopSpinner = spinner.start(this);
+        question.search(input).then((results) => {
+          stopSpinner();
+          cachedOptions = results.map((opt) => ({
+            value: opt.value,
+            label: opt.label,
+            hint: opt.hint
+          }));
+          lastQuery = input;
+          fetchInFlight = false;
+          this.filteredOptions = cachedOptions;
+          this.render();
+        }).catch(() => {
+          stopSpinner();
+          cachedOptions = [];
+          lastQuery = input;
+          fetchInFlight = false;
+          this.filteredOptions = [];
+          this.render();
+        });
+      }
+      return cachedOptions;
+    };
+    return At({
+      message: question.text,
+      // Cast required: the clack type expects `this: AutocompletePrompt` (with
+      // private members) but at runtime we only access `userInput`,
+      // `filteredOptions`, and `render`.
+      options: optionsFn,
+      filter: () => true,
+      placeholder: `Type at least ${MIN_SEARCH_LENGTH} characters to search\u2026`
+    });
   }
 };
 
@@ -820,6 +1074,65 @@ var FlagParser = class {
       result[name] = values[name] ?? this.#flags[name].default;
     }
     return result;
+  }
+};
+
+// src/LicenseRepositoryError.ts
+var LicenseRepositoryError = class extends Error {
+  /**
+   * Creates a new LicenseRepositoryError.
+   *
+   * @param message - A description of what went wrong.
+   * @param cause - The original error thrown by the license source.
+   */
+  constructor(message, cause) {
+    super(message, { cause });
+    this.name = "LicenseRepositoryError";
+  }
+};
+
+// src/LicenseRepository.ts
+var LicenseRepository = class {
+  #source;
+  /**
+   * Creates a new LicenseRepository backed by the given source.
+   *
+   * @param source - The license source to use for all data operations.
+   */
+  constructor(source) {
+    this.#source = source;
+  }
+  /**
+   * Searches for licenses matching the given query string.
+   *
+   * @param query - The search term to match against license identifiers and names.
+   * @throws {LicenseRepositoryError} When the underlying source fails to perform the search.
+   */
+  async search(query) {
+    try {
+      return await this.#source.search(query);
+    } catch (cause) {
+      throw new LicenseRepositoryError(
+        `Failed to search licenses for query "${query}"`,
+        cause
+      );
+    }
+  }
+  /**
+   * Returns the full license detail for the given SPDX identifier.
+   *
+   * @param licenseId - The SPDX identifier of the license to retrieve.
+   * @throws {LicenseRepositoryError} When the underlying source fails to fetch the license.
+   */
+  async getLicense(licenseId) {
+    try {
+      return await this.#source.fetchLicense(licenseId);
+    } catch (cause) {
+      throw new LicenseRepositoryError(
+        `Failed to fetch license "${licenseId}"`,
+        cause
+      );
+    }
   }
 };
 
@@ -868,20 +1181,91 @@ var QuestionRepository = class {
   }
 };
 
+// src/SpdxLicenseSource.ts
+var INDEX_URL = "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json";
+var DEFAULT_TTL_MS = 60 * 60 * 1e3;
+var SpdxLicenseSource = class {
+  #cache = null;
+  #ttlMs;
+  /**
+   * Creates a new SpdxLicenseSource.
+   *
+   * @param ttlMs - How long the in-memory index cache is considered fresh, in milliseconds. Defaults to one hour.
+   */
+  constructor(ttlMs = DEFAULT_TTL_MS) {
+    this.#ttlMs = ttlMs;
+  }
+  /**
+   * Returns true when the cache exists and has not yet exceeded its TTL.
+   */
+  #isCacheValid() {
+    if (this.#cache === null) return false;
+    return Date.now() - this.#cache.cachedAt < this.#ttlMs;
+  }
+  /**
+   * Loads the SPDX license index, using the cache when it is still fresh.
+   */
+  async #loadIndex() {
+    if (this.#isCacheValid()) {
+      return this.#cache.data;
+    }
+    const response = await fetch(INDEX_URL);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch SPDX license index: ${response.status} ${response.statusText}`
+      );
+    }
+    const data = await response.json();
+    this.#cache = {
+      data: data.licenses.filter((l) => !l.isDeprecatedLicenseId),
+      cachedAt: Date.now()
+    };
+    return this.#cache.data;
+  }
+  /**
+   * Searches the SPDX license index for entries matching the query.
+   *
+   * @param query - The search term to match against license IDs and names (case-insensitive).
+   */
+  async search(query) {
+    const index = await this.#loadIndex();
+    const lower = query.toLowerCase();
+    return index.filter(
+      (entry) => entry.licenseId.toLowerCase().includes(lower) || entry.name.toLowerCase().includes(lower)
+    ).map(({ licenseId, name }) => ({ licenseId, name }));
+  }
+  /**
+   * Fetches the full license text and metadata for the given SPDX identifier.
+   *
+   * @param licenseId - The SPDX identifier of the license to fetch.
+   */
+  async fetchLicense(licenseId) {
+    const index = await this.#loadIndex();
+    const entry = index.find(
+      (e2) => e2.licenseId.toLowerCase() === licenseId.toLowerCase()
+    );
+    if (!entry) {
+      throw new Error(`License not found: ${licenseId}`);
+    }
+    const response = await fetch(entry.detailsUrl);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch license details for ${licenseId}: ${response.status} ${response.statusText}`
+      );
+    }
+    const data = await response.json();
+    return {
+      licenseId: data.licenseId,
+      name: data.name,
+      licenseText: data.licenseText
+    };
+  }
+};
+
 // src/index.ts
 var flagParser = new FlagParser({
   verify: { type: "boolean", default: false }
 });
-var licenseQuestion = {
-  id: "license",
-  text: "License?",
-  type: "text"
-};
-var saveConfigQuestion = {
-  id: "saveConfig",
-  text: "Save config file?",
-  type: "confirm"
-};
 var LicenseWizard = class {
   #orchestrator;
   /**
@@ -891,6 +1275,26 @@ var LicenseWizard = class {
    */
   constructor(args) {
     flagParser.parse(args);
+    const licenseSource = new SpdxLicenseSource();
+    const licenseRepository = new LicenseRepository(licenseSource);
+    const licenseQuestion = {
+      id: "license",
+      text: "Which license do you want to use?",
+      type: "autocomplete",
+      search: async (query) => {
+        const results = await licenseRepository.search(query);
+        return results.map((entry) => ({
+          value: entry.licenseId,
+          label: entry.name,
+          hint: entry.licenseId
+        }));
+      }
+    };
+    const saveConfigQuestion = {
+      id: "saveConfig",
+      text: "Save config file?",
+      type: "confirm"
+    };
     const renderer = new ClackRenderer("license-wizard");
     const repository = new QuestionRepository([
       licenseQuestion,
