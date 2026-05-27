@@ -3,6 +3,7 @@ import { styleText } from "node:util";
 import type { Answer } from "./Answer.js";
 import type { IRenderer } from "./IRenderer.js";
 import type {
+  AutocompleteOption,
   AutocompleteQuestion,
   Question,
   QuestionType,
@@ -88,23 +89,18 @@ export class ClackRenderer implements IRenderer {
   async #promptAutocomplete(
     question: AutocompleteQuestion,
   ): Promise<string | symbol> {
-    type ClackOption = {
-      value: string;
-      label: string;
-      hint?: string;
-    };
     type PromptHandle = {
       userInput: string;
-      filteredOptions: ClackOption[];
+      filteredOptions: AutocompleteOption[];
       render: () => void;
     };
 
     const spinner = this.#spinner;
-    let cachedOptions: ClackOption[] = [];
+    let cachedOptions: AutocompleteOption[] = [];
     let lastQuery: string | null = null;
     let fetchInFlight = false;
 
-    const optionsFn = function (this: PromptHandle): ClackOption[] {
+    const optionsFn = function (this: PromptHandle): AutocompleteOption[] {
       const input = this.userInput;
 
       if (input.length < MIN_SEARCH_LENGTH || !question.search) {
