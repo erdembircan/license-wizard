@@ -14,6 +14,18 @@ vi.mock("@clack/prompts", () => ({
 const clack = await import("@clack/prompts");
 const { ClackRenderer } = await import("./ClackRenderer.js");
 
+/**
+ * Creates a mock prompt handle that simulates the AutocompletePrompt context
+ * passed as `this` to the options function.
+ */
+function makePromptHandle(userInput: string) {
+  return {
+    userInput,
+    filteredOptions: [] as unknown[],
+    render: vi.fn(),
+  };
+}
+
 describe("ClackRenderer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -139,15 +151,10 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: {
-          userInput: string;
-          render: () => void;
-        }) => unknown[];
+        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
 
-        const result = optionsFn.call({
-          userInput: "mi",
-          render: vi.fn(),
-        });
+        const handle = makePromptHandle("mi");
+        const result = optionsFn.call(handle);
 
         expect(result).toEqual([]);
         expect(search).not.toHaveBeenCalled();
@@ -173,19 +180,48 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: {
-          userInput: string;
-          render: () => void;
-        }) => unknown[];
+        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
 
-        const mockRender = vi.fn();
-
-        optionsFn.call({ userInput: "MIT", render: mockRender });
+        const handle = makePromptHandle("MIT");
+        optionsFn.call(handle);
 
         expect(search).toHaveBeenCalledWith("MIT");
       });
 
-      it("options function returns cached results and calls render after search resolves", async () => {
+      it("shows a loading indicator in filteredOptions and re-renders when search starts", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        // Keep the search pending so we can observe mid-flight state
+        let resolveSearch!: (r: unknown[]) => void;
+        const search = vi.fn().mockReturnValue(new Promise<unknown[]>((res) => { resolveSearch = res; }));
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "license",
+          text: "Which license?",
+          type: "autocomplete",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
+
+        const handle = makePromptHandle("MIT");
+        optionsFn.call(handle);
+
+        // While fetch is in flight, filteredOptions should contain the loading indicator
+        expect(handle.filteredOptions).toEqual([
+          expect.objectContaining({ label: "Searching…", disabled: true }),
+        ]);
+        expect(handle.render).toHaveBeenCalledTimes(1);
+
+        resolveSearch([]);
+      });
+
+      it("updates filteredOptions with results and re-renders after search resolves", async () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -205,26 +241,23 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: {
-          userInput: string;
-          render: () => void;
-        }) => unknown[];
+        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
 
-        const mockRender = vi.fn();
-        const ctx = { userInput: "MIT", render: mockRender };
+        const handle = makePromptHandle("MIT");
 
-        // First call: triggers fetch, returns empty cache
-        optionsFn.call(ctx);
+        // Trigger fetch
+        optionsFn.call(handle);
         expect(search).toHaveBeenCalledWith("MIT");
 
-        // Wait for search to resolve
-        await vi.waitFor(() => expect(mockRender).toHaveBeenCalled());
+        // Wait for search to resolve and filteredOptions to be updated
+        await vi.waitFor(() =>
+          expect(handle.filteredOptions).toEqual([
+            { value: "MIT", label: "MIT License", hint: "MIT" },
+          ])
+        );
 
-        // Second call: returns populated cache
-        const options = optionsFn.call(ctx);
-        expect(options).toEqual([
-          { value: "MIT", label: "MIT License", hint: "MIT" },
-        ]);
+        // render() should have been called once for loading and once for results
+        expect(handle.render).toHaveBeenCalledTimes(2);
       });
 
       it("options function returns empty array when no search callback is provided", async () => {
@@ -241,15 +274,10 @@ describe("ClackRenderer", () => {
         await renderer.render(question);
 
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
-        const optionsFn = call.options as unknown as (this: {
-          userInput: string;
-          render: () => void;
-        }) => unknown[];
+        const optionsFn = call.options as unknown as (this: ReturnType<typeof makePromptHandle>) => unknown[];
 
-        const result = optionsFn.call({
-          userInput: "MIT",
-          render: vi.fn(),
-        });
+        const handle = makePromptHandle("MIT");
+        const result = optionsFn.call(handle);
 
         expect(result).toEqual([]);
       });

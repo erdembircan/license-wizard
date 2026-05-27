@@ -70,19 +70,34 @@ export class ClackRenderer implements IRenderer {
 
   /**
    * Renders an autocomplete prompt backed by the question's search callback.
-   * Options are only fetched and displayed once the user has typed at least
-   * three characters, so the prompt is immediately interactive with no
-   * upfront loading delay.
+   * Options are only fetched when the user has typed at least three characters.
+   * While a fetch is in progress a "Searching…" placeholder entry appears in
+   * the list so the prompt stays interactive throughout.
    */
   async #promptAutocomplete(question: Question): Promise<string | symbol> {
-    type ClackOption = { value: string; label: string; hint?: string };
-    type PromptContext = { userInput: string; render: () => void };
+    type ClackOption = {
+      value: string;
+      label: string;
+      hint?: string;
+      disabled?: boolean;
+    };
+    type PromptHandle = {
+      userInput: string;
+      filteredOptions: ClackOption[];
+      render: () => void;
+    };
+
+    const LOADING_OPTION: ClackOption = {
+      value: "__loading__",
+      label: "Searching…",
+      disabled: true,
+    };
 
     let cachedOptions: ClackOption[] = [];
     let lastQuery: string | null = null;
     let fetchInFlight = false;
 
-    const optionsFn = function (this: PromptContext): ClackOption[] {
+    const optionsFn = function (this: PromptHandle): ClackOption[] {
       const input = this.userInput;
 
       if (input.length < MIN_SEARCH_LENGTH || !question.search) {
@@ -91,7 +106,12 @@ export class ClackRenderer implements IRenderer {
 
       if (input !== lastQuery && !fetchInFlight) {
         fetchInFlight = true;
-        const triggerRender = this.render.bind(this);
+        const prompt = this;
+
+        // Show a non-blocking loading indicator in the option list.
+        prompt.filteredOptions = [LOADING_OPTION];
+        prompt.render();
+
         question.search!(input)
           .then((results) => {
             cachedOptions = results.map((opt) => ({
@@ -101,12 +121,18 @@ export class ClackRenderer implements IRenderer {
             }));
             lastQuery = input;
             fetchInFlight = false;
-            triggerRender();
+
+            // Update the visible list with real results and re-render.
+            prompt.filteredOptions = cachedOptions;
+            prompt.render();
           })
           .catch(() => {
             cachedOptions = [];
             lastQuery = input;
             fetchInFlight = false;
+
+            prompt.filteredOptions = [];
+            prompt.render();
           });
       }
 
@@ -116,7 +142,8 @@ export class ClackRenderer implements IRenderer {
     return clack.autocomplete({
       message: question.text,
       // Cast required: the clack type expects `this: AutocompletePrompt` (with
-      // private members) but at runtime we only access `userInput` and `render`.
+      // private members) but at runtime we only access `userInput`,
+      // `filteredOptions`, and `render`.
       options: optionsFn as unknown as Parameters<
         typeof clack.autocomplete<string>
       >[0]["options"],
