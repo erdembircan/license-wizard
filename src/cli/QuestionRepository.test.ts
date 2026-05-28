@@ -37,4 +37,30 @@ describe("QuestionRepository", () => {
       expect(repo.getByIndex(0)).toBeNull();
     });
   });
+
+  describe("getAll", () => {
+    it("returns all questions in insertion order", () => {
+      const q0 = makeQuestion("q0");
+      const q1 = makeQuestion("q1");
+      const repo = new QuestionRepository([q0, q1]);
+
+      expect(repo.getAll()).toEqual([q0, q1]);
+    });
+
+    it("returns an empty array when the repository is empty", () => {
+      const repo = new QuestionRepository([]);
+
+      expect(repo.getAll()).toEqual([]);
+    });
+
+    it("returns a copy that does not mutate the repository", () => {
+      const q0 = makeQuestion("q0");
+      const repo = new QuestionRepository([q0]);
+
+      const all = repo.getAll();
+      all.push(makeQuestion("intruder"));
+
+      expect(repo.getAll()).toHaveLength(1);
+    });
+  });
 });
