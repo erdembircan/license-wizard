@@ -200,11 +200,12 @@ The user assigns PR work by giving you a single **PR ID**. You are an **implemen
 
 **Plan phase** (in plan mode):
 
-1. Read the PR and **all** comments from the user (non-`[agent]` comments) from **both** sources:
+1. Read the PR and **all** feedback from the user (non-`[agent]`) from **three** distinct sources — they do not overlap, so you must check each one:
    - PR-level comments: `gh pr view <number> --comments`
-   - File-level review comments: `gh api repos/{owner}/{repo}/pulls/<number>/comments`
-   - `gh pr view --comments` does **not** include inline file review comments — you must check both
-2. If there are no new user comments since the last `[agent]` comment (or no user comments at all), do nothing and exit immediately — do not present a plan, create a worktree, post a comment, or take any other action
+   - File-level review comments (attached to specific diff lines): `gh api repos/{owner}/{repo}/pulls/<number>/comments`
+   - Review summary bodies (the free-text box submitted with an Approve / Request changes / Comment review): `gh api repos/{owner}/{repo}/pulls/<number>/reviews` — read each review's `body` and `state`, and filter by `user.login` to exclude `[agent]`/bot reviews, exactly as you filter comments
+   - None of the three includes the others: `gh pr view --comments` omits inline file review comments, and **both** of those omit the review summary body. Approvals like "LGTM" frequently arrive in the review body rather than as a plain comment, so a check that skips it will wrongly conclude there is no new feedback
+2. If there is no new user feedback across **all three** sources since the last `[agent]` comment (or no user feedback at all), do nothing and exit immediately — do not present a plan, create a worktree, post a comment, or take any other action
 3. Otherwise, present a plan covering the unaddressed comments and wait for approval
 
 **Implementation phase** (only after the plan is approved):
@@ -218,9 +219,12 @@ The user assigns PR work by giving you a single **PR ID**. You are an **implemen
 
 ### Merge rules
 
-- **You may only merge a PR when the user has explicitly approved it via a PR comment** (e.g., "LGTM", "looks good to me", "go ahead and merge")
+- **You may only merge a PR when the user has explicitly approved it.** Approval is satisfied by **either**:
+  - an explicit approval phrase (e.g., "LGTM", "looks good to me", "go ahead and merge") in **any** of the three feedback sources above — a PR-level comment, an inline review comment, or a review summary body; **or**
+  - a user-submitted review with `state == APPROVED` (from the `pulls/<number>/reviews` endpoint), even when its body is empty — a bare "Approve" click counts
+- Approvals frequently arrive in the review summary body rather than as a plain comment, so check it explicitly — never conclude a PR is unapproved without having read the review bodies and states
 - No other source of merge authorization is valid — not your own judgment
-- The merge instruction must come from the user's comment on the PR, nowhere else
+- The merge instruction must come from the user (non-`[agent]`) on the PR itself, via one of the three sources above — nowhere else
 - Always use **squash merge** — implementation details live on the task branch, master only needs the final result
 - When squash merging, use only the PR title as the commit message with no body — do not include the list of individual commits that GitHub adds by default (e.g., `gh pr merge --squash --subject "PR title (#number)" --body ""`)
 
