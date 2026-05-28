@@ -5,8 +5,10 @@ import type { IRenderer } from "@cli/interfaces/IRenderer.js";
 import type {
   AutocompleteOption,
   AutocompleteQuestion,
+  ConfirmQuestion,
   Question,
   QuestionType,
+  TextQuestion,
 } from "@cli/Question.js";
 import { Spinner } from "@cli/Spinner.js";
 import { debounce } from "@cli/Debounce.js";
@@ -71,14 +73,12 @@ export class ClackRenderer implements IRenderer {
       text: (q) =>
         clack.text({
           message: q.text,
-          initialValue: (q as import("@cli/Question.js").TextQuestion)
-            .defaultValue,
+          initialValue: (q as TextQuestion).defaultValue,
         }),
       confirm: (q) =>
         clack.confirm({
           message: q.text,
-          initialValue: (q as import("@cli/Question.js").ConfirmQuestion)
-            .defaultValue,
+          initialValue: (q as ConfirmQuestion).defaultValue,
         }),
       autocomplete: (q) => this.#promptAutocomplete(q as AutocompleteQuestion),
     };
