@@ -1,24 +1,26 @@
+import type { Answer } from "@cli/Answer.js";
+
 export type AutocompleteOption = {
   value: string;
   label: string;
   hint?: string;
 };
 
-export type TextQuestion = {
+type BaseQuestion = {
   id: string;
   text: string;
+  onAnswer?: (answer: Answer) => Question[] | Promise<Question[]>;
+};
+
+export type TextQuestion = BaseQuestion & {
   type: "text";
 };
 
-export type ConfirmQuestion = {
-  id: string;
-  text: string;
+export type ConfirmQuestion = BaseQuestion & {
   type: "confirm";
 };
 
-export type AutocompleteQuestion = {
-  id: string;
-  text: string;
+export type AutocompleteQuestion = BaseQuestion & {
   type: "autocomplete";
   search?: (query: string) => Promise<AutocompleteOption[]>;
 };
