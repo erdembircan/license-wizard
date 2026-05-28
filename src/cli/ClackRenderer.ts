@@ -113,6 +113,15 @@ export class ClackRenderer implements IRenderer {
     let lastQuery: string | null = null;
     let fetchInFlight = false;
 
+    // Seed the option list with the exact default so it opens pre-selected via
+    // `initialValue`, instead of fuzzy-searching the stored value (which would
+    // match every same-prefix license rather than the exact one).
+    if (question.defaultValue !== undefined) {
+      cachedOptions = [
+        { value: question.defaultValue, label: question.defaultValue },
+      ];
+    }
+
     /**
      * Runs a search for the given input, animating the spinner and updating
      * the prompt handle when results arrive.
@@ -181,10 +190,6 @@ export class ClackRenderer implements IRenderer {
     return clack.autocomplete({
       message: question.text,
       initialValue: question.defaultValue,
-      // Pre-fill the visible search field with the default so the saved value
-      // is shown and the options function fires on first render to populate the
-      // list; `initialValue` alone only pre-selects an option once it's loaded.
-      initialUserInput: question.defaultValue,
       // Cast required: the clack type expects `this: AutocompletePrompt` (with
       // private members) but at runtime we only access `userInput`,
       // `filteredOptions`, and `render`.
