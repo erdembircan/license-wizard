@@ -12,6 +12,7 @@ const makeSource = (): ILicenseSource => ({
       licenseId: "MIT",
       name: "MIT License",
       licenseText: "Permission is hereby granted...",
+      standardLicenseTemplate: "",
     }),
   ),
 });
@@ -58,6 +59,7 @@ describe("LicenseRepository", () => {
         licenseId: "MIT",
         name: "MIT License",
         licenseText: "Permission is hereby granted...",
+        standardLicenseTemplate: "",
       };
       const source = makeSource();
       vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);

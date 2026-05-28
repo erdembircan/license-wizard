@@ -22,6 +22,7 @@ type SpdxDetailResponse = {
   licenseId: string;
   name: string;
   licenseText: string;
+  standardLicenseTemplate?: string;
 };
 
 type IndexCache = {
@@ -29,15 +30,22 @@ type IndexCache = {
   cachedAt: number;
 };
 
+type DetailCacheEntry = {
+  data: LicenseDetail;
+  cachedAt: number;
+};
+
 /**
  * Fetches license data from the SPDX License List Data repository.
  *
  * Uses the master index to discover available licenses and fetches
- * individual license details on demand. The index is cached in memory
- * with a configurable TTL; stale entries are re-fetched automatically.
+ * individual license details on demand. Both the index and individual
+ * license details are cached in memory with a configurable TTL; stale
+ * entries are re-fetched automatically.
  */
 export class SpdxLicenseSource implements ILicenseSource {
   #cache: IndexCache | null = null;
+  readonly #detailCache = new Map<string, DetailCacheEntry>();
   readonly #ttlMs: number;
 
   /**
@@ -104,10 +112,15 @@ export class SpdxLicenseSource implements ILicenseSource {
    * @param licenseId - The SPDX identifier of the license to fetch.
    */
   async fetchLicense(licenseId: string): Promise<LicenseDetail> {
+    const key = licenseId.toLowerCase();
+
+    const cached = this.#detailCache.get(key);
+    if (cached && Date.now() - cached.cachedAt < this.#ttlMs) {
+      return cached.data;
+    }
+
     const index = await this.#loadIndex();
-    const entry = index.find(
-      (e) => e.licenseId.toLowerCase() === licenseId.toLowerCase(),
-    );
+    const entry = index.find((e) => e.licenseId.toLowerCase() === key);
 
     if (!entry) {
       throw new Error(`License not found: ${licenseId}`);
@@ -122,10 +135,15 @@ export class SpdxLicenseSource implements ILicenseSource {
 
     const data = (await response.json()) as SpdxDetailResponse;
 
-    return {
+    const detail: LicenseDetail = {
       licenseId: data.licenseId,
       name: data.name,
       licenseText: data.licenseText,
+      standardLicenseTemplate: data.standardLicenseTemplate ?? "",
     };
+
+    this.#detailCache.set(key, { data: detail, cachedAt: Date.now() });
+
+    return detail;
   }
 }
