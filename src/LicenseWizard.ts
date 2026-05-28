@@ -17,10 +17,6 @@ export class LicenseWizard {
   readonly #config: Config;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
-  readonly #flagParser = new FlagParser({
-    verify: { type: "boolean", default: false },
-    license: { type: "string", default: "" },
-  });
   readonly #flags;
 
   /**
@@ -29,7 +25,11 @@ export class LicenseWizard {
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
-    this.#flags = this.#flagParser.parse(args);
+    const flagParser = new FlagParser({
+      verify: { type: "boolean", default: false },
+      license: { type: "string", default: "" },
+    });
+    this.#flags = flagParser.parse(args);
 
     const writer = new NodeFileSystemWriter();
     this.#config = new Config(new NodeFileSystemReader(), writer);
