@@ -432,8 +432,8 @@ describe("ClackRenderer", () => {
       });
     });
 
-    describe("initialValue forwarding", () => {
-      it("passes initialValue to clack.text when set on a text question", async () => {
+    describe("defaultValue forwarding", () => {
+      it("forwards defaultValue to clack.text's initialValue when set on a text question", async () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -442,7 +442,7 @@ describe("ClackRenderer", () => {
           id: "q",
           text: "Enter text",
           type: "text",
-          initialValue: "default-text",
+          defaultValue: "default-text",
         };
 
         await renderer.render(question);
@@ -452,7 +452,7 @@ describe("ClackRenderer", () => {
         );
       });
 
-      it("does not pass initialValue to clack.text when absent", async () => {
+      it("does not pass initialValue to clack.text when defaultValue absent", async () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -469,7 +469,7 @@ describe("ClackRenderer", () => {
         expect(call.initialValue).toBeUndefined();
       });
 
-      it("passes initialValue to clack.confirm when set on a confirm question", async () => {
+      it("forwards defaultValue to clack.confirm's initialValue when set on a confirm question", async () => {
         vi.mocked(clack.confirm).mockResolvedValue(true);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -478,7 +478,7 @@ describe("ClackRenderer", () => {
           id: "q",
           text: "Confirm?",
           type: "confirm",
-          initialValue: true,
+          defaultValue: true,
         };
 
         await renderer.render(question);
@@ -488,7 +488,7 @@ describe("ClackRenderer", () => {
         );
       });
 
-      it("does not pass initialValue to clack.confirm when absent", async () => {
+      it("does not pass initialValue to clack.confirm when defaultValue absent", async () => {
         vi.mocked(clack.confirm).mockResolvedValue(false);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -505,7 +505,7 @@ describe("ClackRenderer", () => {
         expect(call.initialValue).toBeUndefined();
       });
 
-      it("passes initialValue to clack.autocomplete when set on an autocomplete question", async () => {
+      it("forwards defaultValue to clack.autocomplete's initialValue when set on an autocomplete question", async () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -514,7 +514,7 @@ describe("ClackRenderer", () => {
           id: "q",
           text: "Pick license",
           type: "autocomplete",
-          initialValue: "MIT",
+          defaultValue: "MIT",
         };
 
         await renderer.render(question);
@@ -524,7 +524,7 @@ describe("ClackRenderer", () => {
         );
       });
 
-      it("does not pass initialValue to clack.autocomplete when absent", async () => {
+      it("does not pass initialValue to clack.autocomplete when defaultValue absent", async () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 

@@ -48,7 +48,7 @@ export class LicenseWizard {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
-      initialValue: config?.licenseId,
+      defaultValue: config?.licenseId,
       search: async (query) => {
         const results = await this.#licenseRepository.search(query);
         return results.map((entry) => ({

@@ -72,13 +72,13 @@ export class ClackRenderer implements IRenderer {
         clack.text({
           message: q.text,
           initialValue: (q as import("@cli/Question.js").TextQuestion)
-            .initialValue,
+            .defaultValue,
         }),
       confirm: (q) =>
         clack.confirm({
           message: q.text,
           initialValue: (q as import("@cli/Question.js").ConfirmQuestion)
-            .initialValue,
+            .defaultValue,
         }),
       autocomplete: (q) => this.#promptAutocomplete(q as AutocompleteQuestion),
     };
@@ -180,7 +180,7 @@ export class ClackRenderer implements IRenderer {
 
     return clack.autocomplete({
       message: question.text,
-      initialValue: question.initialValue,
+      initialValue: question.defaultValue,
       // Cast required: the clack type expects `this: AutocompletePrompt` (with
       // private members) but at runtime we only access `userInput`,
       // `filteredOptions`, and `render`.

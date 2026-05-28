@@ -21,17 +21,17 @@ type BaseQuestion = {
 
 export type TextQuestion = BaseQuestion & {
   type: "text";
-  initialValue?: string;
+  defaultValue?: string;
 };
 
 export type ConfirmQuestion = BaseQuestion & {
   type: "confirm";
-  initialValue?: boolean;
+  defaultValue?: boolean;
 };
 
 export type AutocompleteQuestion = BaseQuestion & {
   type: "autocomplete";
-  initialValue?: string;
+  defaultValue?: string;
   search?: (query: string) => Promise<AutocompleteOption[]>;
 };
 
