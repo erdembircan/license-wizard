@@ -49,6 +49,7 @@ classDiagram
       +id: string
       +text: string
       +type: "text"
+      +initialValue: string
       +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
 
@@ -56,6 +57,7 @@ classDiagram
       +id: string
       +text: string
       +type: "confirm"
+      +initialValue: boolean
       +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
 
@@ -63,6 +65,7 @@ classDiagram
       +id: string
       +text: string
       +type: "autocomplete"
+      +initialValue: string
       +search(query: string) Promise~AutocompleteOption[]~
       +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
@@ -196,3 +199,4 @@ classDiagram
   LicenseWizard ..> NodeFileSystemReader : creates
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates
+  LicenseWizard ..> Config : reads defaults from
