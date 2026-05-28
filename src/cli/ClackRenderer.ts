@@ -11,6 +11,7 @@ import type {
 import { Spinner } from "@cli/Spinner.js";
 
 const MIN_SEARCH_LENGTH = 3;
+const DEBOUNCE_DELAY_MS = 100;
 
 /**
  * Renders questions to the terminal using the Clack prompt library.
@@ -83,8 +84,9 @@ export class ClackRenderer implements IRenderer {
   /**
    * Renders an autocomplete prompt backed by the question's search callback.
    * Options are only fetched when the user has typed at least three characters.
-   * While a fetch is in progress the spinner animates in the option list so
-   * the prompt stays interactive throughout.
+   * Keystrokes are debounced with a ~100ms delay so the search only fires once
+   * the user pauses typing. While a fetch is in progress the spinner animates
+   * in the option list so the prompt stays interactive throughout.
    */
   async #promptAutocomplete(
     question: AutocompleteQuestion,
@@ -99,24 +101,31 @@ export class ClackRenderer implements IRenderer {
     let cachedOptions: AutocompleteOption[] = [];
     let lastQuery: string | null = null;
     let fetchInFlight = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const optionsFn = function (this: PromptHandle): AutocompleteOption[] {
-      const input = this.userInput;
+    /**
+     * Schedules a search for the given input after the debounce delay,
+     * animating the spinner and updating the prompt handle when results arrive.
+     */
+    const scheduleSearch = (
+      input: string,
+      search: NonNullable<AutocompleteQuestion["search"]>,
+      handle: PromptHandle,
+    ): ReturnType<typeof setTimeout> =>
+      setTimeout(() => {
+        debounceTimer = null;
 
-      if (input.length < MIN_SEARCH_LENGTH || !question.search) {
-        return [];
-      }
+        // Guard: another fetch may have started in the meantime.
+        if (fetchInFlight || input === lastQuery) {
+          return;
+        }
 
-      if (input !== lastQuery && !fetchInFlight) {
         fetchInFlight = true;
 
         // Start the spinner animation in the option list.
-        const stopSpinner = spinner.start(this);
+        const stopSpinner = spinner.start(handle);
 
-        // Arrow functions below capture `this` lexically from optionsFn so
-        // the prompt handle is accessible after the async operation settles.
-        question
-          .search(input)
+        search(input)
           .then((results) => {
             stopSpinner();
             cachedOptions = results.map((opt) => ({
@@ -128,8 +137,8 @@ export class ClackRenderer implements IRenderer {
             fetchInFlight = false;
 
             // Update the visible list with real results and re-render.
-            this.filteredOptions = cachedOptions;
-            this.render();
+            handle.filteredOptions = cachedOptions;
+            handle.render();
           })
           .catch(() => {
             stopSpinner();
@@ -137,9 +146,32 @@ export class ClackRenderer implements IRenderer {
             lastQuery = input;
             fetchInFlight = false;
 
-            this.filteredOptions = [];
-            this.render();
+            handle.filteredOptions = [];
+            handle.render();
           });
+      }, DEBOUNCE_DELAY_MS);
+
+    const optionsFn = function (this: PromptHandle): AutocompleteOption[] {
+      const input = this.userInput;
+      const search = question.search;
+
+      if (input.length < MIN_SEARCH_LENGTH || !search) {
+        if (debounceTimer !== null) {
+          clearTimeout(debounceTimer);
+          debounceTimer = null;
+        }
+        return cachedOptions;
+      }
+
+      if (input !== lastQuery && !fetchInFlight) {
+        // Cancel any pending debounce timer for a stale input.
+        if (debounceTimer !== null) {
+          clearTimeout(debounceTimer);
+        }
+
+        // Pass `this` as an argument to avoid the no-this-alias lint rule while
+        // still making the prompt handle accessible inside the async callback.
+        debounceTimer = scheduleSearch(input, search, this);
       }
 
       return cachedOptions;

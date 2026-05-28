@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Question } from "@cli/Question.js";
 
 vi.mock("@clack/prompts", () => ({
@@ -41,6 +41,10 @@ describe("ClackRenderer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe("render", () => {
@@ -173,7 +177,37 @@ describe("ClackRenderer", () => {
         expect(search).not.toHaveBeenCalled();
       });
 
-      it("options function triggers search when input reaches 3 characters", async () => {
+      it("options function does not trigger search immediately on keystroke", async () => {
+        vi.useFakeTimers();
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const search = vi.fn().mockResolvedValue([]);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "license",
+          text: "Which license?",
+          type: "autocomplete",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
+
+        const handle = makePromptHandle("MIT");
+        optionsFn.call(handle);
+
+        // Search must not fire before the debounce delay elapses.
+        expect(search).not.toHaveBeenCalled();
+      });
+
+      it("options function triggers search after the debounce delay", async () => {
+        vi.useFakeTimers();
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -200,10 +234,52 @@ describe("ClackRenderer", () => {
         const handle = makePromptHandle("MIT");
         optionsFn.call(handle);
 
+        // Advance past the debounce window.
+        await vi.runAllTimersAsync();
+
         expect(search).toHaveBeenCalledWith("MIT");
       });
 
-      it("starts the spinner when a search is triggered", async () => {
+      it("cancels a pending search when a new keystroke arrives before the delay elapses", async () => {
+        vi.useFakeTimers();
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const search = vi.fn().mockResolvedValue([]);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "license",
+          text: "Which license?",
+          type: "autocomplete",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
+
+        // First keystroke: "MIT"
+        const handle1 = makePromptHandle("MIT");
+        optionsFn.call(handle1);
+
+        // Second keystroke before delay fires: "MITX"
+        const handle2 = makePromptHandle("MITX");
+        optionsFn.call(handle2);
+
+        // Advance past the debounce window.
+        await vi.runAllTimersAsync();
+
+        // Search must only be called once, with the latest input.
+        expect(search).toHaveBeenCalledTimes(1);
+        expect(search).toHaveBeenCalledWith("MITX");
+      });
+
+      it("starts the spinner when a search is triggered after the debounce delay", async () => {
+        vi.useFakeTimers();
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -228,10 +304,13 @@ describe("ClackRenderer", () => {
         const handle = makePromptHandle("MIT");
         optionsFn.call(handle);
 
+        await vi.runAllTimersAsync();
+
         expect(spinnerInstance.start).toHaveBeenCalledWith(handle);
       });
 
       it("stops the spinner after search resolves", async () => {
+        vi.useFakeTimers();
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -263,10 +342,13 @@ describe("ClackRenderer", () => {
         const handle = makePromptHandle("MIT");
         optionsFn.call(handle);
 
+        await vi.runAllTimersAsync();
+
         await vi.waitFor(() => expect(stopSpinner).toHaveBeenCalled());
       });
 
       it("updates filteredOptions with results and re-renders after search resolves", async () => {
+        vi.useFakeTimers();
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
@@ -292,8 +374,12 @@ describe("ClackRenderer", () => {
 
         const handle = makePromptHandle("MIT");
 
-        // Trigger fetch
+        // Trigger debounce
         optionsFn.call(handle);
+
+        // Advance past the debounce delay so the search fires.
+        await vi.runAllTimersAsync();
+
         expect(search).toHaveBeenCalledWith("MIT");
 
         // Wait for search to resolve and filteredOptions to be updated
