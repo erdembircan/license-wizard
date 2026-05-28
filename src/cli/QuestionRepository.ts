@@ -2,6 +2,7 @@ import type { Question } from "@cli/Question.js";
 
 /**
  * Stores and provides access to a collection of questions by index.
+ * Supports mid-session insertion of follow-up questions via `insertAt`.
  */
 export class QuestionRepository {
   readonly #questions: Question[];
@@ -21,9 +22,9 @@ export class QuestionRepository {
   }
 
   /**
-   * Returns a shallow copy of all questions in the repository.
+   * Inserts questions at the given index, shifting existing questions to the right.
    */
-  getAll(): Question[] {
-    return [...this.#questions];
+  insertAt(index: number, questions: Question[]): void {
+    this.#questions.splice(index, 0, ...questions);
   }
 }
