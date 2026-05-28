@@ -34,6 +34,7 @@ classDiagram
     class QuestionRepository {
       +QuestionRepository(questions: Question[])
       +getByIndex(index: number) Question | null
+      +getAll() Question[]
     }
 
     class Question {
@@ -44,12 +45,14 @@ classDiagram
       +id: string
       +text: string
       +type: "text"
+      +onAnswer(answer: Answer) Question[] | Promise~Question[]~
     }
 
     class ConfirmQuestion {
       +id: string
       +text: string
       +type: "confirm"
+      +onAnswer(answer: Answer) Question[] | Promise~Question[]~
     }
 
     class AutocompleteQuestion {
@@ -57,6 +60,7 @@ classDiagram
       +text: string
       +type: "autocomplete"
       +search(query: string) Promise~AutocompleteOption[]~
+      +onAnswer(answer: Answer) Question[] | Promise~Question[]~
     }
 
     class AutocompleteOption {
@@ -68,6 +72,7 @@ classDiagram
     class Answer {
       +questionId: string
       +value: string | boolean
+      +fields: Record~string, string | boolean~
     }
   }
 
