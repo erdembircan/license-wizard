@@ -176,6 +176,7 @@ classDiagram
   ClackRenderer ..|> IRenderer : implements
   ClackRenderer ..> Spinner : uses
   LicenseWizard ..> FlagParser : uses
+  LicenseWizard ..> FlagParser : reads defaults from
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
   LicenseWizard ..> Orchestrator : creates
