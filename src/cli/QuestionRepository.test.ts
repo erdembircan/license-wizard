@@ -37,4 +37,62 @@ describe("QuestionRepository", () => {
       expect(repo.getByIndex(0)).toBeNull();
     });
   });
+
+  describe("insertAt", () => {
+    it("inserts questions at the given index, shifting existing questions right", () => {
+      const q0 = makeQuestion("q0");
+      const q1 = makeQuestion("q1");
+      const injected = makeQuestion("injected");
+      const repo = new QuestionRepository([q0, q1]);
+
+      repo.insertAt(1, [injected]);
+
+      expect(repo.getByIndex(0)).toEqual(q0);
+      expect(repo.getByIndex(1)).toEqual(injected);
+      expect(repo.getByIndex(2)).toEqual(q1);
+    });
+
+    it("inserts at the head when index is 0", () => {
+      const q0 = makeQuestion("q0");
+      const injected = makeQuestion("injected");
+      const repo = new QuestionRepository([q0]);
+
+      repo.insertAt(0, [injected]);
+
+      expect(repo.getByIndex(0)).toEqual(injected);
+      expect(repo.getByIndex(1)).toEqual(q0);
+    });
+
+    it("inserts at the end when index equals the current length", () => {
+      const q0 = makeQuestion("q0");
+      const injected = makeQuestion("injected");
+      const repo = new QuestionRepository([q0]);
+
+      repo.insertAt(1, [injected]);
+
+      expect(repo.getByIndex(0)).toEqual(q0);
+      expect(repo.getByIndex(1)).toEqual(injected);
+    });
+
+    it("inserts multiple questions in order", () => {
+      const q0 = makeQuestion("q0");
+      const a = makeQuestion("a");
+      const b = makeQuestion("b");
+      const repo = new QuestionRepository([q0]);
+
+      repo.insertAt(1, [a, b]);
+
+      expect(repo.getByIndex(1)).toEqual(a);
+      expect(repo.getByIndex(2)).toEqual(b);
+    });
+
+    it("inserts into an empty repository at index 0", () => {
+      const injected = makeQuestion("injected");
+      const repo = new QuestionRepository([]);
+
+      repo.insertAt(0, [injected]);
+
+      expect(repo.getByIndex(0)).toEqual(injected);
+    });
+  });
 });
