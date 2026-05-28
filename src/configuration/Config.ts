@@ -7,11 +7,16 @@ import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterErr
 const RC_FILE = ".licensewizardrc.json";
 const PACKAGE_JSON = "package.json";
 const PACKAGE_JSON_FIELD = "license-wizard";
+const PACKAGE_JSON_LICENSE_FIELD = "license";
 
 /**
  * Reads and writes the wizard configuration. Checks `.licensewizardrc.json`
  * first; falls back to the `"license-wizard"` field in `package.json`. Writes
  * always go to `.licensewizardrc.json`.
+ *
+ * Also reads and writes the standard top-level `"license"` field of
+ * `package.json` — a source distinct from the wizard config that participates
+ * in license-default resolution and is kept in sync with the user's selection.
  */
 export class Config {
   readonly #reader: IFileSystemReader;
@@ -80,6 +85,70 @@ export class Config {
       }
       throw new FileSystemWriterError(
         "Failed to write wizard configuration",
+        cause,
+      );
+    }
+  }
+
+  /**
+   * Reads the standard top-level `"license"` field from `package.json`.
+   * Returns the SPDX identifier string when present, or `null` when there is
+   * no `package.json`, no `"license"` field, or the field is not a string
+   * (e.g. the deprecated object form).
+   *
+   * @throws {FileSystemReaderError} When a file system read operation fails.
+   */
+  async readPackageLicense(): Promise<string | null> {
+    try {
+      const pkgExists = await this.#reader.exists(PACKAGE_JSON);
+      if (!pkgExists) {
+        return null;
+      }
+
+      const raw = await this.#reader.read(PACKAGE_JSON);
+      const pkg = JSON.parse(raw) as Record<string, unknown>;
+      const license = pkg[PACKAGE_JSON_LICENSE_FIELD];
+      return typeof license === "string" ? license : null;
+    } catch (cause) {
+      if (cause instanceof FileSystemReaderError) {
+        throw cause;
+      }
+      throw new FileSystemReaderError(
+        "Failed to read package.json license field",
+        cause,
+      );
+    }
+  }
+
+  /**
+   * Writes the given license identifier to the top-level `"license"` field of
+   * `package.json`, creating the field when absent and overwriting it when
+   * present. All other fields are preserved. Does nothing when `package.json`
+   * does not exist.
+   *
+   * @param licenseId - The SPDX identifier to record.
+   * @throws {FileSystemWriterError} When the read or write operation fails.
+   */
+  async writePackageLicense(licenseId: string): Promise<void> {
+    try {
+      const pkgExists = await this.#reader.exists(PACKAGE_JSON);
+      if (!pkgExists) {
+        return;
+      }
+
+      const raw = await this.#reader.read(PACKAGE_JSON);
+      const pkg = JSON.parse(raw) as Record<string, unknown>;
+      pkg[PACKAGE_JSON_LICENSE_FIELD] = licenseId;
+      await this.#writer.write(
+        PACKAGE_JSON,
+        `${JSON.stringify(pkg, null, 2)}\n`,
+      );
+    } catch (cause) {
+      if (cause instanceof FileSystemWriterError) {
+        throw cause;
+      }
+      throw new FileSystemWriterError(
+        "Failed to write package.json license field",
         cause,
       );
     }
