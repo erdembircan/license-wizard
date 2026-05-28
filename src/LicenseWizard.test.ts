@@ -7,6 +7,8 @@ import type { WizardConfig } from "@configuration/WizardConfig.js";
 const state = vi.hoisted(() => ({
   rendered: [] as Question[],
   config: null as WizardConfig | null,
+  packageLicense: null as string | null,
+  writtenPackageLicense: null as string | null,
 }));
 
 // Stub the renderer (the consumer of the built questions): record every question
@@ -31,9 +33,15 @@ vi.mock("@configuration/Config.js", () => ({
   Config: vi.fn(function (this: {
     read: () => Promise<WizardConfig | null>;
     write: () => Promise<void>;
+    readPackageLicense: () => Promise<string | null>;
+    writePackageLicense: (licenseId: string) => Promise<void>;
   }) {
     this.read = async () => state.config;
     this.write = async () => {};
+    this.readPackageLicense = async () => state.packageLicense;
+    this.writePackageLicense = async (licenseId: string) => {
+      state.writtenPackageLicense = licenseId;
+    };
   }),
 }));
 
@@ -60,9 +68,12 @@ describe("LicenseWizard license default injection", () => {
   beforeEach(() => {
     state.rendered = [];
     state.config = null;
+    state.packageLicense = null;
+    state.writtenPackageLicense = null;
   });
 
-  it("uses the --license flag value over the saved config value", async () => {
+  it("uses the --license flag value over the package.json license and config", async () => {
+    state.packageLicense = "ISC";
     state.config = { licenseId: "Apache-2.0" };
 
     expect(await licenseDefaultFor(["--license", "MIT"])).toBe("MIT");
@@ -72,13 +83,35 @@ describe("LicenseWizard license default injection", () => {
     expect(await licenseDefaultFor(["--license", "MIT"])).toBe("MIT");
   });
 
-  it("falls back to the saved config value when no --license flag is given", async () => {
+  it("uses the package.json license over the saved config when no flag is given", async () => {
+    state.packageLicense = "ISC";
+    state.config = { licenseId: "Apache-2.0" };
+
+    expect(await licenseDefaultFor([])).toBe("ISC");
+  });
+
+  it("falls back to the saved config value when no flag or package.json license exists", async () => {
     state.config = { licenseId: "Apache-2.0" };
 
     expect(await licenseDefaultFor([])).toBe("Apache-2.0");
   });
 
-  it("leaves the default unset when neither a flag nor a config value exists", async () => {
+  it("leaves the default unset when no flag, package.json license, or config exists", async () => {
     expect(await licenseDefaultFor([])).toBeUndefined();
+  });
+});
+
+describe("LicenseWizard package.json license write-back", () => {
+  beforeEach(() => {
+    state.rendered = [];
+    state.config = null;
+    state.packageLicense = null;
+    state.writtenPackageLicense = null;
+  });
+
+  it("records the selected license in package.json at the end of the run", async () => {
+    await new LicenseWizard([]).run();
+
+    expect(state.writtenPackageLicense).toBe("MIT");
   });
 });

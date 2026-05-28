@@ -48,12 +48,13 @@ export class LicenseWizard {
    */
   async #buildQuestions(): Promise<Question[]> {
     const config = await this.#config.read();
+    const packageLicense = await this.#config.readPackageLicense();
 
     const licenseQuestion: AutocompleteQuestion = {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
-      defaultValue: this.#flags.license || config?.licenseId,
+      defaultValue: this.#flags.license || packageLicense || config?.licenseId,
       search: async (query) => {
         const results = await this.#licenseRepository.search(query);
         return results.map((entry) => ({
@@ -75,8 +76,9 @@ export class LicenseWizard {
 
   /**
    * Runs the interactive wizard, collects answers, persists configuration when
-   * the user opts in, and writes the selected license to a `LICENSE` file in
-   * the working directory. Returns the collected answers.
+   * the user opts in, writes the selected license to a `LICENSE` file in the
+   * working directory, and records the selection in `package.json`'s `license`
+   * field. Returns the collected answers.
    */
   async run() {
     const questions = await this.#buildQuestions();
@@ -98,6 +100,7 @@ export class LicenseWizard {
 
     if (typeof licenseAnswer?.value === "string") {
       await this.#licenseGenerator.generate(licenseAnswer.value);
+      await this.#config.writePackageLicense(licenseAnswer.value);
     }
 
     return answers;
