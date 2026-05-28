@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { Orchestrator } from "@cli/Orchestrator.js";
 import { QuestionRepository } from "@cli/QuestionRepository.js";
 import type { IRenderer } from "@cli/interfaces/IRenderer.js";
-import type { Question } from "@cli/Question.js";
+import type { Question, QuestionLifecycle } from "@cli/Question.js";
 import type { Answer } from "@cli/Answer.js";
 
 const makeQuestion = (id: string, overrides?: Partial<Question>): Question => ({
@@ -85,8 +85,8 @@ describe("Orchestrator", () => {
       expect(renderer.render).toHaveBeenNthCalledWith(2, q1);
     });
 
-    it("does not set fields when onAnswer returns no follow-ups", async () => {
-      const q = makeQuestion("q0", { onAnswer: async () => [] });
+    it("does not set fields when onAnswer injects nothing", async () => {
+      const q = makeQuestion("q0", { onAnswer: async () => undefined });
       const repo = new QuestionRepository([q]);
       const renderer = makeRenderer("yes");
       const orchestrator = new Orchestrator(repo, renderer);
@@ -100,7 +100,9 @@ describe("Orchestrator", () => {
       const followUp1 = makeQuestion("year");
       const followUp2 = makeQuestion("author");
       const parent = makeQuestion("fill", {
-        onAnswer: async () => [followUp1, followUp2],
+        onAnswer: async (_answer: Answer, lifecycle: QuestionLifecycle) => {
+          lifecycle.inject([followUp1, followUp2]);
+        },
       });
       const repo = new QuestionRepository([parent]);
 
@@ -128,11 +130,13 @@ describe("Orchestrator", () => {
       });
     });
 
-    it("renders follow-ups in the order returned by onAnswer", async () => {
+    it("renders follow-ups in the order injected", async () => {
       const followUp1 = makeQuestion("first");
       const followUp2 = makeQuestion("second");
       const parent = makeQuestion("parent", {
-        onAnswer: async () => [followUp1, followUp2],
+        onAnswer: (_answer: Answer, lifecycle: QuestionLifecycle) => {
+          lifecycle.inject([followUp1, followUp2]);
+        },
       });
       const repo = new QuestionRepository([parent]);
 
@@ -153,7 +157,11 @@ describe("Orchestrator", () => {
 
     it("awaits an async onAnswer before rendering follow-ups", async () => {
       const followUp = makeQuestion("followUp");
-      const resolved = vi.fn(async () => [followUp]);
+      const resolved = vi.fn(
+        async (_answer: Answer, lifecycle: QuestionLifecycle) => {
+          lifecycle.inject([followUp]);
+        },
+      );
       const parent = makeQuestion("parent", { onAnswer: resolved });
       const repo = new QuestionRepository([parent]);
       const renderer = makeRenderer("v");
@@ -168,7 +176,9 @@ describe("Orchestrator", () => {
     it("keeps static questions flat alongside questions that have follow-ups", async () => {
       const followUp = makeQuestion("followUp");
       const withFollowUp = makeQuestion("parent", {
-        onAnswer: async () => [followUp],
+        onAnswer: (_answer: Answer, lifecycle: QuestionLifecycle) => {
+          lifecycle.inject([followUp]);
+        },
       });
       const staticQ = makeQuestion("static");
       const repo = new QuestionRepository([withFollowUp, staticQ]);
@@ -196,13 +206,17 @@ describe("Orchestrator", () => {
       ]);
     });
 
-    it("rolls nested follow-up answers into the intermediate question's fields", async () => {
+    it("rolls nested follow-up answers into the ancestor's fields", async () => {
       const deepFollowUp = makeQuestion("deep");
       const midFollowUp = makeQuestion("mid", {
-        onAnswer: async () => [deepFollowUp],
+        onAnswer: (_answer: Answer, lifecycle: QuestionLifecycle) => {
+          lifecycle.inject([deepFollowUp]);
+        },
       });
       const parent = makeQuestion("parent", {
-        onAnswer: async () => [midFollowUp],
+        onAnswer: (_answer: Answer, lifecycle: QuestionLifecycle) => {
+          lifecycle.inject([midFollowUp]);
+        },
       });
       const repo = new QuestionRepository([parent]);
 
