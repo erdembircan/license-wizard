@@ -116,6 +116,11 @@ classDiagram
       +name: string
       +licenseText: string
     }
+
+    class LicenseGenerator {
+      +LicenseGenerator(repository: LicenseRepository, writer: IFileSystemWriter)
+      +generate(licenseId: string) Promise~void~
+    }
   }
 
   namespace Configuration {
@@ -176,6 +181,7 @@ classDiagram
   LicenseWizard ..> Orchestrator : creates
   LicenseWizard ..> SpdxLicenseSource : creates
   LicenseWizard ..> LicenseRepository : creates
+  LicenseWizard ..> LicenseGenerator : creates
   Orchestrator ..> QuestionRepository : gets questions from
   Orchestrator ..> IRenderer : feeds questions to
   ClackRenderer ..> Question : renders
@@ -187,6 +193,8 @@ classDiagram
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
   LicenseRepository ..> LicenseRepositoryError : throws
+  LicenseGenerator ..> LicenseRepository : uses
+  LicenseGenerator ..> IFileSystemWriter : uses
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
   NodeFileSystemReader ..> FileSystemReaderError : throws
