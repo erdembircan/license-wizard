@@ -1,8 +1,8 @@
 flowchart TD
     A([User runs: license-wizard]) --> LW[License Wizard]
     A -.->|flags| FL([Flags])
-    FL -.->|--license seeds the license default, overriding the config value| LW
-    LW -.->|reads defaults from| LC[/License config file/]
+    FL -.-> LW
+    LW -.->|reads| LC[/License config file/]
 
     LW --> M{--verify flag?}
 
