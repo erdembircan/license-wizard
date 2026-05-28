@@ -181,6 +181,10 @@ export class ClackRenderer implements IRenderer {
     return clack.autocomplete({
       message: question.text,
       initialValue: question.defaultValue,
+      // Pre-fill the visible search field with the default so the saved value
+      // is shown and the options function fires on first render to populate the
+      // list; `initialValue` alone only pre-selects an option once it's loaded.
+      initialUserInput: question.defaultValue,
       // Cast required: the clack type expects `this: AutocompletePrompt` (with
       // private members) but at runtime we only access `userInput`,
       // `filteredOptions`, and `render`.

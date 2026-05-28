@@ -540,6 +540,42 @@ describe("ClackRenderer", () => {
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
         expect(call.initialValue).toBeUndefined();
       });
+
+      it("forwards defaultValue to clack.autocomplete's initialUserInput when set on an autocomplete question", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "q",
+          text: "Pick license",
+          type: "autocomplete",
+          defaultValue: "MIT",
+        };
+
+        await renderer.render(question);
+
+        expect(clack.autocomplete).toHaveBeenCalledWith(
+          expect.objectContaining({ initialUserInput: "MIT" }),
+        );
+      });
+
+      it("does not pass initialUserInput to clack.autocomplete when defaultValue absent", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "q",
+          text: "Pick license",
+          type: "autocomplete",
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        expect(call.initialUserInput).toBeUndefined();
+      });
     });
   });
 });
