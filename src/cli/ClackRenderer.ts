@@ -9,6 +9,7 @@ import type {
   QuestionType,
 } from "@cli/Question.js";
 import { Spinner } from "@cli/Spinner.js";
+import { debounce } from "@cli/Debounce.js";
 
 const MIN_SEARCH_LENGTH = 3;
 const DEBOUNCE_DELAY_MS = 100;
@@ -101,77 +102,67 @@ export class ClackRenderer implements IRenderer {
     let cachedOptions: AutocompleteOption[] = [];
     let lastQuery: string | null = null;
     let fetchInFlight = false;
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     /**
-     * Schedules a search for the given input after the debounce delay,
-     * animating the spinner and updating the prompt handle when results arrive.
+     * Runs a search for the given input, animating the spinner and updating
+     * the prompt handle when results arrive.
      */
-    const scheduleSearch = (
+    const runSearch = (
       input: string,
       search: NonNullable<AutocompleteQuestion["search"]>,
       handle: PromptHandle,
-    ): ReturnType<typeof setTimeout> =>
-      setTimeout(() => {
-        debounceTimer = null;
+    ): void => {
+      // Guard: another fetch may have started in the meantime.
+      if (fetchInFlight || input === lastQuery) {
+        return;
+      }
 
-        // Guard: another fetch may have started in the meantime.
-        if (fetchInFlight || input === lastQuery) {
-          return;
-        }
+      fetchInFlight = true;
 
-        fetchInFlight = true;
+      // Start the spinner animation in the option list.
+      const stopSpinner = spinner.start(handle);
 
-        // Start the spinner animation in the option list.
-        const stopSpinner = spinner.start(handle);
+      search(input)
+        .then((results) => {
+          stopSpinner();
+          cachedOptions = results.map((opt) => ({
+            value: opt.value,
+            label: opt.label,
+            hint: opt.hint,
+          }));
+          lastQuery = input;
+          fetchInFlight = false;
 
-        search(input)
-          .then((results) => {
-            stopSpinner();
-            cachedOptions = results.map((opt) => ({
-              value: opt.value,
-              label: opt.label,
-              hint: opt.hint,
-            }));
-            lastQuery = input;
-            fetchInFlight = false;
+          // Update the visible list with real results and re-render.
+          handle.filteredOptions = cachedOptions;
+          handle.render();
+        })
+        .catch(() => {
+          stopSpinner();
+          cachedOptions = [];
+          lastQuery = input;
+          fetchInFlight = false;
 
-            // Update the visible list with real results and re-render.
-            handle.filteredOptions = cachedOptions;
-            handle.render();
-          })
-          .catch(() => {
-            stopSpinner();
-            cachedOptions = [];
-            lastQuery = input;
-            fetchInFlight = false;
+          handle.filteredOptions = [];
+          handle.render();
+        });
+    };
 
-            handle.filteredOptions = [];
-            handle.render();
-          });
-      }, DEBOUNCE_DELAY_MS);
+    const debouncedSearch = debounce(runSearch, DEBOUNCE_DELAY_MS);
 
     const optionsFn = function (this: PromptHandle): AutocompleteOption[] {
       const input = this.userInput;
       const search = question.search;
 
       if (input.length < MIN_SEARCH_LENGTH || !search) {
-        if (debounceTimer !== null) {
-          clearTimeout(debounceTimer);
-          debounceTimer = null;
-        }
+        debouncedSearch.cancel();
         return cachedOptions;
       }
 
       if (input !== lastQuery && !fetchInFlight) {
-        // Cancel any pending debounce timer for a stale input.
-        if (debounceTimer !== null) {
-          clearTimeout(debounceTimer);
-        }
-
         // Pass `this` as an argument to avoid the no-this-alias lint rule while
         // still making the prompt handle accessible inside the async callback.
-        debounceTimer = scheduleSearch(input, search, this);
+        debouncedSearch(input, search, this);
       }
 
       return cachedOptions;
