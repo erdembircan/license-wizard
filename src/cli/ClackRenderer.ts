@@ -9,8 +9,10 @@ import type {
   QuestionType,
 } from "@cli/Question.js";
 import { Spinner } from "@cli/Spinner.js";
+import { debounce } from "@cli/Debounce.js";
 
 const MIN_SEARCH_LENGTH = 3;
+const DEBOUNCE_DELAY_MS = 100;
 
 /**
  * Renders questions to the terminal using the Clack prompt library.
@@ -83,8 +85,9 @@ export class ClackRenderer implements IRenderer {
   /**
    * Renders an autocomplete prompt backed by the question's search callback.
    * Options are only fetched when the user has typed at least three characters.
-   * While a fetch is in progress the spinner animates in the option list so
-   * the prompt stays interactive throughout.
+   * Keystrokes are debounced with a ~100ms delay so the search only fires once
+   * the user pauses typing. While a fetch is in progress the spinner animates
+   * in the option list so the prompt stays interactive throughout.
    */
   async #promptAutocomplete(
     question: AutocompleteQuestion,
@@ -100,46 +103,66 @@ export class ClackRenderer implements IRenderer {
     let lastQuery: string | null = null;
     let fetchInFlight = false;
 
+    /**
+     * Runs a search for the given input, animating the spinner and updating
+     * the prompt handle when results arrive.
+     */
+    const runSearch = (
+      input: string,
+      search: NonNullable<AutocompleteQuestion["search"]>,
+      handle: PromptHandle,
+    ): void => {
+      // Guard: another fetch may have started in the meantime.
+      if (fetchInFlight || input === lastQuery) {
+        return;
+      }
+
+      fetchInFlight = true;
+
+      // Start the spinner animation in the option list.
+      const stopSpinner = spinner.start(handle);
+
+      search(input)
+        .then((results) => {
+          stopSpinner();
+          cachedOptions = results.map((opt) => ({
+            value: opt.value,
+            label: opt.label,
+            hint: opt.hint,
+          }));
+          lastQuery = input;
+          fetchInFlight = false;
+
+          // Update the visible list with real results and re-render.
+          handle.filteredOptions = cachedOptions;
+          handle.render();
+        })
+        .catch(() => {
+          stopSpinner();
+          cachedOptions = [];
+          lastQuery = input;
+          fetchInFlight = false;
+
+          handle.filteredOptions = [];
+          handle.render();
+        });
+    };
+
+    const debouncedSearch = debounce(runSearch, DEBOUNCE_DELAY_MS);
+
     const optionsFn = function (this: PromptHandle): AutocompleteOption[] {
       const input = this.userInput;
+      const search = question.search;
 
-      if (input.length < MIN_SEARCH_LENGTH || !question.search) {
-        return [];
+      if (input.length < MIN_SEARCH_LENGTH || !search) {
+        debouncedSearch.cancel();
+        return cachedOptions;
       }
 
       if (input !== lastQuery && !fetchInFlight) {
-        fetchInFlight = true;
-
-        // Start the spinner animation in the option list.
-        const stopSpinner = spinner.start(this);
-
-        // Arrow functions below capture `this` lexically from optionsFn so
-        // the prompt handle is accessible after the async operation settles.
-        question
-          .search(input)
-          .then((results) => {
-            stopSpinner();
-            cachedOptions = results.map((opt) => ({
-              value: opt.value,
-              label: opt.label,
-              hint: opt.hint,
-            }));
-            lastQuery = input;
-            fetchInFlight = false;
-
-            // Update the visible list with real results and re-render.
-            this.filteredOptions = cachedOptions;
-            this.render();
-          })
-          .catch(() => {
-            stopSpinner();
-            cachedOptions = [];
-            lastQuery = input;
-            fetchInFlight = false;
-
-            this.filteredOptions = [];
-            this.render();
-          });
+        // Pass `this` as an argument to avoid the no-this-alias lint rule while
+        // still making the prompt handle accessible inside the async callback.
+        debouncedSearch(input, search, this);
       }
 
       return cachedOptions;
