@@ -34,7 +34,11 @@ classDiagram
     class QuestionRepository {
       +QuestionRepository(questions: Question[])
       +getByIndex(index: number) Question | null
-      +getAll() Question[]
+      +insertAt(index: number, questions: Question[]) void
+    }
+
+    class QuestionLifecycle {
+      +inject(questions: Question[]) void
     }
 
     class Question {
@@ -45,14 +49,14 @@ classDiagram
       +id: string
       +text: string
       +type: "text"
-      +onAnswer(answer: Answer) Question[] | Promise~Question[]~
+      +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
 
     class ConfirmQuestion {
       +id: string
       +text: string
       +type: "confirm"
-      +onAnswer(answer: Answer) Question[] | Promise~Question[]~
+      +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
 
     class AutocompleteQuestion {
@@ -60,7 +64,7 @@ classDiagram
       +text: string
       +type: "autocomplete"
       +search(query: string) Promise~AutocompleteOption[]~
-      +onAnswer(answer: Answer) Question[] | Promise~Question[]~
+      +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
 
     class AutocompleteOption {
@@ -157,6 +161,10 @@ classDiagram
   TextQuestion ..|> Question : member of
   ConfirmQuestion ..|> Question : member of
   AutocompleteQuestion ..|> Question : member of
+  TextQuestion ..> QuestionLifecycle : onAnswer receives
+  ConfirmQuestion ..> QuestionLifecycle : onAnswer receives
+  AutocompleteQuestion ..> QuestionLifecycle : onAnswer receives
+  Orchestrator ..> QuestionLifecycle : creates
   ClackRenderer ..|> IRenderer : implements
   ClackRenderer ..> Spinner : uses
   LicenseWizard ..> FlagParser : uses
