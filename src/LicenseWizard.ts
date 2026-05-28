@@ -6,6 +6,7 @@ import { QuestionRepository } from "@cli/QuestionRepository.js";
 import { Config } from "@configuration/Config.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
+import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 
@@ -19,6 +20,7 @@ const flagParser = new FlagParser({
 export class LicenseWizard {
   readonly #config: Config;
   readonly #licenseRepository: LicenseRepository;
+  readonly #licenseGenerator: LicenseGenerator;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -28,13 +30,15 @@ export class LicenseWizard {
   constructor(args: string[]) {
     flagParser.parse(args);
 
-    this.#config = new Config(
-      new NodeFileSystemReader(),
-      new NodeFileSystemWriter(),
-    );
+    const writer = new NodeFileSystemWriter();
+    this.#config = new Config(new NodeFileSystemReader(), writer);
 
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);
+    this.#licenseGenerator = new LicenseGenerator(
+      this.#licenseRepository,
+      writer,
+    );
   }
 
   /**
@@ -69,8 +73,9 @@ export class LicenseWizard {
   }
 
   /**
-   * Runs the interactive wizard, collects answers, and persists configuration
-   * when the user opts in. Returns the collected answers.
+   * Runs the interactive wizard, collects answers, persists configuration when
+   * the user opts in, and writes the selected license to a `LICENSE` file in
+   * the working directory. Returns the collected answers.
    */
   async run() {
     const questions = await this.#buildQuestions();
@@ -88,6 +93,10 @@ export class LicenseWizard {
       typeof licenseAnswer?.value === "string"
     ) {
       await this.#config.write({ licenseId: licenseAnswer.value });
+    }
+
+    if (typeof licenseAnswer?.value === "string") {
+      await this.#licenseGenerator.generate(licenseAnswer.value);
     }
 
     return answers;
