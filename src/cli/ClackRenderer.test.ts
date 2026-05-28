@@ -540,6 +540,93 @@ describe("ClackRenderer", () => {
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
         expect(call.initialValue).toBeUndefined();
       });
+
+      it("does not pass initialUserInput to clack.autocomplete when defaultValue set (restores by exact selection, not fuzzy search)", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "q",
+          text: "Pick license",
+          type: "autocomplete",
+          defaultValue: "MIT",
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        expect(call.initialUserInput).toBeUndefined();
+      });
+
+      it("seeds the options with the exact default option so it opens without searching", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const search = vi.fn().mockResolvedValue([]);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "q",
+          text: "Pick license",
+          type: "autocomplete",
+          defaultValue: "MIT",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
+
+        const result = optionsFn.call(makePromptHandle(""));
+
+        expect(result).toEqual([{ value: "MIT", label: "MIT" }]);
+        expect(search).not.toHaveBeenCalled();
+      });
+
+      it("returns no options on open when defaultValue absent", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const search = vi.fn().mockResolvedValue([]);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "q",
+          text: "Pick license",
+          type: "autocomplete",
+          search,
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        const optionsFn = call.options as unknown as (
+          this: ReturnType<typeof makePromptHandle>,
+        ) => unknown[];
+
+        expect(optionsFn.call(makePromptHandle(""))).toEqual([]);
+      });
+
+      it("does not pass initialUserInput to clack.autocomplete when defaultValue absent", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer("test");
+        const question: Question = {
+          id: "q",
+          text: "Pick license",
+          type: "autocomplete",
+        };
+
+        await renderer.render(question);
+
+        const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        expect(call.initialUserInput).toBeUndefined();
+      });
     });
   });
 });

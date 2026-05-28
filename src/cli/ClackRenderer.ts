@@ -113,6 +113,15 @@ export class ClackRenderer implements IRenderer {
     let lastQuery: string | null = null;
     let fetchInFlight = false;
 
+    // Seed the option list with the exact default so it opens pre-selected via
+    // `initialValue`, instead of fuzzy-searching the stored value (which would
+    // match every same-prefix license rather than the exact one).
+    if (question.defaultValue !== undefined) {
+      cachedOptions = [
+        { value: question.defaultValue, label: question.defaultValue },
+      ];
+    }
+
     /**
      * Runs a search for the given input, animating the spinner and updating
      * the prompt handle when results arrive.
