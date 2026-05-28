@@ -1,7 +1,7 @@
 import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { FlagParser } from "@cli/FlagParser.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
-import type { Question } from "@cli/Question.js";
+import type { AutocompleteQuestion, Question } from "@cli/Question.js";
 import { QuestionRepository } from "@cli/QuestionRepository.js";
 import { Config } from "@configuration/Config.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
@@ -17,8 +17,8 @@ const flagParser = new FlagParser({
  * Entry point for the license-wizard CLI application.
  */
 export class LicenseWizard {
-  readonly #orchestrator: Orchestrator;
   readonly #config: Config;
+  readonly #licenseRepository: LicenseRepository;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -34,14 +34,23 @@ export class LicenseWizard {
     );
 
     const licenseSource = new SpdxLicenseSource();
-    const licenseRepository = new LicenseRepository(licenseSource);
+    this.#licenseRepository = new LicenseRepository(licenseSource);
+  }
 
-    const licenseQuestion: Question = {
+  /**
+   * Builds the ordered list of questions, reading the saved config to
+   * pre-populate defaults where applicable.
+   */
+  async #buildQuestions(): Promise<Question[]> {
+    const config = await this.#config.read();
+
+    const licenseQuestion: AutocompleteQuestion = {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
+      initialValue: config?.licenseId,
       search: async (query) => {
-        const results = await licenseRepository.search(query);
+        const results = await this.#licenseRepository.search(query);
         return results.map((entry) => ({
           value: entry.licenseId,
           label: entry.name,
@@ -56,12 +65,7 @@ export class LicenseWizard {
       type: "confirm",
     };
 
-    const renderer = new ClackRenderer("license-wizard");
-    const repository = new QuestionRepository([
-      licenseQuestion,
-      saveConfigQuestion,
-    ]);
-    this.#orchestrator = new Orchestrator(repository, renderer);
+    return [licenseQuestion, saveConfigQuestion];
   }
 
   /**
@@ -69,7 +73,12 @@ export class LicenseWizard {
    * when the user opts in. Returns the collected answers.
    */
   async run() {
-    const answers = await this.#orchestrator.run();
+    const questions = await this.#buildQuestions();
+    const renderer = new ClackRenderer("license-wizard");
+    const repository = new QuestionRepository(questions);
+    const orchestrator = new Orchestrator(repository, renderer);
+
+    const answers = await orchestrator.run();
 
     const licenseAnswer = answers.find((a) => a.questionId === "license");
     const saveConfigAnswer = answers.find((a) => a.questionId === "saveConfig");
