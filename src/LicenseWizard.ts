@@ -22,15 +22,15 @@ export class LicenseWizard {
   readonly #config: Config;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
-  readonly #args: string[];
+  readonly #flags: ReturnType<typeof flagParser.parse>;
 
   /**
-   * Creates a new LicenseWizard instance with the provided CLI arguments.
+   * Creates a new LicenseWizard instance and parses the provided CLI arguments.
    *
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
-    this.#args = args;
+    this.#flags = flagParser.parse(args);
 
     const writer = new NodeFileSystemWriter();
     this.#config = new Config(new NodeFileSystemReader(), writer);
@@ -49,13 +49,12 @@ export class LicenseWizard {
    */
   async #buildQuestions(): Promise<Question[]> {
     const config = await this.#config.read();
-    const { license } = flagParser.parse(this.#args);
 
     const licenseQuestion: AutocompleteQuestion = {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
-      defaultValue: license || config?.licenseId,
+      defaultValue: this.#flags.license || config?.licenseId,
       search: async (query) => {
         const results = await this.#licenseRepository.search(query);
         return results.map((entry) => ({
