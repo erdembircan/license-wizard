@@ -5,12 +5,13 @@ import type { IRenderer } from "@cli/interfaces/IRenderer.js";
 import type { Question, QuestionLifecycle } from "@cli/Question.js";
 import type { Answer } from "@cli/Answer.js";
 
-const makeQuestion = (id: string, overrides?: Partial<Question>): Question => ({
-  id,
-  text: `Question ${id}`,
-  type: "text",
-  ...overrides,
-});
+const makeQuestion = (id: string, overrides?: Partial<Question>): Question =>
+  ({
+    id,
+    text: `Question ${id}`,
+    type: "text",
+    ...overrides,
+  }) as Question;
 
 const makeRenderer = (answerValue = "some-answer"): IRenderer => ({
   render: vi.fn(
