@@ -163,6 +163,8 @@ classDiagram
       +Config(reader: IFileSystemReader, writer: IFileSystemWriter)
       +read() Promise~WizardConfig | null~
       +write(config: WizardConfig) Promise~void~
+      +readPackageLicense() Promise~string | null~
+      +writePackageLicense(licenseId: string) Promise~void~
     }
   }
 

@@ -3,6 +3,7 @@ flowchart TD
     A -.->|flags| FL([Flags])
     FL -.-> LW
     LW -.->|reads| LC[/License config file/]
+    LW -.->|reads license field| PJ[/package.json/]
 
     LW --> M{--verify flag?}
 
@@ -21,6 +22,7 @@ flowchart TD
     OG -->|options object| LW
     LW -->|writes| LC
     LW --> G[License is generated]
+    G -->|writes license id| PJ
     G --> H([Done])
 
     %% ─── Verification path ───
