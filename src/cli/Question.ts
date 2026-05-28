@@ -6,10 +6,17 @@ export type AutocompleteOption = {
   hint?: string;
 };
 
+export type QuestionLifecycle = {
+  inject: (questions: Question[]) => void;
+};
+
 type BaseQuestion = {
   id: string;
   text: string;
-  onAnswer?: (answer: Answer) => Question[] | Promise<Question[]>;
+  onAnswer?: (
+    answer: Answer,
+    lifecycle: QuestionLifecycle,
+  ) => void | Promise<void>;
 };
 
 export type TextQuestion = BaseQuestion & {
