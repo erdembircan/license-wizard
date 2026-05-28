@@ -1,18 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Answer } from "@cli/Answer.js";
 import type { Question } from "@cli/Question.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 
-// Shared capture/control state, hoisted so the vi.mock factories can close over it.
-const state = vi.hoisted(() => ({
-  rendered: [] as Question[],
-  config: null as WizardConfig | null,
-  projectLicense: null as string | null,
-  writtenProjectLicense: null as string | null,
-}));
+type GenerateCall = { licenseId: string; slotValues: Record<string, string> };
 
-// Stub the renderer (the consumer of the built questions): record every question
-// it is asked to render and return a canned answer so `run()` completes.
+const COPYRIGHT_TEMPLATE =
+  '<<var;name="copyright";original="Copyright (c) <year> <copyright holders>";match=".{0,5000}">>';
+
+// Shared capture/control state, hoisted so the vi.mock factories can close over it.
+const state = vi.hoisted(() => {
+  const defaultDetail = (): LicenseDetail => ({
+    licenseId: "MIT",
+    name: "MIT License",
+    licenseText: "PLAIN LICENSE TEXT",
+    standardLicenseTemplate: "",
+  });
+
+  const defaultAnswer = (q: Question): string | boolean =>
+    q.type === "confirm" ? false : q.type === "select" ? "standard" : "MIT";
+
+  const self = {
+    rendered: [] as Question[],
+    config: null as WizardConfig | null,
+    projectLicense: null as string | null,
+    writtenProjectLicense: null as string | null,
+    detail: defaultDetail(),
+    generateCalls: [] as GenerateCall[],
+    // Maps a question to the answer the stub renderer returns.
+    answer: defaultAnswer,
+    reset() {
+      self.rendered = [];
+      self.config = null;
+      self.projectLicense = null;
+      self.writtenProjectLicense = null;
+      self.detail = defaultDetail();
+      self.generateCalls = [];
+      self.answer = defaultAnswer;
+    },
+  };
+
+  return self;
+});
+
+// Stub the renderer: record every question and return the state-driven answer.
 vi.mock("@cli/ClackRenderer.js", () => ({
   ClackRenderer: vi.fn(function (this: {
     render: (q: Question) => Promise<Answer>;
@@ -20,9 +52,7 @@ vi.mock("@cli/ClackRenderer.js", () => ({
   }) {
     this.render = async (question: Question): Promise<Answer> => {
       state.rendered.push(question);
-      return question.type === "confirm"
-        ? { questionId: question.id, value: false }
-        : { questionId: question.id, value: "MIT" };
+      return { questionId: question.id, value: state.answer(question) };
     };
     this.onCancel = () => "";
   }),
@@ -52,10 +82,29 @@ vi.mock("@configuration/ProjectManifestRepository.js", () => ({
   }),
 }));
 
-// Stub license generation so `run()` does not touch the network or filesystem.
+// Stub the SPDX source so the license `onAnswer` resolves a template without
+// touching the network.
+vi.mock("@licensing/SpdxLicenseSource.js", () => ({
+  SpdxLicenseSource: vi.fn(function (this: {
+    search: () => Promise<[]>;
+    fetchLicense: () => Promise<LicenseDetail>;
+  }) {
+    this.search = async () => [];
+    this.fetchLicense = async () => state.detail;
+  }),
+}));
+
+// Stub license generation: capture the arguments instead of writing files.
 vi.mock("@licensing/LicenseGenerator.js", () => ({
-  LicenseGenerator: vi.fn(function (this: { generate: () => Promise<void> }) {
-    this.generate = async () => {};
+  LicenseGenerator: vi.fn(function (this: {
+    generate: (
+      licenseId: string,
+      slotValues?: Record<string, string>,
+    ) => Promise<void>;
+  }) {
+    this.generate = async (licenseId, slotValues = {}) => {
+      state.generateCalls.push({ licenseId, slotValues });
+    };
   }),
 }));
 
@@ -73,10 +122,7 @@ async function licenseDefaultFor(args: string[]): Promise<string | undefined> {
 
 describe("LicenseWizard license default injection", () => {
   beforeEach(() => {
-    state.rendered = [];
-    state.config = null;
-    state.projectLicense = null;
-    state.writtenProjectLicense = null;
+    state.reset();
   });
 
   it("uses the --license flag value over the project manifest license and config", async () => {
@@ -108,12 +154,75 @@ describe("LicenseWizard license default injection", () => {
   });
 });
 
+describe("LicenseWizard customization flow", () => {
+  beforeEach(() => {
+    state.reset();
+  });
+
+  it("does not offer Standard/Customize when the license has no customizable slots", async () => {
+    // Default detail has an empty template, so there are no slots.
+    await new LicenseWizard([]).run();
+
+    expect(state.rendered.some((q) => q.id === "generationMode")).toBe(false);
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+  });
+
+  it("offers the choice but generates plain text when Standard is chosen", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
+    // The default answer for a select is "standard".
+
+    await new LicenseWizard([]).run();
+
+    expect(state.rendered.some((q) => q.id === "generationMode")).toBe(true);
+    // No slot text questions are asked on the standard path.
+    expect(state.rendered.some((q) => q.id === "<year>")).toBe(false);
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+  });
+
+  it("asks one question per slot and passes the entered values when Customize is chosen", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "generationMode") return "customize";
+      if (q.id === "<year>") return "2026";
+      if (q.id === "<copyright holders>") return "Erdem Bircan";
+      if (q.type === "confirm") return false;
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    const slotQuestions = state.rendered.filter(
+      (q) => q.id === "<year>" || q.id === "<copyright holders>",
+    );
+    expect(slotQuestions.map((q) => ({ id: q.id, text: q.text }))).toEqual([
+      { id: "<year>", text: "year" },
+      { id: "<copyright holders>", text: "copyright holders" },
+    ]);
+    expect(state.generateCalls).toEqual([
+      {
+        licenseId: "MIT",
+        slotValues: {
+          "<year>": "2026",
+          "<copyright holders>": "Erdem Bircan",
+        },
+      },
+    ]);
+  });
+});
+
 describe("LicenseWizard project manifest license write-back", () => {
   beforeEach(() => {
-    state.rendered = [];
-    state.config = null;
-    state.projectLicense = null;
-    state.writtenProjectLicense = null;
+    state.reset();
   });
 
   it("records the selected license in the project manifests at the end of the run", async () => {

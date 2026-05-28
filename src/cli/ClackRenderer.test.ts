@@ -5,6 +5,7 @@ vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
   text: vi.fn(),
   confirm: vi.fn(),
+  select: vi.fn(),
   autocomplete: vi.fn(),
   spinner: vi.fn(),
   cancel: vi.fn(),
@@ -120,6 +121,36 @@ describe("ClackRenderer", () => {
         const answer = await renderer.render(question);
 
         expect(answer).toEqual({ questionId: "addLicense", value: false });
+      });
+
+      it("calls clack.select for a select question type and returns the chosen value", async () => {
+        vi.mocked(clack.select).mockResolvedValue("customize");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const options = [
+          { value: "standard", label: "Standard" },
+          { value: "customize", label: "Customize" },
+        ];
+        const renderer = new ClackRenderer(META);
+        const question: Question = {
+          id: "generationMode",
+          text: "How do you want to generate the license?",
+          type: "select",
+          options,
+        };
+
+        const answer = await renderer.render(question);
+
+        expect(clack.select).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "How do you want to generate the license?",
+            options,
+          }),
+        );
+        expect(answer).toEqual({
+          questionId: "generationMode",
+          value: "customize",
+        });
       });
 
       it("calls clack.autocomplete for an autocomplete question type", async () => {
@@ -524,6 +555,29 @@ describe("ClackRenderer", () => {
 
         const call = vi.mocked(clack.confirm).mock.calls[0][0];
         expect(call.initialValue).toBeUndefined();
+      });
+
+      it("forwards defaultValue to clack.select's initialValue when set on a select question", async () => {
+        vi.mocked(clack.select).mockResolvedValue("standard");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer(META);
+        const question: Question = {
+          id: "generationMode",
+          text: "How?",
+          type: "select",
+          options: [
+            { value: "standard", label: "Standard" },
+            { value: "customize", label: "Customize" },
+          ],
+          defaultValue: "standard",
+        };
+
+        await renderer.render(question);
+
+        expect(clack.select).toHaveBeenCalledWith(
+          expect.objectContaining({ initialValue: "standard" }),
+        );
       });
 
       it("forwards defaultValue to clack.autocomplete's initialValue when set on an autocomplete question", async () => {

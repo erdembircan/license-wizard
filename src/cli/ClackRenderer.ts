@@ -8,6 +8,7 @@ import type {
   ConfirmQuestion,
   Question,
   QuestionType,
+  SelectQuestion,
   TextQuestion,
 } from "@cli/Question.js";
 import { Spinner } from "@cli/Spinner.js";
@@ -96,6 +97,12 @@ export class ClackRenderer implements IRenderer {
         clack.confirm({
           message: q.text,
           initialValue: (q as ConfirmQuestion).defaultValue,
+        }),
+      select: (q) =>
+        clack.select({
+          message: q.text,
+          options: (q as SelectQuestion).options,
+          initialValue: (q as SelectQuestion).defaultValue,
         }),
       autocomplete: (q) => this.#promptAutocomplete(q as AutocompleteQuestion),
     };
