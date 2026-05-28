@@ -6,13 +6,30 @@ import { QuestionRepository } from "@cli/QuestionRepository.js";
 import { Config } from "@configuration/Config.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 
 const flagParser = new FlagParser({
   verify: { type: "boolean", default: false },
+  license: { type: "string", default: "" },
 });
+
+/**
+ * Resolves the license id used to pre-populate the license question's default,
+ * giving the `--license` flag priority over the saved config value.
+ *
+ * @param flagLicense - The `--license` flag value (empty string when absent).
+ * @param config - The saved wizard config, or null when none exists.
+ * @returns The license id to use as the default, or undefined when neither source provides one.
+ */
+export function resolveDefaultLicenseId(
+  flagLicense: string,
+  config: WizardConfig | null,
+): string | undefined {
+  return flagLicense || config?.licenseId;
+}
 
 /**
  * Entry point for the license-wizard CLI application.
@@ -21,6 +38,7 @@ export class LicenseWizard {
   readonly #config: Config;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
+  readonly #licenseFlag: string;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -28,7 +46,8 @@ export class LicenseWizard {
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
-    flagParser.parse(args);
+    const flags = flagParser.parse(args);
+    this.#licenseFlag = flags.license;
 
     const writer = new NodeFileSystemWriter();
     this.#config = new Config(new NodeFileSystemReader(), writer);
@@ -52,7 +71,7 @@ export class LicenseWizard {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
-      defaultValue: config?.licenseId,
+      defaultValue: resolveDefaultLicenseId(this.#licenseFlag, config),
       search: async (query) => {
         const results = await this.#licenseRepository.search(query);
         return results.map((entry) => ({
