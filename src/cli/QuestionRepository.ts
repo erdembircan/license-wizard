@@ -19,4 +19,11 @@ export class QuestionRepository {
   getByIndex(index: number): Question | null {
     return this.#questions[index] ?? null;
   }
+
+  /**
+   * Returns a shallow copy of all questions in the repository.
+   */
+  getAll(): Question[] {
+    return [...this.#questions];
+  }
 }
