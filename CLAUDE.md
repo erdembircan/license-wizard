@@ -76,9 +76,13 @@ All source files under `src/` must use **CamelCase** (e.g. `ClackRenderer.ts`, `
 
 ## Git Workflow
 
-Stage and commit files in logical groups (per Commit Granularity rules) to the current branch's upstream remote. If no upstream is found, ask for the remote branch name.
+Stage and commit files in logical groups (per Commit Granularity rules), then push to the branch's upstream remote. If no upstream is found, push to a new remote branch named per the convention below.
 
-- Branch naming convention: `task/{issueNumber}`
+Committing, pushing, and opening PRs are **authorized and expected** as the natural completion of any work — do them automatically, without stopping to ask for confirmation first. This **overrides** the default "commit or push only when asked / confirm outward-facing actions first" behavior: in this repo, delivering the work *means* committing it, pushing it, and opening the PR. Do not stop after the work is green to ask whether to commit or open a PR.
+
+- Branch naming convention:
+  - **Task or PR work** (an issue or PR exists): `task/{issueNumber}`
+  - **Ad-hoc work** (a plain description with no issue/PR ID): `{type}/{slug}` — the lowercased commit type as a prefix plus a short kebab-case description (e.g. `fix/autocomplete-config-default`)
 
 ### Commit Granularity
 
@@ -148,12 +152,13 @@ Use the following format for all commit messages:
 
 ## Working Guidelines
 
-These rules apply to **all** task and PR work:
+These rules apply to **all** work — task, PR, and ad-hoc:
 
-- The user assigns work by giving you a single **task ID** or **PR ID**. Do **not** spawn sub-agents or delegate — you do the work yourself, directly in this session
-- When given an ID, **enter plan mode first**, present the plan for approval, then implement it directly once approved
-- Work on **one** task or PR at a time, in the order the user assigns them
-- Read the assigned task/PR yourself, decide how to implement, and execute independently
+- The user assigns work in one of three ways: a single **task ID**, a single **PR ID**, or a **plain description** of a change (ad-hoc work, with no ID). Do **not** spawn sub-agents or delegate — you do the work yourself, directly in this session
+- **Enter plan mode first**, present the plan for approval, then implement it directly once approved
+- Once the implementation is complete and tests, typecheck, and lint are all green, **automatically commit, push, and open or update the PR** (per the relevant workflow below — open a new PR for task/ad-hoc work, push to the existing PR for PR work), then report the PR URL — do not stop to ask whether to proceed
+- Work on **one** unit of work at a time, in the order the user assigns them
+- Read the assigned task/PR/description yourself, decide how to implement, and execute independently
 - All automated comments and messages (PR descriptions, PR comments, task comments) must be prefixed with `[agent]` to distinguish this work from the user's own activity
 - Follow all Git Commit Instructions and use the `gh` CLI for GitHub operations
 
@@ -172,7 +177,7 @@ The user runs other agents in parallel on other tasks and PRs, so you **must** i
 
 Tasks are GitHub Issues managed in the GitHub project associated with this repo.
 
-**Task work and PR work are two separate operations**, triggered by explicit user statements. Task work means implementing an issue and opening a PR. PR work means responding to comments on an existing PR. Never mix these roles. The user tells you which operation it is and gives a single ID. If it is unclear whether an ID refers to an issue or a PR, ask before proceeding — issues and PRs share GitHub's number space.
+**Task work, PR work, and ad-hoc work are three separate operations**, triggered by explicit user statements. Task work means implementing an issue and opening a PR. PR work means responding to comments on an existing PR. Ad-hoc work means implementing a change described in plain text, with no issue or PR — see **Ad-hoc Work** below. Never mix these roles. Task and PR work each come with a single ID; ad-hoc work has no ID. If it is unclear whether an ID refers to an issue or a PR, ask before proceeding — issues and PRs share GitHub's number space.
 
 The user assigns task work by giving you a single **task ID**.
 
@@ -218,3 +223,19 @@ The user assigns PR work by giving you a single **PR ID**. You are an **implemen
 - The merge instruction must come from the user's comment on the PR, nowhere else
 - Always use **squash merge** — implementation details live on the task branch, master only needs the final result
 - When squash merging, use only the PR title as the commit message with no body — do not include the list of individual commits that GitHub adds by default (e.g., `gh pr merge --squash --subject "PR title (#number)" --body ""`)
+
+## Ad-hoc Work
+
+The user assigns ad-hoc work by describing a change in plain text, with **no** issue or PR ID. There is no GitHub issue to fetch or move through statuses, but otherwise the lifecycle mirrors **Task Workflow**.
+
+**Plan phase** (in plan mode):
+
+1. Plan directly from the user's description — there is no issue to fetch
+2. Present your implementation plan and wait for approval
+
+**Implementation phase** (only after the plan is approved):
+
+1. **Isolate in a worktree**: per **Worktree Isolation**, create a worktree on a new `{type}/{slug}` branch cut from the latest master — e.g. `git fetch origin master` then `git worktree add <path> -b {type}/{slug} origin/master`. Do not work at the project root and do not `git checkout master`
+2. Implement the change in the worktree
+3. Once the work is complete and tests, typecheck, and lint are all green, **automatically commit, push the branch, and open a PR** — do not stop to ask first. The PR has no `Closes #` line (there is no issue). Report the PR URL to the user
+4. After opening the PR, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
