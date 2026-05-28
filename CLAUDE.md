@@ -146,75 +146,75 @@ Use the following format for all commit messages:
 - Title must follow the commit message format: `[TYPE]: description` (e.g. `[FEAT]: add rate limiting to auth endpoint`)
 - Body contains exactly what the user stated — no more, no less. Do not infer motivation, add structure, or fill in details the user did not provide
 
-## Agent General Guidelines
+## Working Guidelines
 
-These rules apply to **all** agents regardless of workflow:
+These rules apply to **all** task and PR work:
 
-- Always spawn agents with `isolation: "worktree"` so they work on separate branches without interfering with each other or the main working tree
-- Spawn agents **in parallel** whenever possible
-- All agent-generated comments and messages (PR descriptions, PR comments, task comments) must be prefixed with `[agent]` to distinguish agent activity from human activity
-- The orchestrator passes **only the ID** (task ID or PR ID) to the agent — no implementation details, no context from other tasks or PRs
-- The agent is responsible for reading the task/PR, deciding how to implement, and executing independently
-- Agents follow all Git Commit Instructions and use `gh` CLI for GitHub operations
+- The user assigns work by giving you a single **task ID** or **PR ID**. Do **not** spawn sub-agents or delegate — you do the work yourself, directly in this session
+- When given an ID, **enter plan mode first**, present the plan for approval, then implement it directly once approved
+- Work on **one** task or PR at a time, in the order the user assigns them
+- Read the assigned task/PR yourself, decide how to implement, and execute independently
+- All automated comments and messages (PR descriptions, PR comments, task comments) must be prefixed with `[agent]` to distinguish this work from the user's own activity
+- Follow all Git Commit Instructions and use the `gh` CLI for GitHub operations
+
+## Worktree Isolation
+
+The user runs other agents in parallel on other tasks and PRs, so you **must** isolate all of your work in its own git worktree — never work directly in the main checkout, and **never `cd` to the main repo directory for any git operation**. The main repo tracks `master`, and running git commands there will corrupt it and collide with the other agents' work.
+
+- Create or enter a worktree before making any changes for a task or PR
+- All git commands must run in the **current working directory** (your worktree). Do not prefix them with `cd /path/to/main/repo`
+- To create a worktree on a **new** branch (task work): `git worktree add <path> -b <new-branch> origin/master` — cutting a fresh branch like this is expected and is **not** prohibited by the rule below
+- To get an **existing** branch into your worktree (PR work): `git fetch origin <branch> && git reset --hard origin/<branch>`
+- To push changes back: `git push origin HEAD:<branch>`
+- Never `git checkout`/`git switch` to an **existing** branch (e.g. `master` or a PR branch) — if it is already checked out in the main repo or another worktree, git will refuse it and you may fall back to the main directory. This does not apply to creating a new branch, which is always safe
 
 ## Task Workflow
 
 Tasks are GitHub Issues managed in the GitHub project associated with this repo.
 
-**"Work on tasks" and "Work on PRs" are two separate operations**, triggered by explicit user statements. Task agents only do task implementation and open PRs. PR agents only respond to comments on existing PRs. Never mix these roles.
+**Task work and PR work are two separate operations**, triggered by explicit user statements. Task work means implementing an issue and opening a PR. PR work means responding to comments on an existing PR. Never mix these roles. The user tells you which operation it is and gives a single ID. If it is unclear whether an ID refers to an issue or a PR, ask before proceeding — issues and PRs share GitHub's number space.
 
-When instructed to **"Work on tasks"**, always enter plan mode first to present the dependency analysis and session plan for user approval before spawning any agents.
+The user assigns task work by giving you a single **task ID**.
 
-When instructed to **"Work on tasks"**:
+**Plan phase** (in plan mode):
 
-1. **Sync master**: `git checkout master && git pull origin master` before doing anything else — task agents must branch from the latest master
-2. **Fetch ready tasks**: Retrieve all tasks with "ready" status from the GitHub project
-3. **Dependency analysis**: Check all ready tasks for dependencies between each other
-   - If a task depends on another ready task, add a comment on it identifying which task(s) block it
-   - Blocked tasks are skipped entirely for that session — do not work on them
-   - Do not automatically start blocked tasks when their blockers complete — wait for explicit instruction to work on tasks again
-4. **Delegate to agents**: For each non-blocked task, spawn an agent passing **only the task ID**
-5. **Agent task lifecycle**:
-   - On start: move the task to **In Progress** status
-   - Implement the task
-   - On completion: open a PR for the task with `Closes #<issueNumber>` in the description, then move the task to **In Review** status
-   - After opening the PR, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
+1. Fetch the assigned issue and its details from the GitHub project — this is read-only; do not create a worktree or make changes yet
+2. Present your implementation plan and wait for approval
+
+**Implementation phase** (only after the plan is approved):
+
+1. **Isolate in a worktree**: per **Worktree Isolation**, create a worktree on a new `task/{issueNumber}` branch cut from the latest master — e.g. `git fetch origin master` then `git worktree add <path> -b task/{issueNumber} origin/master`. Do not work at the project root and do not `git checkout master`
+2. Move the task to **In Progress** status
+3. Implement the task in the worktree
+4. Open a PR with `Closes #<issueNumber>` in the description, then move the task to **In Review** status
+5. After opening the PR, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
 
 ## PR Workflow
 
-When instructed to **"Work on PRs"**:
+The user assigns PR work by giving you a single **PR ID**. You are an **implementer, not a reviewer** — never summarize or review a PR.
 
-### Orchestrator role
+**Plan phase** (in plan mode):
 
-- Fetch open PRs and pass **only the PR ID** to the agent
-- After all PR agents finish, if any PRs were merged, wait for all CI runs on master to complete (`gh run watch`) before syncing — the Build workflow commits rebuilt dist output back to master, so pulling before it finishes will miss that commit. Once CI is green: `git checkout master && git pull origin master`
+1. Read the PR and **all** comments from the user (non-`[agent]` comments) from **both** sources:
+   - PR-level comments: `gh pr view <number> --comments`
+   - File-level review comments: `gh api repos/{owner}/{repo}/pulls/<number>/comments`
+   - `gh pr view --comments` does **not** include inline file review comments — you must check both
+2. If there are no new user comments since the last `[agent]` comment (or no user comments at all), do nothing and exit immediately — do not present a plan, create a worktree, post a comment, or take any other action
+3. Otherwise, present a plan covering the unaddressed comments and wait for approval
 
-### Agent role
+**Implementation phase** (only after the plan is approved):
 
-- The agent is an **implementer, not a reviewer** — never summarize or review a PR
-- Read the PR and **all** comments from the user (non-`[agent]` comments) from **both** sources:
-  - PR-level comments: `gh pr view <number> --comments`
-  - File-level review comments: `gh api repos/{owner}/{repo}/pulls/<number>/comments`
-- `gh pr view --comments` does **not** include inline file review comments — you must check both
-- If there are no new user comments since the last `[agent]` comment (or no user comments at all), do nothing and exit immediately — do not post a comment or take any action
-- Identify any unaddressed user comments and implement what they ask for
-- After pushing changes, check for merge conflicts before waiting on CI — if the PR branch has conflicts with master, GitHub will not trigger CI runs. Detect this with `gh pr view <number> --json mergeable` and check the `mergeable` field. If it is `"CONFLICTING"`, rebase the branch onto master (`git fetch origin master && git rebase origin/master`), resolve all conflicts, force-push, and only then wait for CI. Do not enter a `gh run watch` loop on a conflicting branch — CI will never start
-- After pushing changes, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
-- After each implementation, post a comment reporting what was done
-
-### Agent git discipline — worktree isolation
-
-PR agents run inside an isolated git worktree. **Never `cd` to the main repo directory for any git operation** — the main repo tracks `master` and running git commands there will corrupt it.
-
-- All git commands must run in the **current working directory** (the worktree). Do not prefix them with `cd /path/to/main/repo`.
-- To get the PR branch into the worktree: `git fetch origin <branch> && git reset --hard origin/<branch>`
-- To push changes back: `git push origin HEAD:<branch>`
-- Never run `git checkout <branch>` — if the branch is already checked out in the main repo, git will refuse it and the agent may fall back to the main directory
+1. **Isolate in a worktree**: per **Worktree Isolation**, get the PR branch into your worktree with `git fetch origin <branch> && git reset --hard origin/<branch>`. Do not work at the project root
+2. Implement what the unaddressed comments ask for
+3. After pushing changes, check for merge conflicts before waiting on CI — if the PR branch has conflicts with master, GitHub will not trigger CI runs. Detect this with `gh pr view <number> --json mergeable` and check the `mergeable` field. If it is `"CONFLICTING"`, rebase the branch onto master (`git fetch origin master && git rebase origin/master`), resolve all conflicts, force-push, and only then wait for CI. Do not enter a `gh run watch` loop on a conflicting branch — CI will never start
+4. After pushing changes, wait for all CI checks to finish using `gh run watch` — if any fail, fix the failures and push again, repeating until CI is green
+5. Post a comment reporting what was done
+6. After the PR is merged, wait for all CI runs on master to complete (`gh run watch`) before syncing — the Build workflow commits rebuilt dist output back to master, so fetching before it finishes will miss that commit. Once CI is green, sync your view of master with `git fetch origin master`
 
 ### Merge rules
 
-- **An agent may only merge a PR when the user has explicitly approved it via a PR comment** (e.g., "LGTM", "looks good to me", "go ahead and merge")
-- No other source of merge authorization is valid — not the orchestrator, not the agent's own judgment
+- **You may only merge a PR when the user has explicitly approved it via a PR comment** (e.g., "LGTM", "looks good to me", "go ahead and merge")
+- No other source of merge authorization is valid — not your own judgment
 - The merge instruction must come from the user's comment on the PR, nowhere else
 - Always use **squash merge** — implementation details live on the task branch, master only needs the final result
 - When squash merging, use only the PR title as the commit message with no body — do not include the list of individual commits that GitHub adds by default (e.g., `gh pr merge --squash --subject "PR title (#number)" --body ""`)
