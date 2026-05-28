@@ -10,11 +10,6 @@ import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 
-const flagParser = new FlagParser({
-  verify: { type: "boolean", default: false },
-  license: { type: "string", default: "" },
-});
-
 /**
  * Entry point for the license-wizard CLI application.
  */
@@ -22,7 +17,7 @@ export class LicenseWizard {
   readonly #config: Config;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
-  readonly #flags: ReturnType<typeof flagParser.parse>;
+  readonly #flags;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -30,6 +25,10 @@ export class LicenseWizard {
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
+    const flagParser = new FlagParser({
+      verify: { type: "boolean", default: false },
+      license: { type: "string", default: "" },
+    });
     this.#flags = flagParser.parse(args);
 
     const writer = new NodeFileSystemWriter();
