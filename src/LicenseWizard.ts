@@ -3,9 +3,12 @@ import { FlagParser } from "@cli/FlagParser.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
 import type { AutocompleteQuestion, Question } from "@cli/Question.js";
 import { QuestionRepository } from "@cli/QuestionRepository.js";
+import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { Config } from "@configuration/Config.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
+import { NpmManifest } from "@configuration/NpmManifest.js";
+import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
@@ -15,6 +18,7 @@ import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
  */
 export class LicenseWizard {
   readonly #config: Config;
+  readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
   readonly #flags;
@@ -31,8 +35,13 @@ export class LicenseWizard {
     });
     this.#flags = flagParser.parse(args);
 
+    const reader = new NodeFileSystemReader();
     const writer = new NodeFileSystemWriter();
-    this.#config = new Config(new NodeFileSystemReader(), writer);
+    this.#config = new Config(reader, writer);
+    this.#manifests = new ProjectManifestRepository([
+      new ComposerManifest(reader, writer),
+      new NpmManifest(reader, writer),
+    ]);
 
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);
@@ -48,12 +57,13 @@ export class LicenseWizard {
    */
   async #buildQuestions(): Promise<Question[]> {
     const config = await this.#config.read();
+    const projectLicense = await this.#manifests.readLicense();
 
     const licenseQuestion: AutocompleteQuestion = {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
-      defaultValue: this.#flags.license || config?.licenseId,
+      defaultValue: this.#flags.license || projectLicense || config?.licenseId,
       search: async (query) => {
         const results = await this.#licenseRepository.search(query);
         return results.map((entry) => ({
@@ -75,8 +85,9 @@ export class LicenseWizard {
 
   /**
    * Runs the interactive wizard, collects answers, persists configuration when
-   * the user opts in, and writes the selected license to a `LICENSE` file in
-   * the working directory. Returns the collected answers.
+   * the user opts in, writes the selected license to a `LICENSE` file in the
+   * working directory, and records the selection in every project manifest
+   * present (`composer.json`, `package.json`). Returns the collected answers.
    */
   async run() {
     const questions = await this.#buildQuestions();
@@ -98,6 +109,7 @@ export class LicenseWizard {
 
     if (typeof licenseAnswer?.value === "string") {
       await this.#licenseGenerator.generate(licenseAnswer.value);
+      await this.#manifests.writeLicense(licenseAnswer.value);
     }
 
     return answers;

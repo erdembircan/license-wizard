@@ -164,6 +164,36 @@ classDiagram
       +read() Promise~WizardConfig | null~
       +write(config: WizardConfig) Promise~void~
     }
+
+    class IProjectManifest {
+      <<interface>>
+      +exists() Promise~boolean~
+      +readLicense() Promise~string | null~
+      +writeLicense(licenseId: string) Promise~void~
+    }
+
+    class JsonManifest {
+      <<abstract>>
+      +JsonManifest(reader: IFileSystemReader, writer: IFileSystemWriter, fileName: string)
+      +exists() Promise~boolean~
+      +readLicense() Promise~string | null~
+      +writeLicense(licenseId: string) Promise~void~
+      #extractLicenseId(value: unknown)* string | null
+    }
+
+    class NpmManifest {
+      +NpmManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
+    }
+
+    class ComposerManifest {
+      +ComposerManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
+    }
+
+    class ProjectManifestRepository {
+      +ProjectManifestRepository(manifests: IProjectManifest[])
+      +readLicense() Promise~string | null~
+      +writeLicense(licenseId: string) Promise~void~
+    }
   }
 
   TextQuestion ..|> Question : member of
@@ -205,7 +235,20 @@ classDiagram
   Config ..> WizardConfig : produces
   Config ..> FileSystemReaderError : throws
   Config ..> FileSystemWriterError : throws
+  JsonManifest ..|> IProjectManifest : implements
+  NpmManifest --|> JsonManifest : extends
+  ComposerManifest --|> JsonManifest : extends
+  JsonManifest ..> IFileSystemReader : uses
+  JsonManifest ..> IFileSystemWriter : uses
+  JsonManifest ..> FileSystemReaderError : throws
+  JsonManifest ..> FileSystemWriterError : throws
+  ProjectManifestRepository ..> IProjectManifest : coordinates
   LicenseWizard ..> NodeFileSystemReader : creates
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates
   LicenseWizard ..> Config : reads defaults from
+  LicenseWizard ..> NpmManifest : creates
+  LicenseWizard ..> ComposerManifest : creates
+  LicenseWizard ..> ProjectManifestRepository : creates
+  LicenseWizard ..> ProjectManifestRepository : reads defaults from
+  LicenseWizard ..> ProjectManifestRepository : writes selection to
