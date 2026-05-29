@@ -3,7 +3,7 @@ flowchart TD
     A -.->|flags| FL([Flags])
     FL -.-> LW
     LW -.->|reads| LC[/License config file/]
-    LW -.->|reads license field<br/>composer.json → package.json| PJ[/Project manifests/]
+    LW -.->|reads license<br/>by manifest priority| PJ[/Project manifests/]
 
     LW --> M{--verify flag?}
 

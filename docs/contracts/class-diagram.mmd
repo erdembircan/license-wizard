@@ -181,12 +181,12 @@ classDiagram
       #extractLicenseId(value: unknown)* string | null
     }
 
-    class PackageJsonManifest {
-      +PackageJsonManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
+    class NpmManifest {
+      +NpmManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
     }
 
-    class ComposerJsonManifest {
-      +ComposerJsonManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
+    class ComposerManifest {
+      +ComposerManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
     }
 
     class ProjectManifestRepository {
@@ -236,8 +236,8 @@ classDiagram
   Config ..> FileSystemReaderError : throws
   Config ..> FileSystemWriterError : throws
   JsonManifest ..|> IProjectManifest : implements
-  PackageJsonManifest --|> JsonManifest : extends
-  ComposerJsonManifest --|> JsonManifest : extends
+  NpmManifest --|> JsonManifest : extends
+  ComposerManifest --|> JsonManifest : extends
   JsonManifest ..> IFileSystemReader : uses
   JsonManifest ..> IFileSystemWriter : uses
   JsonManifest ..> FileSystemReaderError : throws
@@ -247,8 +247,8 @@ classDiagram
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates
   LicenseWizard ..> Config : reads defaults from
-  LicenseWizard ..> PackageJsonManifest : creates
-  LicenseWizard ..> ComposerJsonManifest : creates
+  LicenseWizard ..> NpmManifest : creates
+  LicenseWizard ..> ComposerManifest : creates
   LicenseWizard ..> ProjectManifestRepository : creates
   LicenseWizard ..> ProjectManifestRepository : reads defaults from
   LicenseWizard ..> ProjectManifestRepository : writes selection to
