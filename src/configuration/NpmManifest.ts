@@ -1,6 +1,6 @@
+import { JsonManifest } from "@configuration/abstracts/JsonManifest.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
-import { JsonManifest } from "@configuration/JsonManifest.js";
 
 const PACKAGE_JSON = "package.json";
 
@@ -8,9 +8,9 @@ const PACKAGE_JSON = "package.json";
  * The npm `package.json` manifest. Its `"license"` field holds a single SPDX
  * identifier or expression string.
  */
-export class PackageJsonManifest extends JsonManifest {
+export class NpmManifest extends JsonManifest {
   /**
-   * Creates a new PackageJsonManifest.
+   * Creates a new NpmManifest.
    *
    * @param reader - Used to check for and read `package.json`.
    * @param writer - Used to persist changes to `package.json`.

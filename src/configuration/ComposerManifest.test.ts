@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ComposerJsonManifest } from "@configuration/ComposerJsonManifest.js";
+import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
@@ -78,9 +78,9 @@ class ThrowingWriter implements IFileSystemWriter {
 const makeManifest = (
   reader: IFileSystemReader,
   writer: IFileSystemWriter = new FakeWriter(),
-): ComposerJsonManifest => new ComposerJsonManifest(reader, writer);
+): ComposerManifest => new ComposerManifest(reader, writer);
 
-describe("ComposerJsonManifest", () => {
+describe("ComposerManifest", () => {
   describe("exists", () => {
     it("reflects whether composer.json is present", async () => {
       expect(
@@ -145,7 +145,7 @@ describe("ComposerJsonManifest", () => {
         [COMPOSER_JSON]: JSON.stringify({ name: "vendor/pkg" }),
       });
 
-      await new ComposerJsonManifest(reader, writer).writeLicense("MIT");
+      await new ComposerManifest(reader, writer).writeLicense("MIT");
 
       expect(JSON.parse(writer.written.get(COMPOSER_JSON)!).license).toBe(
         "MIT",
@@ -161,7 +161,7 @@ describe("ComposerJsonManifest", () => {
         }),
       });
 
-      await new ComposerJsonManifest(reader, writer).writeLicense("Apache-2.0");
+      await new ComposerManifest(reader, writer).writeLicense("Apache-2.0");
 
       expect(JSON.parse(writer.written.get(COMPOSER_JSON)!).license).toBe(
         "Apache-2.0",
@@ -178,7 +178,7 @@ describe("ComposerJsonManifest", () => {
         }),
       });
 
-      await new ComposerJsonManifest(reader, writer).writeLicense("MIT");
+      await new ComposerManifest(reader, writer).writeLicense("MIT");
 
       expect(JSON.parse(writer.written.get(COMPOSER_JSON)!)).toEqual({
         name: "vendor/pkg",
@@ -190,9 +190,7 @@ describe("ComposerJsonManifest", () => {
     it("does not write when composer.json does not exist", async () => {
       const writer = new FakeWriter();
 
-      await new ComposerJsonManifest(new FakeReader(), writer).writeLicense(
-        "MIT",
-      );
+      await new ComposerManifest(new FakeReader(), writer).writeLicense("MIT");
 
       expect(writer.written.has(COMPOSER_JSON)).toBe(false);
     });
@@ -201,7 +199,7 @@ describe("ComposerJsonManifest", () => {
       const reader = new FakeReader({
         [COMPOSER_JSON]: JSON.stringify({ name: "vendor/pkg" }),
       });
-      const manifest = new ComposerJsonManifest(
+      const manifest = new ComposerManifest(
         reader,
         new ThrowingWriter(new Error("write")),
       );

@@ -3,11 +3,11 @@ import { FlagParser } from "@cli/FlagParser.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
 import type { AutocompleteQuestion, Question } from "@cli/Question.js";
 import { QuestionRepository } from "@cli/QuestionRepository.js";
-import { ComposerJsonManifest } from "@configuration/ComposerJsonManifest.js";
+import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { Config } from "@configuration/Config.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
-import { PackageJsonManifest } from "@configuration/PackageJsonManifest.js";
+import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
@@ -39,8 +39,8 @@ export class LicenseWizard {
     const writer = new NodeFileSystemWriter();
     this.#config = new Config(reader, writer);
     this.#manifests = new ProjectManifestRepository([
-      new ComposerJsonManifest(reader, writer),
-      new PackageJsonManifest(reader, writer),
+      new ComposerManifest(reader, writer),
+      new NpmManifest(reader, writer),
     ]);
 
     const licenseSource = new SpdxLicenseSource();

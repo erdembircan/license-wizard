@@ -1,6 +1,6 @@
+import { JsonManifest } from "@configuration/abstracts/JsonManifest.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
-import { JsonManifest } from "@configuration/JsonManifest.js";
 
 const COMPOSER_JSON = "composer.json";
 
@@ -9,9 +9,9 @@ const COMPOSER_JSON = "composer.json";
  * single SPDX identifier/expression string or an array of strings (disjunctive
  * licensing); the first entry is treated as the primary license.
  */
-export class ComposerJsonManifest extends JsonManifest {
+export class ComposerManifest extends JsonManifest {
   /**
-   * Creates a new ComposerJsonManifest.
+   * Creates a new ComposerManifest.
    *
    * @param reader - Used to check for and read `composer.json`.
    * @param writer - Used to persist changes to `composer.json`.

@@ -3,7 +3,7 @@ import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderErr
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
-import { PackageJsonManifest } from "@configuration/PackageJsonManifest.js";
+import { NpmManifest } from "@configuration/NpmManifest.js";
 
 const PACKAGE_JSON = "package.json";
 
@@ -78,9 +78,9 @@ class ThrowingWriter implements IFileSystemWriter {
 const makeManifest = (
   reader: IFileSystemReader,
   writer: IFileSystemWriter = new FakeWriter(),
-): PackageJsonManifest => new PackageJsonManifest(reader, writer);
+): NpmManifest => new NpmManifest(reader, writer);
 
-describe("PackageJsonManifest", () => {
+describe("NpmManifest", () => {
   describe("exists", () => {
     it("reflects whether package.json is present", async () => {
       expect(
@@ -146,7 +146,7 @@ describe("PackageJsonManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
 
-      await new PackageJsonManifest(reader, writer).writeLicense("MIT");
+      await new NpmManifest(reader, writer).writeLicense("MIT");
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!).license).toBe("MIT");
     });
@@ -157,7 +157,7 @@ describe("PackageJsonManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app", license: "ISC" }),
       });
 
-      await new PackageJsonManifest(reader, writer).writeLicense("Apache-2.0");
+      await new NpmManifest(reader, writer).writeLicense("Apache-2.0");
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!).license).toBe(
         "Apache-2.0",
@@ -174,7 +174,7 @@ describe("PackageJsonManifest", () => {
         }),
       });
 
-      await new PackageJsonManifest(reader, writer).writeLicense("MIT");
+      await new NpmManifest(reader, writer).writeLicense("MIT");
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!)).toEqual({
         name: "my-app",
@@ -186,9 +186,7 @@ describe("PackageJsonManifest", () => {
     it("does not write when package.json does not exist", async () => {
       const writer = new FakeWriter();
 
-      await new PackageJsonManifest(new FakeReader(), writer).writeLicense(
-        "MIT",
-      );
+      await new NpmManifest(new FakeReader(), writer).writeLicense("MIT");
 
       expect(writer.written.has(PACKAGE_JSON)).toBe(false);
     });
@@ -197,7 +195,7 @@ describe("PackageJsonManifest", () => {
       const reader = new FakeReader({
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
-      const manifest = new PackageJsonManifest(
+      const manifest = new NpmManifest(
         reader,
         new ThrowingWriter(new Error("write")),
       );
@@ -212,10 +210,7 @@ describe("PackageJsonManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
       const cause = new Error("write");
-      const manifest = new PackageJsonManifest(
-        reader,
-        new ThrowingWriter(cause),
-      );
+      const manifest = new NpmManifest(reader, new ThrowingWriter(cause));
 
       const error = await manifest.writeLicense("MIT").catch((e) => e);
 
