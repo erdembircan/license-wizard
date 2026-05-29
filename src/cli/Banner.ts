@@ -30,9 +30,13 @@ export function buildBanner(
     ].join("\n");
   }
 
+  // The caller decides whether color is wanted (TTY / NO_COLOR detection), so
+  // disable styleText's own stream sniffing and always emit the codes here.
+  const opts = { validateStream: false } as const;
+
   return [
-    `${WIZARD_GLYPH}  ${styleText(["bold", "blue"], name)}`,
-    `${TEXT_INDENT}${styleText("dim", description)}`,
-    `${TEXT_INDENT}${styleText("dim", versionLine)}`,
+    `${WIZARD_GLYPH}  ${styleText(["bold", "blue"], name, opts)}`,
+    `${TEXT_INDENT}${styleText("dim", description, opts)}`,
+    `${TEXT_INDENT}${styleText("dim", versionLine, opts)}`,
   ].join("\n");
 }
