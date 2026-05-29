@@ -53,7 +53,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const questionText = "Pick a license";
         const question: Question = {
           id: "license",
@@ -71,7 +71,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(true);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const questionText = "Add a license?";
         const question: Question = {
           id: "addLicense",
@@ -89,7 +89,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(false);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "addLicense",
           text: "Add a license?",
@@ -111,7 +111,7 @@ describe("ClackRenderer", () => {
             { value: "MIT", label: "MIT License", hint: "MIT" },
           ]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -135,7 +135,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -155,7 +155,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -184,7 +184,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -216,7 +216,7 @@ describe("ClackRenderer", () => {
         ];
         const search = vi.fn().mockResolvedValue(searchResults);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -247,7 +247,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -286,7 +286,7 @@ describe("ClackRenderer", () => {
         const search = vi.fn().mockResolvedValue([]);
         const spinnerInstance = new Spinner();
 
-        const renderer = new ClackRenderer("test", spinnerInstance);
+        const renderer = new ClackRenderer(spinnerInstance);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -324,7 +324,7 @@ describe("ClackRenderer", () => {
           stopSpinner,
         );
 
-        const renderer = new ClackRenderer("test", spinnerInstance);
+        const renderer = new ClackRenderer(spinnerInstance);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -357,7 +357,7 @@ describe("ClackRenderer", () => {
         ];
         const search = vi.fn().mockResolvedValue(searchResults);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -397,7 +397,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -418,7 +418,7 @@ describe("ClackRenderer", () => {
       });
 
       it("calls clack.cancel and exits with code 1 for an unsupported question type", async () => {
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question = {
           id: "q1",
           text: "Unknown?",
@@ -437,7 +437,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Enter text",
@@ -456,7 +456,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Enter text",
@@ -473,7 +473,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(true);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Confirm?",
@@ -492,7 +492,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(false);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Confirm?",
@@ -509,7 +509,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -528,7 +528,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -545,7 +545,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -565,7 +565,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -593,7 +593,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -615,7 +615,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer("test");
+        const renderer = new ClackRenderer();
         const question: Question = {
           id: "q",
           text: "Pick license",

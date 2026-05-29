@@ -1,5 +1,4 @@
 import * as clack from "@clack/prompts";
-import { styleText } from "node:util";
 import type { Answer } from "@cli/Answer.js";
 import type { IRenderer } from "@cli/interfaces/IRenderer.js";
 import type {
@@ -23,13 +22,11 @@ export class ClackRenderer implements IRenderer {
   readonly #spinner: Spinner;
 
   /**
-   * Creates a new ClackRenderer and immediately displays the intro label.
+   * Creates a new ClackRenderer.
    *
-   * @param introLabel - The label shown in the intro banner.
    * @param spinner - Optional spinner instance; defaults to a new Spinner.
    */
-  constructor(introLabel: string, spinner: Spinner = new Spinner()) {
-    clack.intro(styleText("inverse", ` ${introLabel} `));
+  constructor(spinner: Spinner = new Spinner()) {
     this.#spinner = spinner;
   }
 
