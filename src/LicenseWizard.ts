@@ -93,7 +93,7 @@ export class LicenseWizard {
   async run() {
     const questions = await this.#buildQuestions();
     const renderer = new ClackRenderer({
-      name: pkg.name.replace(/-/g, " "),
+      name: pkg.name,
       description: pkg.description,
       version: pkg.version,
     });
