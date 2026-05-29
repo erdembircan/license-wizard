@@ -1,4 +1,3 @@
-import { buildBanner } from "@cli/Banner.js";
 import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { FlagParser } from "@cli/FlagParser.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
@@ -93,23 +92,11 @@ export class LicenseWizard {
    */
   async run() {
     const questions = await this.#buildQuestions();
-
-    const color =
-      process.stdout.isTTY === true &&
-      !process.env.NO_COLOR &&
-      process.env.TERM !== "dumb";
-    process.stdout.write(
-      buildBanner(
-        {
-          name: pkg.name.replace(/-/g, " "),
-          description: pkg.description,
-          version: pkg.version,
-        },
-        { color },
-      ) + "\n",
-    );
-
-    const renderer = new ClackRenderer();
+    const renderer = new ClackRenderer({
+      name: pkg.name.replace(/-/g, " "),
+      description: pkg.description,
+      version: pkg.version,
+    });
     const repository = new QuestionRepository(questions);
     const orchestrator = new Orchestrator(repository, renderer);
 

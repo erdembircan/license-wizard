@@ -61,11 +61,6 @@ vi.mock("@licensing/LicenseGenerator.js", () => ({
 
 const { LicenseWizard } = await import("./LicenseWizard.js");
 
-// `run()` prints the startup banner to stdout; silence it to keep test output clean.
-beforeEach(() => {
-  vi.spyOn(process.stdout, "write").mockReturnValue(true);
-});
-
 /**
  * Runs the wizard with the given args and returns the defaultValue the renderer
  * received for the license question.

@@ -25,6 +25,12 @@ const clack = await import("@clack/prompts");
 const { Spinner } = await import("@cli/Spinner.js");
 const { ClackRenderer } = await import("@cli/ClackRenderer.js");
 
+const META = {
+  name: "acme tool",
+  description: "does useful things",
+  version: "2.3.4",
+};
+
 /**
  * Creates a mock prompt handle that simulates the AutocompletePrompt context
  * passed as `this` to the options function.
@@ -41,10 +47,25 @@ describe("ClackRenderer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    // The constructor renders the banner to stdout; keep test output clean.
+    vi.spyOn(process.stdout, "write").mockReturnValue(true);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe("startup banner", () => {
+    it("writes a banner containing the app name on construction", () => {
+      new ClackRenderer(META);
+
+      const output = vi
+        .mocked(process.stdout.write)
+        .mock.calls.map((call) => String(call[0]))
+        .join("");
+
+      expect(output).toContain(META.name);
+    });
   });
 
   describe("render", () => {
@@ -53,7 +74,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const questionText = "Pick a license";
         const question: Question = {
           id: "license",
@@ -71,7 +92,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(true);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const questionText = "Add a license?";
         const question: Question = {
           id: "addLicense",
@@ -89,7 +110,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(false);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "addLicense",
           text: "Add a license?",
@@ -111,7 +132,7 @@ describe("ClackRenderer", () => {
             { value: "MIT", label: "MIT License", hint: "MIT" },
           ]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -135,7 +156,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -155,7 +176,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -184,7 +205,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -216,7 +237,7 @@ describe("ClackRenderer", () => {
         ];
         const search = vi.fn().mockResolvedValue(searchResults);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -247,7 +268,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -286,7 +307,7 @@ describe("ClackRenderer", () => {
         const search = vi.fn().mockResolvedValue([]);
         const spinnerInstance = new Spinner();
 
-        const renderer = new ClackRenderer(spinnerInstance);
+        const renderer = new ClackRenderer(META, spinnerInstance);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -324,7 +345,7 @@ describe("ClackRenderer", () => {
           stopSpinner,
         );
 
-        const renderer = new ClackRenderer(spinnerInstance);
+        const renderer = new ClackRenderer(META, spinnerInstance);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -357,7 +378,7 @@ describe("ClackRenderer", () => {
         ];
         const search = vi.fn().mockResolvedValue(searchResults);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -397,7 +418,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "license",
           text: "Which license?",
@@ -418,7 +439,7 @@ describe("ClackRenderer", () => {
       });
 
       it("calls clack.cancel and exits with code 1 for an unsupported question type", async () => {
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question = {
           id: "q1",
           text: "Unknown?",
@@ -437,7 +458,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Enter text",
@@ -456,7 +477,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.text).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Enter text",
@@ -473,7 +494,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(true);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Confirm?",
@@ -492,7 +513,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.confirm).mockResolvedValue(false);
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Confirm?",
@@ -509,7 +530,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -528,7 +549,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -545,7 +566,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -565,7 +586,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -593,7 +614,7 @@ describe("ClackRenderer", () => {
 
         const search = vi.fn().mockResolvedValue([]);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Pick license",
@@ -615,7 +636,7 @@ describe("ClackRenderer", () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
 
-        const renderer = new ClackRenderer();
+        const renderer = new ClackRenderer(META);
         const question: Question = {
           id: "q",
           text: "Pick license",
