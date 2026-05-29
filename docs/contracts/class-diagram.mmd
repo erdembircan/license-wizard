@@ -24,7 +24,11 @@ classDiagram
     }
 
     class ClackRenderer {
-      +ClackRenderer(introLabel: string, spinner: Spinner)
+      +ClackRenderer(spinner: Spinner)
+    }
+
+    class Banner {
+      +buildBanner(meta: object, options: object) string
     }
 
     class Spinner {
@@ -209,6 +213,7 @@ classDiagram
   LicenseWizard ..> FlagParser : reads defaults from
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
+  LicenseWizard ..> Banner : renders
   LicenseWizard ..> Orchestrator : creates
   LicenseWizard ..> SpdxLicenseSource : creates
   LicenseWizard ..> LicenseRepository : creates
