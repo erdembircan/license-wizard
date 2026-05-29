@@ -1,9 +1,9 @@
 import { styleText } from "node:util";
 
 const WIZARD_GLYPH = "🧙";
-// Indentation for the description/version rows so they align under the name:
+// Columns the description/version rows are indented so they align under the name:
 // the glyph renders double-width on modern terminals, plus the two trailing spaces.
-const TEXT_INDENT = "    ";
+const TEXT_INDENT = 4;
 
 /**
  * Builds the CLI startup header: the wizard glyph followed by the package name,
@@ -20,13 +20,14 @@ export function buildBanner(
 ): string {
   const { name, description, version } = meta;
   const versionLine = `v${version}`;
+  const indent = " ".repeat(TEXT_INDENT);
   const color = options.color ?? true;
 
   if (!color) {
     return [
       `${WIZARD_GLYPH}  ${name}`,
-      `${TEXT_INDENT}${description}`,
-      `${TEXT_INDENT}${versionLine}`,
+      `${indent}${description}`,
+      `${indent}${versionLine}`,
     ].join("\n");
   }
 
@@ -36,7 +37,7 @@ export function buildBanner(
 
   return [
     `${WIZARD_GLYPH}  ${styleText(["bold", "blue"], name, opts)}`,
-    `${TEXT_INDENT}${styleText("dim", description, opts)}`,
-    `${TEXT_INDENT}${styleText("dim", versionLine, opts)}`,
+    `${indent}${styleText("dim", description, opts)}`,
+    `${indent}${styleText("dim", versionLine, opts)}`,
   ].join("\n");
 }
