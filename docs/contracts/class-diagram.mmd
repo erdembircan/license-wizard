@@ -24,7 +24,11 @@ classDiagram
     }
 
     class ClackRenderer {
-      +ClackRenderer(introLabel: string, spinner: Spinner)
+      +ClackRenderer(meta: object, spinner: Spinner)
+    }
+
+    class Banner {
+      +buildBanner(meta: object, options: object) string
     }
 
     class Spinner {
@@ -205,6 +209,7 @@ classDiagram
   Orchestrator ..> QuestionLifecycle : creates
   ClackRenderer ..|> IRenderer : implements
   ClackRenderer ..> Spinner : uses
+  ClackRenderer ..> Banner : renders
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> FlagParser : reads defaults from
   LicenseWizard ..> QuestionRepository : creates

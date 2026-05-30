@@ -12,6 +12,7 @@ import { ProjectManifestRepository } from "@configuration/ProjectManifestReposit
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
+import pkg from "../package.json" with { type: "json" };
 
 /**
  * Entry point for the license-wizard CLI application.
@@ -91,7 +92,11 @@ export class LicenseWizard {
    */
   async run() {
     const questions = await this.#buildQuestions();
-    const renderer = new ClackRenderer("license-wizard");
+    const renderer = new ClackRenderer({
+      name: pkg.name,
+      description: pkg.description,
+      version: pkg.version,
+    });
     const repository = new QuestionRepository(questions);
     const orchestrator = new Orchestrator(repository, renderer);
 

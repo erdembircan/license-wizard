@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import { styleText } from "node:util";
+import { buildBanner } from "@cli/Banner.js";
 import type { Answer } from "@cli/Answer.js";
 import type { IRenderer } from "@cli/interfaces/IRenderer.js";
 import type {
@@ -23,14 +23,31 @@ export class ClackRenderer implements IRenderer {
   readonly #spinner: Spinner;
 
   /**
-   * Creates a new ClackRenderer and immediately displays the intro label.
+   * Creates a new ClackRenderer and renders the startup banner.
    *
-   * @param introLabel - The label shown in the intro banner.
+   * @param meta - The application name, description, and version shown in the banner.
    * @param spinner - Optional spinner instance; defaults to a new Spinner.
    */
-  constructor(introLabel: string, spinner: Spinner = new Spinner()) {
-    clack.intro(styleText("inverse", ` ${introLabel} `));
+  constructor(
+    meta: { name: string; description: string; version: string },
+    spinner: Spinner = new Spinner(),
+  ) {
     this.#spinner = spinner;
+    process.stdout.write(
+      buildBanner(meta, { color: this.#supportsColor() }) + "\n",
+    );
+  }
+
+  /**
+   * Reports whether the output stream can display ANSI color, so the banner is
+   * only styled on a capable interactive terminal.
+   */
+  #supportsColor(): boolean {
+    return (
+      process.stdout.isTTY === true &&
+      !process.env.NO_COLOR &&
+      process.env.TERM !== "dumb"
+    );
   }
 
   /**
