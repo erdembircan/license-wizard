@@ -12,6 +12,7 @@ import type {
 import { QuestionRepository } from "@cli/QuestionRepository.js";
 import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { Config } from "@configuration/Config.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
@@ -85,7 +86,7 @@ export class LicenseWizard {
         }));
       },
       onAnswer: (answer, lifecycle) =>
-        this.#offerCustomization(answer, lifecycle),
+        this.#offerCustomization(answer, lifecycle, config?.tokens),
     };
 
     const saveConfigQuestion: Question = {
@@ -102,10 +103,14 @@ export class LicenseWizard {
    * license has customizable copyright slots — injects a Standard/Customize
    * question. Licenses with no slots skip the choice entirely and are written
    * as their standard text.
+   *
+   * @param savedTokens - Previously saved token values, keyed by slot token,
+   *   used to pre-fill the copyright slot questions' defaults.
    */
   async #offerCustomization(
     answer: Answer,
     lifecycle: QuestionLifecycle,
+    savedTokens?: Record<string, string>,
   ): Promise<void> {
     if (typeof answer.value !== "string" || answer.value === "") {
       return;
@@ -120,18 +125,25 @@ export class LicenseWizard {
       return;
     }
 
-    lifecycle.inject([this.#buildGenerationModeQuestion(slots)]);
+    lifecycle.inject([this.#buildGenerationModeQuestion(slots, savedTokens)]);
   }
 
   /**
    * Builds the Standard/Customize select. Choosing "customize" injects one text
-   * question per copyright slot, labeled by the slot's placeholder text.
+   * question per copyright slot, labeled by the slot's placeholder text and
+   * pre-filled with any previously saved value for that token.
+   *
+   * @param savedTokens - Previously saved token values, keyed by slot token.
    */
-  #buildGenerationModeQuestion(slots: TemplateSlot[]): SelectQuestion {
+  #buildGenerationModeQuestion(
+    slots: TemplateSlot[],
+    savedTokens?: Record<string, string>,
+  ): SelectQuestion {
     const slotQuestions: TextQuestion[] = slots.map((slot) => ({
       id: slot.token,
       text: slot.label,
       type: "text",
+      defaultValue: savedTokens?.[slot.token],
     }));
 
     return {
@@ -180,15 +192,23 @@ export class LicenseWizard {
     const licenseAnswer = answers.find((a) => a.questionId === "license");
     const saveConfigAnswer = answers.find((a) => a.questionId === "saveConfig");
 
+    const slotValues =
+      typeof licenseAnswer?.value === "string"
+        ? this.#slotValuesFrom(licenseAnswer.fields)
+        : {};
+
     if (
       saveConfigAnswer?.value === true &&
       typeof licenseAnswer?.value === "string"
     ) {
-      await this.#config.write({ licenseId: licenseAnswer.value });
+      const config: WizardConfig = { licenseId: licenseAnswer.value };
+      if (Object.keys(slotValues).length > 0) {
+        config.tokens = slotValues;
+      }
+      await this.#config.write(config);
     }
 
     if (typeof licenseAnswer?.value === "string") {
-      const slotValues = this.#slotValuesFrom(licenseAnswer.fields);
       await this.#licenseGenerator.generate(licenseAnswer.value, slotValues);
       await this.#manifests.writeLicense(licenseAnswer.value);
     }
