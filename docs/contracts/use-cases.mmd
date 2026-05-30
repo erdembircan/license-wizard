@@ -2,7 +2,7 @@ flowchart TD
     A([User runs: license-wizard]) --> LW[License Wizard]
     A -.->|flags| FL([Flags])
     FL -.-> LW
-    LW -.->|reads| LC[/License config file/]
+    LW -.->|reads license id<br/>+ saved tokens| LC[/License config file/]
     LW -.->|reads license<br/>by manifest priority| PJ[/Project manifests/]
 
     LW --> M{--verify flag?}
@@ -16,7 +16,7 @@ flowchart TD
         D --> E[Receive answer<br/>user accepts default or provides value]
         E --> INJ{answer injects<br/>follow-up questions?}
         INJ -->|license has customizable fields| MODE[Inject Standard / Customize choice]
-        INJ -->|Customize selected| FIELDS[Inject one question per copyright field]
+        INJ -->|Customize selected| FIELDS[Inject one question per copyright field<br/>defaults pre-filled from saved tokens]
         INJ -->|none| F
         MODE --> F
         FIELDS --> F
@@ -26,7 +26,7 @@ flowchart TD
     end
 
     OG -->|options object| LW
-    LW -->|writes| LC
+    LW -->|writes license id<br/>+ tokens| LC
     LW --> G[License is generated]
     G -->|writes license id<br/>to all present manifests| PJ
     G --> H([Done])

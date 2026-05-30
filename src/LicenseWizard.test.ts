@@ -24,6 +24,7 @@ const state = vi.hoisted(() => {
   const self = {
     rendered: [] as Question[],
     config: null as WizardConfig | null,
+    writtenConfig: null as WizardConfig | null,
     projectLicense: null as string | null,
     writtenProjectLicense: null as string | null,
     detail: defaultDetail(),
@@ -33,6 +34,7 @@ const state = vi.hoisted(() => {
     reset() {
       self.rendered = [];
       self.config = null;
+      self.writtenConfig = null;
       self.projectLicense = null;
       self.writtenProjectLicense = null;
       self.detail = defaultDetail();
@@ -58,14 +60,16 @@ vi.mock("@cli/ClackRenderer.js", () => ({
   }),
 }));
 
-// Stub config reads so each test controls the saved value; writes are no-ops.
+// Stub config reads so each test controls the saved value; writes are captured.
 vi.mock("@configuration/Config.js", () => ({
   Config: vi.fn(function (this: {
     read: () => Promise<WizardConfig | null>;
-    write: () => Promise<void>;
+    write: (config: WizardConfig) => Promise<void>;
   }) {
     this.read = async () => state.config;
-    this.write = async () => {};
+    this.write = async (config: WizardConfig) => {
+      state.writtenConfig = config;
+    };
   }),
 }));
 
@@ -217,6 +221,102 @@ describe("LicenseWizard customization flow", () => {
         },
       },
     ]);
+  });
+
+  it("pre-fills slot questions with token values saved in the config", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
+    state.config = {
+      licenseId: "MIT",
+      tokens: {
+        "<year>": "2024",
+        "<copyright holders>": "Saved Holder",
+      },
+    };
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "generationMode") return "customize";
+      if (q.type === "confirm") return false;
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    const slotQuestions = state.rendered.filter(
+      (q) => q.id === "<year>" || q.id === "<copyright holders>",
+    );
+    expect(
+      slotQuestions.map((q) => ({ id: q.id, defaultValue: q.defaultValue })),
+    ).toEqual([
+      { id: "<year>", defaultValue: "2024" },
+      { id: "<copyright holders>", defaultValue: "Saved Holder" },
+    ]);
+  });
+});
+
+describe("LicenseWizard config write-back", () => {
+  beforeEach(() => {
+    state.reset();
+  });
+
+  it("persists the collected token values under `tokens` on the customize path", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "generationMode") return "customize";
+      if (q.id === "<year>") return "2026";
+      if (q.id === "<copyright holders>") return "Erdem Bircan";
+      if (q.id === "saveConfig") return true;
+      if (q.type === "confirm") return false;
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.writtenConfig).toEqual({
+      licenseId: "MIT",
+      tokens: {
+        "<year>": "2026",
+        "<copyright holders>": "Erdem Bircan",
+      },
+    });
+  });
+
+  it("omits `tokens` when the standard path collects no slot values", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "generationMode") return "standard";
+      if (q.id === "saveConfig") return true;
+      if (q.type === "confirm") return false;
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
+  });
+
+  it("does not write config when the user declines to save", async () => {
+    state.answer = (q: Question): string | boolean => {
+      if (q.type === "confirm") return false;
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.writtenConfig).toBeNull();
   });
 });
 

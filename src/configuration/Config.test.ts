@@ -108,6 +108,21 @@ describe("Config", () => {
       expect(result).toEqual(wizardConfig);
     });
 
+    it("returns the saved token values alongside the license id", async () => {
+      const wizardConfig: WizardConfig = {
+        licenseId: "MIT",
+        tokens: { "<year>": "2026", "<copyright holders>": "Erdem Bircan" },
+      };
+      const reader = new FakeReader({
+        [RC_FILE]: JSON.stringify(wizardConfig),
+      });
+      const config = makeConfig(reader);
+
+      const result = await config.read();
+
+      expect(result).toEqual(wizardConfig);
+    });
+
     it("returns null when neither .licensewizardrc.json nor package.json license-wizard field exist", async () => {
       const reader = new FakeReader();
       const config = makeConfig(reader);
@@ -183,6 +198,21 @@ describe("Config", () => {
 
       const written = JSON.parse(writer.written.get(RC_FILE)!);
       expect(written).toEqual(wizardConfig);
+    });
+
+    it("serializes the token values so they survive a write/read round-trip", async () => {
+      const writer = new FakeWriter();
+      const reader = new FakeReader();
+      const config = new Config(reader, writer);
+      const wizardConfig: WizardConfig = {
+        licenseId: "MIT",
+        tokens: { "<year>": "2026", "<copyright holders>": "Erdem Bircan" },
+      };
+
+      await config.write(wizardConfig);
+      const roundTripped = JSON.parse(writer.written.get(RC_FILE)!);
+
+      expect(roundTripped).toEqual(wizardConfig);
     });
 
     it("throws FileSystemWriterError when the writer fails", async () => {

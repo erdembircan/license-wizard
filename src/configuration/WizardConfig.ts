@@ -3,4 +3,5 @@
  */
 export type WizardConfig = {
   licenseId: string;
+  tokens?: Record<string, string>;
 };
