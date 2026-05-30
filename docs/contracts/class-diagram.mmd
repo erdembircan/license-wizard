@@ -80,6 +80,21 @@ classDiagram
       +hint: string
     }
 
+    class SelectQuestion {
+      +id: string
+      +text: string
+      +type: "select"
+      +options: SelectOption[]
+      +defaultValue: string
+      +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
+    }
+
+    class SelectOption {
+      +value: string
+      +label: string
+      +hint: string
+    }
+
     class Answer {
       +questionId: string
       +value: string | boolean
@@ -119,11 +134,23 @@ classDiagram
       +licenseId: string
       +name: string
       +licenseText: string
+      +standardLicenseTemplate?: string
+    }
+
+    class LicenseTemplate {
+      +LicenseTemplate(template: string)
+      +slots() TemplateSlot[]
+      +render(values: Record~string, string~) string
+    }
+
+    class TemplateSlot {
+      +token: string
+      +label: string
     }
 
     class LicenseGenerator {
       +LicenseGenerator(repository: LicenseRepository, writer: IFileSystemWriter)
-      +generate(licenseId: string) Promise~void~
+      +generate(licenseId: string, slotValues?: Record~string, string~) Promise~void~
     }
   }
 
@@ -203,9 +230,12 @@ classDiagram
   TextQuestion ..|> Question : member of
   ConfirmQuestion ..|> Question : member of
   AutocompleteQuestion ..|> Question : member of
+  SelectQuestion ..|> Question : member of
   TextQuestion ..> QuestionLifecycle : onAnswer receives
   ConfirmQuestion ..> QuestionLifecycle : onAnswer receives
   AutocompleteQuestion ..> QuestionLifecycle : onAnswer receives
+  SelectQuestion ..> QuestionLifecycle : onAnswer receives
+  SelectQuestion ..> SelectOption : offers
   Orchestrator ..> QuestionLifecycle : creates
   ClackRenderer ..|> IRenderer : implements
   ClackRenderer ..> Spinner : uses
@@ -231,6 +261,9 @@ classDiagram
   LicenseRepository ..> LicenseRepositoryError : throws
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
+  LicenseGenerator ..> LicenseTemplate : uses
+  LicenseTemplate ..> TemplateSlot : produces
+  LicenseWizard ..> LicenseTemplate : creates
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
   NodeFileSystemReader ..> FileSystemReaderError : throws

@@ -15,6 +15,7 @@ const makeSource = (): ILicenseSource => ({
       licenseId: "MIT",
       name: "MIT License",
       licenseText: "Permission is hereby granted...",
+      standardLicenseTemplate: "",
     }),
   ),
 });
@@ -51,6 +52,7 @@ describe("LicenseGenerator", () => {
       licenseId: "MIT",
       name: "MIT License",
       licenseText: "MIT License\n\nPermission is hereby granted...",
+      standardLicenseTemplate: "",
     };
     const source = makeSource();
     vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
@@ -103,5 +105,72 @@ describe("LicenseGenerator", () => {
     await expect(generator.generate("MIT")).rejects.toThrow(
       FileSystemWriterError,
     );
+  });
+
+  it("renders the template with the given slot values when customizing", async () => {
+    const detail: LicenseDetail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "Copyright (c) <year> <copyright holders>",
+      standardLicenseTemplate:
+        '<<var;name="copyright";original="Copyright (c) <year> <copyright holders>";match=".{0,5000}">>',
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const writer = new FakeWriter();
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      writer,
+    );
+
+    await generator.generate("MIT", {
+      "<year>": "2026",
+      "<copyright holders>": "Erdem Bircan",
+    });
+
+    expect(writer.written.get("LICENSE")).toBe(
+      "Copyright (c) 2026 Erdem Bircan",
+    );
+  });
+
+  it("writes the standard license text when no slot values are provided", async () => {
+    const detail: LicenseDetail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "Copyright (c) <year> <copyright holders>",
+      standardLicenseTemplate:
+        '<<var;name="copyright";original="Copyright (c) <year> <copyright holders>";match=".{0,5000}">>',
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const writer = new FakeWriter();
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      writer,
+    );
+
+    await generator.generate("MIT", {});
+
+    expect(writer.written.get("LICENSE")).toBe(detail.licenseText);
+  });
+
+  it("writes the standard license text when the license has no template, even with slot values", async () => {
+    const detail: LicenseDetail = {
+      licenseId: "Unlicense",
+      name: "The Unlicense",
+      licenseText: "This is free and unencumbered software...",
+      standardLicenseTemplate: "",
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const writer = new FakeWriter();
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      writer,
+    );
+
+    await generator.generate("Unlicense", { "<year>": "2026" });
+
+    expect(writer.written.get("LICENSE")).toBe(detail.licenseText);
   });
 });

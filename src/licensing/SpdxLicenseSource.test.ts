@@ -15,6 +15,25 @@ const makeLicenseItem = (
 const makeIndexResponse = (licenses: ReturnType<typeof makeLicenseItem>[]) =>
   new Response(JSON.stringify({ licenses }), { status: 200 });
 
+const makeDetailResponse = (detail: Record<string, unknown>) =>
+  new Response(JSON.stringify(detail), { status: 200 });
+
+/**
+ * Mocks fetch to serve the index for the master index URL and a detail
+ * payload for any per-license details URL.
+ */
+const mockIndexAndDetail = (detail: Record<string, unknown>) => {
+  vi.mocked(fetch).mockImplementation((input) => {
+    const url = String(input);
+    if (url.includes("licenses.json")) {
+      return Promise.resolve(
+        makeIndexResponse([makeLicenseItem("MIT", "MIT License")]),
+      );
+    }
+    return Promise.resolve(makeDetailResponse(detail));
+  });
+};
+
 describe("SpdxLicenseSource", () => {
   beforeEach(() => {
     vi.spyOn(globalThis, "fetch");
@@ -76,6 +95,52 @@ describe("SpdxLicenseSource", () => {
       await source.search("mit");
 
       expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not re-fetch a license detail within the TTL", async () => {
+      mockIndexAndDetail({
+        licenseId: "MIT",
+        name: "MIT License",
+        licenseText: "text",
+        standardLicenseTemplate: "tmpl",
+      });
+
+      const source = new SpdxLicenseSource(60_000);
+      await source.fetchLicense("MIT");
+      await source.fetchLicense("MIT");
+
+      // One fetch for the index plus one for the detail; the second
+      // fetchLicense is served from the detail cache.
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("fetchLicense", () => {
+    it("surfaces the standardLicenseTemplate from the detail response", async () => {
+      mockIndexAndDetail({
+        licenseId: "MIT",
+        name: "MIT License",
+        licenseText: "text",
+        standardLicenseTemplate: "the-template",
+      });
+
+      const source = new SpdxLicenseSource();
+      const detail = await source.fetchLicense("MIT");
+
+      expect(detail.standardLicenseTemplate).toBe("the-template");
+    });
+
+    it("leaves standardLicenseTemplate undefined when absent", async () => {
+      mockIndexAndDetail({
+        licenseId: "MIT",
+        name: "MIT License",
+        licenseText: "text",
+      });
+
+      const source = new SpdxLicenseSource();
+      const detail = await source.fetchLicense("MIT");
+
+      expect(detail.standardLicenseTemplate).toBeUndefined();
     });
   });
 });

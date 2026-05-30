@@ -6,6 +6,12 @@ export type AutocompleteOption = {
   hint?: string;
 };
 
+export type SelectOption = {
+  value: string;
+  label: string;
+  hint?: string;
+};
+
 export type QuestionLifecycle = {
   inject: (questions: Question[]) => void;
 };
@@ -35,6 +41,16 @@ export type AutocompleteQuestion = BaseQuestion & {
   search?: (query: string) => Promise<AutocompleteOption[]>;
 };
 
-export type Question = TextQuestion | ConfirmQuestion | AutocompleteQuestion;
+export type SelectQuestion = BaseQuestion & {
+  type: "select";
+  options: SelectOption[];
+  defaultValue?: string;
+};
+
+export type Question =
+  | TextQuestion
+  | ConfirmQuestion
+  | AutocompleteQuestion
+  | SelectQuestion;
 
 export type QuestionType = Question["type"];

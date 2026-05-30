@@ -1,4 +1,5 @@
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 
 const LICENSE_FILENAME = "LICENSE";
@@ -7,8 +8,9 @@ const LICENSE_FILENAME = "LICENSE";
  * Generates a license file by fetching the selected license's text and
  * writing it to the root of the working directory.
  *
- * For now this writes the plain (non-template) license text exactly as
- * retrieved, without performing any field substitution.
+ * When slot values are supplied the license's SPDX template is rendered with
+ * those values substituted into the copyright line; otherwise the standard
+ * (non-template) license text is written exactly as retrieved.
  */
 export class LicenseGenerator {
   readonly #repository: LicenseRepository;
@@ -26,13 +28,27 @@ export class LicenseGenerator {
   }
 
   /**
-   * Fetches the license for the given SPDX identifier and writes its text to
-   * a `LICENSE` file in the working directory, overwriting any existing file.
+   * Fetches the license for the given SPDX identifier and writes it to a
+   * `LICENSE` file in the working directory, overwriting any existing file.
+   *
+   * When `slotValues` contains entries and the license has an SPDX template,
+   * the template is rendered with those values substituted into the copyright
+   * line; otherwise the standard license text is written unchanged.
    *
    * @param licenseId - The SPDX identifier of the license to generate.
+   * @param slotValues - Copyright slot values keyed by token (e.g. `{ "<year>": "2026" }`).
    */
-  async generate(licenseId: string): Promise<void> {
+  async generate(
+    licenseId: string,
+    slotValues: Record<string, string> = {},
+  ): Promise<void> {
     const detail = await this.#repository.getLicense(licenseId);
-    await this.#writer.write(LICENSE_FILENAME, detail.licenseText);
+
+    const content =
+      Object.keys(slotValues).length > 0 && detail.standardLicenseTemplate
+        ? new LicenseTemplate(detail.standardLicenseTemplate).render(slotValues)
+        : detail.licenseText;
+
+    await this.#writer.write(LICENSE_FILENAME, content);
   }
 }

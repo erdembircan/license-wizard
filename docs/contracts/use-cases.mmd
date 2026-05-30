@@ -14,7 +14,13 @@ flowchart TD
         C[Prepare question]
         C --> D[Ask question]
         D --> E[Receive answer<br/>user accepts default or provides value]
-        E --> F{more questions?}
+        E --> INJ{answer injects<br/>follow-up questions?}
+        INJ -->|license has customizable fields| MODE[Inject Standard / Customize choice]
+        INJ -->|Customize selected| FIELDS[Inject one question per copyright field]
+        INJ -->|none| F
+        MODE --> F
+        FIELDS --> F
+        F{more questions?}
         F -->|Yes| C
         F -->|No| OG[Generate options object]
     end
