@@ -130,7 +130,7 @@ describe("SpdxLicenseSource", () => {
       expect(detail.standardLicenseTemplate).toBe("the-template");
     });
 
-    it("defaults standardLicenseTemplate to an empty string when absent", async () => {
+    it("leaves standardLicenseTemplate undefined when absent", async () => {
       mockIndexAndDetail({
         licenseId: "MIT",
         name: "MIT License",
@@ -140,7 +140,7 @@ describe("SpdxLicenseSource", () => {
       const source = new SpdxLicenseSource();
       const detail = await source.fetchLicense("MIT");
 
-      expect(detail.standardLicenseTemplate).toBe("");
+      expect(detail.standardLicenseTemplate).toBeUndefined();
     });
   });
 });

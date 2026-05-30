@@ -139,7 +139,7 @@ export class SpdxLicenseSource implements ILicenseSource {
       licenseId: data.licenseId,
       name: data.name,
       licenseText: data.licenseText,
-      standardLicenseTemplate: data.standardLicenseTemplate ?? "",
+      standardLicenseTemplate: data.standardLicenseTemplate,
     };
 
     this.#detailCache.set(key, { data: detail, cachedAt: Date.now() });

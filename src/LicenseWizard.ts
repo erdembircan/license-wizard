@@ -112,7 +112,9 @@ export class LicenseWizard {
     }
 
     const detail = await this.#licenseRepository.getLicense(answer.value);
-    const slots = new LicenseTemplate(detail.standardLicenseTemplate).slots();
+    const slots = new LicenseTemplate(
+      detail.standardLicenseTemplate ?? "",
+    ).slots();
 
     if (slots.length === 0) {
       return;
