@@ -102,8 +102,8 @@ Usage: license-wizard [options]
 
 Options:
   --help               Show this help message and exit.
-  --verify             Check that the existing LICENSE file matches the saved configuration instead of running the wizard.
-  --license <spdx-id>  Pre-select a license by its SPDX identifier (e.g. MIT); used as the default for the license prompt.
+  --verify             Verify the LICENSE file matches the saved configuration.
+  --license <spdx-id>  Pre-select a license by its SPDX identifier.
 ```
 
 ## Configuration

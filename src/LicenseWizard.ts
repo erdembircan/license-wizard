@@ -52,14 +52,12 @@ export class LicenseWizard {
       verify: {
         type: "boolean",
         default: false,
-        description:
-          "Check that the existing LICENSE file matches the saved configuration instead of running the wizard.",
+        description: "Verify the LICENSE file matches the saved configuration.",
       },
       license: {
         type: "string",
         default: "",
-        description:
-          "Pre-select a license by its SPDX identifier (e.g. MIT); used as the default for the license prompt.",
+        description: "Pre-select a license by its SPDX identifier.",
         placeholder: "<spdx-id>",
       },
     });
