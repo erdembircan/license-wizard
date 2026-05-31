@@ -17,11 +17,11 @@
 
 Most projects declare a license in `package.json` or `composer.json`, yet the actual `LICENSE` file at the repository root is a separate, manual step. You have to track down the canonical text, fill in copyright placeholders, and keep the declared license and the file in sync. It's easy to forget — leaving repositories with a declared license but no real `LICENSE` file, or text that subtly differs from the official source.
 
-License Wizard closes that gap. It walks you through choosing a license, pulls the canonical [SPDX](https://spdx.org/licenses/) text, fills in your copyright details, and writes a proper `LICENSE` file — then records the choice back into your project's manifests so everything stays consistent.
+License Wizard closes that gap. It walks you through choosing a license, pulls the canonical SPDX text, fills in your copyright details, and writes a proper `LICENSE` file — then records the choice back into your project's manifests so everything stays consistent.
 
 ## Features
 
-- **Full SPDX catalog** — search and pick from the complete, up-to-date [SPDX License List](https://spdx.org/licenses/) with type-ahead autocomplete.
+- **Full SPDX catalog** — search and pick from the complete, up-to-date SPDX License List with type-ahead autocomplete.
 - **Canonical text, every time** — license text comes straight from the official SPDX data, so there are no hand-copied variations.
 - **Copyright customization** — for licenses with fillable fields (copyright holder, year, and similar), choose **Standard** to use the official text as-is, or **Customize** to fill in each field.
 - **Manifest-aware** — reads the license already declared in your `package.json` or `composer.json` to pre-select a sensible default, and writes your final choice back to every manifest it finds.
