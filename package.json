@@ -9,6 +9,12 @@
   },
   "author": "Erdem Bircan",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/erdembircan/license-wizard.git"
+  },
+  "homepage": "https://github.com/erdembircan/license-wizard#readme",
+  "bugs": "https://github.com/erdembircan/license-wizard/issues",
   "bin": {
     "license-wizard": "bin/license-wizard.js"
   },
