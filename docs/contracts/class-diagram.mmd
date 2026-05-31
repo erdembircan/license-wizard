@@ -10,6 +10,7 @@ classDiagram
     class FlagParser {
       +FlagParser(flags: object)
       +parse(args: string[]) object
+      +formatHelp() string
     }
 
     class Orchestrator {

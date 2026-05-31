@@ -42,11 +42,7 @@ export class LicenseWizard {
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
-    const flagParser = new FlagParser({
-      verify: { type: "boolean", default: false },
-      license: { type: "string", default: "" },
-    });
-    this.#flags = flagParser.parse(args);
+    this.#flags = this.#parseFlags(args);
 
     const reader = new NodeFileSystemReader();
     const writer = new NodeFileSystemWriter();
@@ -62,6 +58,41 @@ export class LicenseWizard {
       this.#licenseRepository,
       writer,
     );
+  }
+
+  /**
+   * Parses the raw CLI arguments against the supported flag definitions and
+   * returns the resolved flag values.
+   *
+   * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
+   */
+  #parseFlags(args: string[]) {
+    return this.#createFlagParser().parse(args);
+  }
+
+  /**
+   * Builds the flag parser configured with every supported flag and its help
+   * metadata. Shared by argument parsing and the `--help` listing.
+   */
+  #createFlagParser() {
+    return new FlagParser({
+      help: {
+        type: "boolean",
+        default: false,
+        description: "Show this help message and exit.",
+      },
+      verify: {
+        type: "boolean",
+        default: false,
+        description: "Verify the LICENSE file matches the saved configuration.",
+      },
+      license: {
+        type: "string",
+        default: "",
+        description: "Pre-select a license by its SPDX identifier.",
+        placeholder: "<spdx-id>",
+      },
+    });
   }
 
   /**
@@ -172,12 +203,28 @@ export class LicenseWizard {
   }
 
   /**
+   * Writes the usage screen — the program invocation followed by the listing
+   * of every supported flag — to stdout.
+   */
+  #printHelp(): void {
+    process.stdout.write(
+      `Usage: ${pkg.name} [options]\n\nOptions:\n${this.#createFlagParser().formatHelp()}\n`,
+    );
+  }
+
+  /**
    * Runs the interactive wizard, collects answers, persists configuration when
    * the user opts in, writes the selected license to a `LICENSE` file in the
    * working directory, and records the selection in every project manifest
    * present (`composer.json`, `package.json`). Returns the collected answers.
+   * When `--help` is passed, prints the usage screen and exits without running.
    */
   async run() {
+    if (this.#flags.help) {
+      this.#printHelp();
+      return [];
+    }
+
     const questions = await this.#buildQuestions();
     const renderer = new ClackRenderer({
       name: pkg.name,

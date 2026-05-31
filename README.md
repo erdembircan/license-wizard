@@ -89,6 +89,16 @@ npx license-wizard --license MIT
 
 The value is used as the default for the license prompt, so you can confirm it with a single keystroke.
 
+### Available flags
+
+| Flag | Description |
+| --- | --- |
+| `--help` | Show this help message and exit. |
+| `--verify` | Verify the LICENSE file matches the saved configuration. |
+| `--license <spdx-id>` | Pre-select a license by its SPDX identifier. |
+
+Run `npx license-wizard --help` to print the same list from the CLI.
+
 ## Configuration
 
 License Wizard can remember your license choice so subsequent runs start from a known default. Configuration is read from one of two sources, in order of precedence:
