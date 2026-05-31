@@ -5,7 +5,13 @@ flowchart TD
     LW -.->|reads license id<br/>+ saved tokens| LC[/License config file/]
     LW -.->|reads license<br/>by manifest priority| PJ[/Project manifests/]
 
-    LW --> M{--verify flag?}
+    LW --> HELP{--help flag?}
+
+    %% ─── Help path ───
+    HELP -->|Yes| HU[Print usage + flag listing]
+    HU --> H
+
+    HELP -->|No| M{--verify flag?}
 
     %% ─── Interactive / generation path ───
     M -->|No| C

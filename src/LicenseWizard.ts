@@ -34,6 +34,7 @@ export class LicenseWizard {
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
+  readonly #flagParser;
   readonly #flags;
 
   /**
@@ -43,9 +44,26 @@ export class LicenseWizard {
    */
   constructor(args: string[]) {
     const flagParser = new FlagParser({
-      verify: { type: "boolean", default: false },
-      license: { type: "string", default: "" },
+      help: {
+        type: "boolean",
+        default: false,
+        description: "Show this help message and exit.",
+      },
+      verify: {
+        type: "boolean",
+        default: false,
+        description:
+          "Check that the existing LICENSE file matches the saved configuration instead of running the wizard.",
+      },
+      license: {
+        type: "string",
+        default: "",
+        description:
+          "Pre-select a license by its SPDX identifier (e.g. MIT); used as the default for the license prompt.",
+        placeholder: "<spdx-id>",
+      },
     });
+    this.#flagParser = flagParser;
     this.#flags = flagParser.parse(args);
 
     const reader = new NodeFileSystemReader();
@@ -172,12 +190,28 @@ export class LicenseWizard {
   }
 
   /**
+   * Writes the usage screen — the program invocation followed by the listing
+   * of every supported flag — to stdout.
+   */
+  #printHelp(): void {
+    process.stdout.write(
+      `Usage: ${pkg.name} [options]\n\nOptions:\n${this.#flagParser.formatHelp()}\n`,
+    );
+  }
+
+  /**
    * Runs the interactive wizard, collects answers, persists configuration when
    * the user opts in, writes the selected license to a `LICENSE` file in the
    * working directory, and records the selection in every project manifest
    * present (`composer.json`, `package.json`). Returns the collected answers.
+   * When `--help` is passed, prints the usage screen and exits without running.
    */
   async run() {
+    if (this.#flags.help) {
+      this.#printHelp();
+      return [];
+    }
+
     const questions = await this.#buildQuestions();
     const renderer = new ClackRenderer({
       name: pkg.name,

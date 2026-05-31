@@ -7,6 +7,12 @@ type FlagValueType<T extends FlagType> = T extends "boolean" ? boolean : string;
 type FlagDefinition<T extends FlagType = FlagType> = {
   type: T;
   default: FlagValueType<T>;
+  description: string;
+  /**
+   * Placeholder shown after a value-accepting flag in the help listing
+   * (e.g. `<spdx-id>`). Ignored for boolean flags, which take no value.
+   */
+  placeholder?: string;
 };
 
 type FlagDefinitions = Record<string, FlagDefinition>;
@@ -61,5 +67,28 @@ export class FlagParser<T extends FlagDefinitions> {
     }
 
     return result;
+  }
+
+  /**
+   * Renders an aligned listing of every defined flag, its accepted value (for
+   * string flags) and its description, suitable for a `--help` screen.
+   */
+  formatHelp(): string {
+    const entries = Object.entries(this.#flags).map(([name, config]) => {
+      const value =
+        config.type === "string" ? ` ${config.placeholder ?? "<value>"}` : "";
+      return {
+        invocation: `--${name}${value}`,
+        description: config.description,
+      };
+    });
+
+    const width = Math.max(...entries.map((entry) => entry.invocation.length));
+
+    return entries
+      .map(
+        (entry) => `  ${entry.invocation.padEnd(width)}  ${entry.description}`,
+      )
+      .join("\n");
   }
 }
