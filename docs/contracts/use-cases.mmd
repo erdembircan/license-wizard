@@ -2,7 +2,7 @@ flowchart TD
     A([User runs: license-wizard]) --> LW[License Wizard]
     A -.->|flags| FL([Flags])
     FL -.-> LW
-    LW -.->|reads license id<br/>+ saved tokens| LC[/License config file/]
+    LW -.->|reads config: license id<br/>+ saved tokens, by store priority| LC[/Wizard config<br/>dot-file or manifest field/]
     LW -.->|reads license<br/>by manifest priority| PJ[/Project manifests/]
 
     LW --> HELP{--help flag?}
@@ -32,7 +32,7 @@ flowchart TD
     end
 
     OG -->|options object| LW
-    LW -->|writes license id<br/>+ tokens| LC
+    LW -->|saves config: license id + tokens<br/>to chosen location, clears the<br/>rest, or skips| LC
     LW --> G[License is generated]
     G -->|writes license id<br/>to all present manifests| PJ
     G --> H([Done])

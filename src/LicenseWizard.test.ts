@@ -24,7 +24,9 @@ const state = vi.hoisted(() => {
   const self = {
     rendered: [] as Question[],
     config: null as WizardConfig | null,
+    configTargets: [] as { id: string; label: string }[],
     writtenConfig: null as WizardConfig | null,
+    saveTarget: null as string | null,
     projectLicense: null as string | null,
     writtenProjectLicense: null as string | null,
     detail: defaultDetail(),
@@ -34,7 +36,9 @@ const state = vi.hoisted(() => {
     reset() {
       self.rendered = [];
       self.config = null;
+      self.configTargets = [];
       self.writtenConfig = null;
+      self.saveTarget = null;
       self.projectLicense = null;
       self.writtenProjectLicense = null;
       self.detail = defaultDetail();
@@ -60,15 +64,18 @@ vi.mock("@cli/ClackRenderer.js", () => ({
   }),
 }));
 
-// Stub config reads so each test controls the saved value; writes are captured.
+// Stub config reads/targets so each test controls them; writes are captured.
 vi.mock("@configuration/Config.js", () => ({
   Config: vi.fn(function (this: {
     read: () => Promise<WizardConfig | null>;
-    write: (config: WizardConfig) => Promise<void>;
+    targets: () => Promise<{ id: string; label: string }[]>;
+    write: (config: WizardConfig, targetId: string) => Promise<void>;
   }) {
     this.read = async () => state.config;
-    this.write = async (config: WizardConfig) => {
+    this.targets = async () => state.configTargets;
+    this.write = async (config, targetId) => {
       state.writtenConfig = config;
+      state.saveTarget = targetId;
     };
   }),
 }));
@@ -273,7 +280,7 @@ describe("LicenseWizard config write-back", () => {
       if (q.id === "generationMode") return "customize";
       if (q.id === "<year>") return "2026";
       if (q.id === "<copyright holders>") return "Erdem Bircan";
-      if (q.id === "saveConfig") return true;
+      if (q.id === "saveConfig") return ".licensewizardrc.json";
       if (q.type === "confirm") return false;
       return "MIT";
     };
@@ -298,7 +305,7 @@ describe("LicenseWizard config write-back", () => {
     };
     state.answer = (q: Question): string | boolean => {
       if (q.id === "generationMode") return "standard";
-      if (q.id === "saveConfig") return true;
+      if (q.id === "saveConfig") return ".licensewizardrc.json";
       if (q.type === "confirm") return false;
       return "MIT";
     };
@@ -308,8 +315,9 @@ describe("LicenseWizard config write-back", () => {
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
   });
 
-  it("does not write config when the user declines to save", async () => {
+  it("does not write config when the user skips saving", async () => {
     state.answer = (q: Question): string | boolean => {
+      if (q.id === "saveConfig") return "skip";
       if (q.type === "confirm") return false;
       return "MIT";
     };
@@ -329,5 +337,56 @@ describe("LicenseWizard project manifest license write-back", () => {
     await new LicenseWizard([]).run();
 
     expect(state.writtenProjectLicense).toBe("MIT");
+  });
+});
+
+describe("LicenseWizard config save", () => {
+  beforeEach(() => {
+    state.reset();
+  });
+
+  it("offers every available config target plus a skip option", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+      { id: "package.json", label: "package.json" },
+    ];
+
+    await new LicenseWizard([]).run();
+
+    const saveQuestion = state.rendered.find((q) => q.id === "saveConfig");
+    expect(saveQuestion?.type).toBe("select");
+    expect(
+      saveQuestion?.type === "select"
+        ? saveQuestion.options.map((o) => o.value)
+        : [],
+    ).toEqual([".licensewizardrc.json", "package.json", "skip"]);
+  });
+
+  it("writes the config to the chosen target", async () => {
+    state.configTargets = [{ id: "package.json", label: "package.json" }];
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "saveConfig") return "package.json";
+      if (q.type === "select") return "standard";
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.saveTarget).toBe("package.json");
+    expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
+  });
+
+  it("does not save the config when skip is chosen", async () => {
+    state.configTargets = [{ id: "package.json", label: "package.json" }];
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "select") return "standard";
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.saveTarget).toBeNull();
+    expect(state.writtenConfig).toBeNull();
   });
 });

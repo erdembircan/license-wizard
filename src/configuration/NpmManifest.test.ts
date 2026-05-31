@@ -58,6 +58,10 @@ class FakeWriter implements IFileSystemWriter {
   async write(path: string, content: string): Promise<void> {
     this.written.set(path, content);
   }
+
+  async delete(path: string): Promise<void> {
+    this.written.delete(path);
+  }
 }
 
 /**
@@ -71,6 +75,10 @@ class ThrowingWriter implements IFileSystemWriter {
   }
 
   async write(): Promise<void> {
+    throw this.#cause;
+  }
+
+  async delete(): Promise<void> {
     throw this.#cause;
   }
 }

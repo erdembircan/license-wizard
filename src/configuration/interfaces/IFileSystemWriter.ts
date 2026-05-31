@@ -9,4 +9,11 @@ export interface IFileSystemWriter {
    * @param content - The content to write.
    */
   write(path: string, content: string): Promise<void>;
+
+  /**
+   * Deletes the file at the given path. Does nothing when the file is absent.
+   *
+   * @param path - The path to the file to delete.
+   */
+  delete(path: string): Promise<void>;
 }
