@@ -34,7 +34,6 @@ export class LicenseWizard {
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
-  readonly #flagParser;
   readonly #flags;
 
   /**
@@ -43,7 +42,40 @@ export class LicenseWizard {
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
-    const flagParser = new FlagParser({
+    this.#flags = this.#parseFlags(args);
+
+    const reader = new NodeFileSystemReader();
+    const writer = new NodeFileSystemWriter();
+    this.#config = new Config(reader, writer);
+    this.#manifests = new ProjectManifestRepository([
+      new ComposerManifest(reader, writer),
+      new NpmManifest(reader, writer),
+    ]);
+
+    const licenseSource = new SpdxLicenseSource();
+    this.#licenseRepository = new LicenseRepository(licenseSource);
+    this.#licenseGenerator = new LicenseGenerator(
+      this.#licenseRepository,
+      writer,
+    );
+  }
+
+  /**
+   * Parses the raw CLI arguments against the supported flag definitions and
+   * returns the resolved flag values.
+   *
+   * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
+   */
+  #parseFlags(args: string[]) {
+    return this.#createFlagParser().parse(args);
+  }
+
+  /**
+   * Builds the flag parser configured with every supported flag and its help
+   * metadata. Shared by argument parsing and the `--help` listing.
+   */
+  #createFlagParser() {
+    return new FlagParser({
       help: {
         type: "boolean",
         default: false,
@@ -61,23 +93,6 @@ export class LicenseWizard {
         placeholder: "<spdx-id>",
       },
     });
-    this.#flagParser = flagParser;
-    this.#flags = flagParser.parse(args);
-
-    const reader = new NodeFileSystemReader();
-    const writer = new NodeFileSystemWriter();
-    this.#config = new Config(reader, writer);
-    this.#manifests = new ProjectManifestRepository([
-      new ComposerManifest(reader, writer),
-      new NpmManifest(reader, writer),
-    ]);
-
-    const licenseSource = new SpdxLicenseSource();
-    this.#licenseRepository = new LicenseRepository(licenseSource);
-    this.#licenseGenerator = new LicenseGenerator(
-      this.#licenseRepository,
-      writer,
-    );
   }
 
   /**
@@ -193,7 +208,7 @@ export class LicenseWizard {
    */
   #printHelp(): void {
     process.stdout.write(
-      `Usage: ${pkg.name} [options]\n\nOptions:\n${this.#flagParser.formatHelp()}\n`,
+      `Usage: ${pkg.name} [options]\n\nOptions:\n${this.#createFlagParser().formatHelp()}\n`,
     );
   }
 
