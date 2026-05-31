@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/erdembircan/license-wizard/master/assets/logo.png" alt="License Wizard" width="320" />
+<img src="assets/logo.png" alt="License Wizard" width="320" />
 
 <p><em>An interactive CLI for picking an open-source license and generating a correct <code>LICENSE</code> file — in seconds.</em></p>
 
