@@ -12,11 +12,13 @@ import type {
 import { QuestionRepository } from "@cli/QuestionRepository.js";
 import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { Config } from "@configuration/Config.js";
-import type { WizardConfig } from "@configuration/WizardConfig.js";
+import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
+import { RcConfigStore } from "@configuration/RcConfigStore.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
@@ -25,6 +27,10 @@ import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import pkg from "../package.json" with { type: "json" };
 
 const GENERATION_MODE_ID = "generationMode";
+const SAVE_CONFIG_ID = "saveConfig";
+const SKIP_SAVE = "skip";
+const PACKAGE_JSON = "package.json";
+const COMPOSER_JSON = "composer.json";
 
 /**
  * Entry point for the license-wizard CLI application.
@@ -46,7 +52,11 @@ export class LicenseWizard {
 
     const reader = new NodeFileSystemReader();
     const writer = new NodeFileSystemWriter();
-    this.#config = new Config(reader, writer);
+    this.#config = new Config([
+      new RcConfigStore(reader, writer),
+      new ManifestConfigStore(reader, writer, PACKAGE_JSON),
+      new ManifestConfigStore(reader, writer, COMPOSER_JSON),
+    ]);
     this.#manifests = new ProjectManifestRepository([
       new ComposerManifest(reader, writer),
       new NpmManifest(reader, writer),
@@ -120,13 +130,39 @@ export class LicenseWizard {
         this.#offerCustomization(answer, lifecycle, config?.tokens),
     };
 
-    const saveConfigQuestion: Question = {
-      id: "saveConfig",
-      text: "Save config file?",
-      type: "confirm",
-    };
+    const saveConfigQuestion = await this.#buildSaveConfigQuestion();
 
     return [licenseQuestion, saveConfigQuestion];
+  }
+
+  /**
+   * Builds the save-location picker. Offers every store currently eligible as a
+   * target — the `.licensewizardrc.json` dot-file is always present, and each
+   * project manifest appears only when its file exists — plus a "skip" option.
+   * Choosing a target later writes the config there and clears it everywhere
+   * else; choosing "skip" saves nowhere and clears the config from every
+   * location.
+   */
+  async #buildSaveConfigQuestion(): Promise<SelectQuestion> {
+    const targets = await this.#config.targets();
+
+    return {
+      id: SAVE_CONFIG_ID,
+      text: "Where do you want to save the wizard config?",
+      type: "select",
+      defaultValue: targets[0]?.id ?? SKIP_SAVE,
+      options: [
+        ...targets.map((target) => ({
+          value: target.id,
+          label: target.label,
+        })),
+        {
+          value: SKIP_SAVE,
+          label: "Skip",
+          hint: "save nowhere, clear any existing",
+        },
+      ],
+    };
   }
 
   /**
@@ -213,10 +249,12 @@ export class LicenseWizard {
   }
 
   /**
-   * Runs the interactive wizard, collects answers, persists configuration when
-   * the user opts in, writes the selected license to a `LICENSE` file in the
-   * working directory, and records the selection in every project manifest
-   * present (`composer.json`, `package.json`). Returns the collected answers.
+   * Runs the interactive wizard, collects answers, persists the configuration
+   * to the chosen save location (clearing it from the others) — or, when the
+   * user skips, clears the configuration from every location — writes the
+   * selected license to a `LICENSE` file in the working
+   * directory, and records the selection in every project manifest present
+   * (`composer.json`, `package.json`). Returns the collected answers.
    * When `--help` is passed, prints the usage screen and exits without running.
    */
   async run() {
@@ -244,15 +282,16 @@ export class LicenseWizard {
         ? this.#slotValuesFrom(licenseAnswer.fields)
         : {};
 
-    if (
-      saveConfigAnswer?.value === true &&
-      typeof licenseAnswer?.value === "string"
-    ) {
-      const config: WizardConfig = { licenseId: licenseAnswer.value };
-      if (Object.keys(slotValues).length > 0) {
-        config.tokens = slotValues;
+    if (typeof saveConfigAnswer?.value === "string") {
+      if (saveConfigAnswer.value === SKIP_SAVE) {
+        await this.#config.clear();
+      } else if (typeof licenseAnswer?.value === "string") {
+        const config: WizardConfig = { licenseId: licenseAnswer.value };
+        if (Object.keys(slotValues).length > 0) {
+          config.tokens = slotValues;
+        }
+        await this.#config.write(config, saveConfigAnswer.value);
       }
-      await this.#config.write(config);
     }
 
     if (typeof licenseAnswer?.value === "string") {

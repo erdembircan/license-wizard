@@ -165,6 +165,7 @@ classDiagram
     class IFileSystemWriter {
       <<interface>>
       +write(path: string, content: string) Promise~void~
+      +delete(path: string) Promise~void~
     }
 
     class NodeFileSystemReader {
@@ -192,10 +193,35 @@ classDiagram
       +tokens?: Record~string, string~
     }
 
-    class Config {
-      +Config(reader: IFileSystemReader, writer: IFileSystemWriter)
+    class ConfigTarget {
+      +id: string
+      +label: string
+    }
+
+    class IConfigStore {
+      <<interface>>
+      +id: string
+      +label: string
+      +available() Promise~boolean~
       +read() Promise~WizardConfig | null~
       +write(config: WizardConfig) Promise~void~
+      +clear() Promise~void~
+    }
+
+    class RcConfigStore {
+      +RcConfigStore(reader: IFileSystemReader, writer: IFileSystemWriter)
+    }
+
+    class ManifestConfigStore {
+      +ManifestConfigStore(reader: IFileSystemReader, writer: IFileSystemWriter, fileName: string)
+    }
+
+    class Config {
+      +Config(stores: IConfigStore[])
+      +read() Promise~WizardConfig | null~
+      +targets() Promise~ConfigTarget[]~
+      +write(config: WizardConfig, targetId: string) Promise~void~
+      +clear() Promise~void~
     }
 
     class IProjectManifest {
@@ -270,11 +296,20 @@ classDiagram
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
   NodeFileSystemReader ..> FileSystemReaderError : throws
   NodeFileSystemWriter ..> FileSystemWriterError : throws
-  Config ..> IFileSystemReader : uses
-  Config ..> IFileSystemWriter : uses
+  Config ..> IConfigStore : coordinates
   Config ..> WizardConfig : produces
-  Config ..> FileSystemReaderError : throws
+  Config ..> ConfigTarget : produces
   Config ..> FileSystemWriterError : throws
+  RcConfigStore ..|> IConfigStore : implements
+  ManifestConfigStore ..|> IConfigStore : implements
+  RcConfigStore ..> IFileSystemReader : uses
+  RcConfigStore ..> IFileSystemWriter : uses
+  RcConfigStore ..> FileSystemReaderError : throws
+  RcConfigStore ..> FileSystemWriterError : throws
+  ManifestConfigStore ..> IFileSystemReader : uses
+  ManifestConfigStore ..> IFileSystemWriter : uses
+  ManifestConfigStore ..> FileSystemReaderError : throws
+  ManifestConfigStore ..> FileSystemWriterError : throws
   JsonManifest ..|> IProjectManifest : implements
   NpmManifest --|> JsonManifest : extends
   ComposerManifest --|> JsonManifest : extends
@@ -287,6 +322,8 @@ classDiagram
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates
   LicenseWizard ..> Config : reads defaults from
+  LicenseWizard ..> RcConfigStore : creates
+  LicenseWizard ..> ManifestConfigStore : creates
   LicenseWizard ..> NpmManifest : creates
   LicenseWizard ..> ComposerManifest : creates
   LicenseWizard ..> ProjectManifestRepository : creates

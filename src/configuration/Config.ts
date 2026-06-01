@@ -1,87 +1,94 @@
-import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
-import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import type { IConfigStore } from "@configuration/interfaces/IConfigStore.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
-import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
-const RC_FILE = ".licensewizardrc.json";
-const PACKAGE_JSON = "package.json";
-const PACKAGE_JSON_FIELD = "license-wizard";
+export type ConfigTarget = {
+  id: string;
+  label: string;
+};
 
 /**
- * Reads and writes the wizard configuration. Checks `.licensewizardrc.json`
- * first; falls back to the `"license-wizard"` field in `package.json`. Writes
- * always go to `.licensewizardrc.json`.
+ * Coordinates the wizard configuration across every store it can live in (the
+ * `.licensewizardrc.json` dot-file and the `"license-wizard"` field of each
+ * present project manifest). Reads honour store priority order; a write goes to
+ * exactly one chosen store and clears the configuration from all the others, so
+ * the configuration always has a single source of truth.
  */
 export class Config {
-  readonly #reader: IFileSystemReader;
-  readonly #writer: IFileSystemWriter;
+  readonly #stores: readonly IConfigStore[];
 
   /**
-   * Creates a new Config backed by the given reader and writer.
+   * Creates a new Config over the given stores.
    *
-   * @param reader - Used to check for and read configuration files.
-   * @param writer - Used to persist configuration changes.
+   * @param stores - The stores to coordinate, in read-priority order (the
+   *   first store that holds configuration wins).
    */
-  constructor(reader: IFileSystemReader, writer: IFileSystemWriter) {
-    this.#reader = reader;
-    this.#writer = writer;
+  constructor(stores: readonly IConfigStore[]) {
+    this.#stores = stores;
   }
 
   /**
-   * Reads the wizard configuration. Checks `.licensewizardrc.json` first,
-   * then falls back to the `"license-wizard"` field in `package.json`.
-   * Returns `null` when neither source provides configuration.
+   * Returns the configuration from the highest-priority store that holds one,
+   * or `null` when no store does.
    *
    * @throws {FileSystemReaderError} When a file system read operation fails.
    */
   async read(): Promise<WizardConfig | null> {
-    try {
-      const rcExists = await this.#reader.exists(RC_FILE);
-      if (rcExists) {
-        const raw = await this.#reader.read(RC_FILE);
-        return JSON.parse(raw) as WizardConfig;
+    for (const store of this.#stores) {
+      const config = await store.read();
+      if (config) {
+        return config;
       }
+    }
+    return null;
+  }
 
-      const pkgExists = await this.#reader.exists(PACKAGE_JSON);
-      if (pkgExists) {
-        const raw = await this.#reader.read(PACKAGE_JSON);
-        const pkg = JSON.parse(raw) as Record<string, unknown>;
-        const field = pkg[PACKAGE_JSON_FIELD];
-        if (field !== undefined) {
-          return field as WizardConfig;
-        }
+  /**
+   * Returns the stores currently eligible as save targets, in order. The
+   * dot-file is always present; a manifest appears only when its file exists.
+   */
+  async targets(): Promise<ConfigTarget[]> {
+    const targets: ConfigTarget[] = [];
+    for (const store of this.#stores) {
+      if (await store.available()) {
+        targets.push({ id: store.id, label: store.label });
       }
+    }
+    return targets;
+  }
 
-      return null;
-    } catch (cause) {
-      if (cause instanceof FileSystemReaderError) {
-        throw cause;
+  /**
+   * Writes the configuration to the store identified by `targetId` and clears
+   * it from every other store, keeping a single source of truth.
+   *
+   * @param config - The configuration to write.
+   * @param targetId - The id of the store to write to.
+   * @throws {FileSystemWriterError} When the target is unknown or a file system
+   *   operation fails.
+   */
+  async write(config: WizardConfig, targetId: string): Promise<void> {
+    const target = this.#stores.find((store) => store.id === targetId);
+    if (!target) {
+      throw new FileSystemWriterError(`Unknown config target: ${targetId}`);
+    }
+
+    await target.write(config);
+    for (const store of this.#stores) {
+      if (store !== target) {
+        await store.clear();
       }
-      throw new FileSystemReaderError(
-        "Failed to read wizard configuration",
-        cause,
-      );
     }
   }
 
   /**
-   * Persists the given configuration to `.licensewizardrc.json`.
+   * Clears the configuration from every store, leaving none behind. Used when
+   * the user declines to save so no stale configuration lingers in any location.
    *
-   * @param config - The configuration to write.
-   * @throws {FileSystemWriterError} When the write operation fails.
+   * @throws {FileSystemWriterError} When a file system operation fails.
    */
-  async write(config: WizardConfig): Promise<void> {
-    try {
-      await this.#writer.write(RC_FILE, JSON.stringify(config, null, 2));
-    } catch (cause) {
-      if (cause instanceof FileSystemWriterError) {
-        throw cause;
-      }
-      throw new FileSystemWriterError(
-        "Failed to write wizard configuration",
-        cause,
-      );
+  async clear(): Promise<void> {
+    for (const store of this.#stores) {
+      await store.clear();
     }
   }
 }

@@ -31,4 +31,23 @@ export class NodeFileSystemWriter implements IFileSystemWriter {
       );
     }
   }
+
+  /**
+   * Deletes the file at the given path, resolved relative to the current
+   * working directory. Treats a missing file as success.
+   *
+   * @param filePath - The path to the file to delete.
+   * @throws {FileSystemWriterError} When the delete operation fails.
+   */
+  async delete(filePath: string): Promise<void> {
+    const resolved = path.resolve(process.cwd(), filePath);
+    try {
+      await fs.rm(resolved, { force: true });
+    } catch (cause) {
+      throw new FileSystemWriterError(
+        `Failed to delete file: ${resolved}`,
+        cause,
+      );
+    }
+  }
 }
