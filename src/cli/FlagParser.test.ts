@@ -103,6 +103,57 @@ describe("FlagParser", () => {
     });
   });
 
+  describe("list flags", () => {
+    it("returns an empty array for a list flag that is not present in args", () => {
+      const parser = new FlagParser({
+        set: {
+          type: "list",
+          default: [],
+          description: "Set a field.",
+          placeholder: "<field=value>",
+        },
+      });
+      expect(parser.parse([])).toEqual({ set: [] });
+    });
+
+    it("collects a single occurrence into a one-element array", () => {
+      const parser = new FlagParser({
+        set: {
+          type: "list",
+          default: [],
+          description: "Set a field.",
+        },
+      });
+      expect(parser.parse(["--set", "year=2026"])).toEqual({
+        set: ["year=2026"],
+      });
+    });
+
+    it("collects every occurrence of a repeated list flag in order", () => {
+      const parser = new FlagParser({
+        set: {
+          type: "list",
+          default: [],
+          description: "Set a field.",
+        },
+      });
+      expect(
+        parser.parse(["--set", "year=2026", "--set", "holders=Erdem"]),
+      ).toEqual({ set: ["year=2026", "holders=Erdem"] });
+    });
+
+    it("coexists with boolean and string flags", () => {
+      const parser = new FlagParser({
+        license: { type: "string", default: "", description: "License." },
+        set: { type: "list", default: [], description: "Set a field." },
+        tokens: { type: "boolean", default: false, description: "List." },
+      });
+      expect(
+        parser.parse(["--license", "MIT", "--set", "year=2026", "--tokens"]),
+      ).toEqual({ license: "MIT", set: ["year=2026"], tokens: true });
+    });
+  });
+
   it("silently ignores boolean-style unknown flags", () => {
     const parser = new FlagParser({
       verbose: { type: "boolean", default: false, description: "Be verbose." },
@@ -166,6 +217,18 @@ describe("FlagParser", () => {
         },
       });
       expect(parser.formatHelp()).toContain("--output <value>");
+    });
+
+    it("shows a repeatable placeholder for list flags", () => {
+      const parser = new FlagParser({
+        set: {
+          type: "list",
+          default: [],
+          description: "Set a field.",
+          placeholder: "<field=value>",
+        },
+      });
+      expect(parser.formatHelp()).toContain("--set <field=value>...");
     });
 
     it("does not append a value placeholder to boolean flags", () => {

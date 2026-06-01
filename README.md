@@ -79,15 +79,54 @@ When you're done, License Wizard:
 - writes the license to a `LICENSE` file in the current directory, and
 - records the selected SPDX identifier in every project manifest it finds (`package.json`, `composer.json`).
 
-### Pre-selecting a license
+### Non-interactive mode (scripting & agents)
 
-Skip the search by passing the SPDX identifier up front:
+Passing any of `--license`, `--set`, or `--get-tokens` switches License Wizard out of the interactive prompt flow and runs it as a single command — no prompts, suitable for scripts, CI, and AI agents.
+
+Generate a license in one shot with `--license`:
 
 ```bash
 npx license-wizard --license MIT
 ```
 
-The value is used as the default for the license prompt, so you can confirm it with a single keystroke.
+This writes the official MIT text to `LICENSE` and records `MIT` in every project manifest present — no questions asked.
+
+#### Customizing copyright fields
+
+Some licenses have fillable copyright fields (such as the year and copyright holder). To find out which fields a license accepts, ask for them with `--get-tokens`:
+
+```bash
+$ npx license-wizard --license MIT --get-tokens
+MIT accepts the following copyright field(s):
+
+  year
+  copyright holders
+
+Generate a customized license by supplying every field, e.g.:
+
+  license-wizard --license MIT --set "year=<value>" --set "copyright holders=<value>"
+
+Omit --set to write the official text unchanged.
+```
+
+Then supply each field with a repeatable `--set "field=value"` flag:
+
+```bash
+npx license-wizard --license MIT --set "year=2026" --set "copyright holders=Erdem Bircan"
+```
+
+If you start customizing but leave out a required field, License Wizard does **not** generate a partial file — it tells you exactly which fields are still needed and exits with a non-zero status, so both you and any calling agent know what to provide:
+
+```bash
+$ npx license-wizard --license MIT --set "year=2026"
+Cannot generate a customized MIT license: missing required field(s):
+
+  copyright holders
+
+Supply every field (e.g. --set "copyright holders=<value>"), or run with --get-tokens to list them all.
+```
+
+A field name may be given either as its label (e.g. `year`, case-insensitive) or as its bracket token (e.g. `<year>`). Omit `--set` entirely to write the official text unchanged.
 
 ### Available flags
 
@@ -95,7 +134,9 @@ The value is used as the default for the license prompt, so you can confirm it w
 | --- | --- |
 | `--help` | Show this help message and exit. |
 | `--verify` | Verify the LICENSE file matches the saved configuration. |
-| `--license <spdx-id>` | Pre-select a license by its SPDX identifier. |
+| `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively (no prompts). |
+| `--set <field=value>...` | Set a copyright field for the chosen license (repeatable). Implies non-interactive mode. |
+| `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit without generating. |
 
 Run `npx license-wizard --help` to print the same list from the CLI.
 

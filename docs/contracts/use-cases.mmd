@@ -11,7 +11,23 @@ flowchart TD
     HELP -->|Yes| HU[Print usage + flag listing]
     HU --> H
 
-    HELP -->|No| M{--verify flag?}
+    HELP -->|No| NI{--license, --set,<br/>or --get-tokens given?}
+
+    %% ─── Non-interactive CLI path ───
+    NI -->|Yes| NIL{--license given?}
+    NIL -->|No| ERRL[Error: --license required] --> H
+    NIL -->|Yes| GT{--get-tokens flag?}
+    GT -->|Yes| LT[List the copyright fields<br/>the license accepts] --> H
+    GT -->|No| HS{--set values given?}
+    HS -->|No| STD[Use official text unchanged]
+    HS -->|Yes| RES[Resolve fields against<br/>the license's copyright slots]
+    RES --> CHK{every required field<br/>supplied and recognized?}
+    CHK -->|No| NEED[Report the missing or<br/>unknown copyright fields] --> H
+    CHK -->|Yes| CUST[Render customized copyright]
+    STD --> G
+    CUST --> G
+
+    NI -->|No| M{--verify flag?}
 
     %% ─── Interactive / generation path ───
     M -->|No| C
