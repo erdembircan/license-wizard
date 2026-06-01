@@ -20,12 +20,13 @@ import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { RcConfigStore } from "@configuration/RcConfigStore.js";
-import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
+import { LicenseInstaller } from "./LicenseInstaller.js";
+import type { ConfigSave } from "./LicenseInstaller.js";
 import pkg from "../package.json" with { type: "json" };
 
 const GENERATION_MODE_ID = "generationMode";
@@ -41,7 +42,7 @@ export class LicenseWizard {
   readonly #config: Config;
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
-  readonly #licenseGenerator: LicenseGenerator;
+  readonly #installer: LicenseInstaller;
   readonly #reporter: IReporter;
   readonly #flags;
   // Maps each save flag to the target id of the config store it writes to,
@@ -79,9 +80,10 @@ export class LicenseWizard {
 
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);
-    this.#licenseGenerator = new LicenseGenerator(
-      this.#licenseRepository,
-      writer,
+    this.#installer = new LicenseInstaller(
+      this.#config,
+      this.#manifests,
+      new LicenseGenerator(this.#licenseRepository, writer),
     );
     this.#reporter = new CliReporter(pkg.name);
   }
@@ -397,9 +399,9 @@ export class LicenseWizard {
   }
 
   /**
-   * Generates the license file and records the selection in every project
-   * manifest present, optionally persisting the resolved config (license and any
-   * copyright fields) to the requested save location, then reports the result.
+   * Applies the resolved selection through the installer — persisting the config
+   * to the requested save location, writing the `LICENSE`, and recording the
+   * selection in every present manifest — then reports the result.
    *
    * @param licenseId - The SPDX identifier being generated.
    * @param slotValues - Resolved copyright slot values keyed by token.
@@ -411,16 +413,14 @@ export class LicenseWizard {
     slotValues: Record<string, string>,
     saveTarget: string,
   ): Promise<void> {
-    if (saveTarget !== "") {
-      const config: WizardConfig = { licenseId };
-      if (Object.keys(slotValues).length > 0) {
-        config.tokens = slotValues;
-      }
-      await this.#config.write(config, saveTarget);
-    }
-
-    await this.#licenseGenerator.generate(licenseId, slotValues);
-    await this.#manifests.writeLicense(licenseId);
+    await this.#installer.install({
+      licenseId,
+      tokens: slotValues,
+      save:
+        saveTarget === ""
+          ? { action: "none" }
+          : { action: "save", target: saveTarget },
+    });
 
     this.#reporter.generated(licenseId, saveTarget);
   }
@@ -507,29 +507,30 @@ export class LicenseWizard {
     const licenseAnswer = answers.find((a) => a.questionId === "license");
     const saveConfigAnswer = answers.find((a) => a.questionId === "saveConfig");
 
-    const slotValues =
-      typeof licenseAnswer?.value === "string"
-        ? this.#slotValuesFrom(licenseAnswer.fields)
-        : {};
-
-    if (typeof saveConfigAnswer?.value === "string") {
-      if (saveConfigAnswer.value === SKIP_SAVE) {
-        await this.#config.clear();
-      } else if (typeof licenseAnswer?.value === "string") {
-        const config: WizardConfig = { licenseId: licenseAnswer.value };
-        if (Object.keys(slotValues).length > 0) {
-          config.tokens = slotValues;
-        }
-        await this.#config.write(config, saveConfigAnswer.value);
-      }
-    }
-
     if (typeof licenseAnswer?.value === "string") {
-      await this.#licenseGenerator.generate(licenseAnswer.value, slotValues);
-      await this.#manifests.writeLicense(licenseAnswer.value);
+      await this.#installer.install({
+        licenseId: licenseAnswer.value,
+        tokens: this.#slotValuesFrom(licenseAnswer.fields),
+        save: this.#interactiveSave(saveConfigAnswer),
+      });
     }
 
     return answers;
+  }
+
+  /**
+   * Translates the save-location answer into a config save instruction:
+   * "skip" clears every location, a chosen target writes there (clearing the
+   * rest), and an unanswered question leaves the configuration untouched.
+   */
+  #interactiveSave(saveConfigAnswer: Answer | undefined): ConfigSave {
+    if (typeof saveConfigAnswer?.value !== "string") {
+      return { action: "none" };
+    }
+    if (saveConfigAnswer.value === SKIP_SAVE) {
+      return { action: "clear" };
+    }
+    return { action: "save", target: saveConfigAnswer.value };
   }
 
   /**
