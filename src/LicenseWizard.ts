@@ -1,6 +1,8 @@
 import type { Answer } from "@cli/Answer.js";
 import { ClackRenderer } from "@cli/ClackRenderer.js";
+import { CliReporter } from "@cli/CliReporter.js";
 import { FlagParser } from "@cli/FlagParser.js";
+import type { IReporter } from "@cli/interfaces/IReporter.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
 import type {
   AutocompleteQuestion,
@@ -40,6 +42,7 @@ export class LicenseWizard {
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
+  readonly #reporter: IReporter;
   readonly #flags;
   // Maps each save flag to the target id of the config store it writes to,
   // read back from the store instances so the ids are not duplicated here.
@@ -80,6 +83,7 @@ export class LicenseWizard {
       this.#licenseRepository,
       writer,
     );
+    this.#reporter = new CliReporter(pkg.name);
   }
 
   /**
@@ -111,40 +115,34 @@ export class LicenseWizard {
       license: {
         type: "string",
         default: "",
-        description:
-          "Select a license by its SPDX identifier and run non-interactively (no prompts).",
+        description: "Select a license by SPDX id (non-interactive).",
         placeholder: "<spdx-id>",
       },
       set: {
         type: "list",
         default: [],
-        description:
-          'Set a copyright field for the chosen license (repeatable), e.g. --set "year=2026". Implies non-interactive mode.',
+        description: 'Set a copyright field, e.g. "year=2026" (repeatable).',
         placeholder: "<field=value>",
       },
       "save-rc": {
         type: "boolean",
         default: false,
-        description:
-          "Save the resolved config (license + fields) to .licensewizardrc.json. Implies non-interactive mode.",
+        description: "Save config to .licensewizardrc.json.",
       },
       "save-npm": {
         type: "boolean",
         default: false,
-        description:
-          'Save the resolved config to the "license-wizard" field of package.json (must exist). Implies non-interactive mode.',
+        description: "Save config to package.json (must exist).",
       },
       "save-composer": {
         type: "boolean",
         default: false,
-        description:
-          'Save the resolved config to the "license-wizard" field of composer.json (must exist). Implies non-interactive mode.',
+        description: "Save config to composer.json (must exist).",
       },
       "get-tokens": {
         type: "boolean",
         default: false,
-        description:
-          "List the copyright fields the selected license accepts (requires --license) and exit without generating.",
+        description: "List the license's copyright fields and exit.",
       },
     });
   }
@@ -283,19 +281,9 @@ export class LicenseWizard {
   }
 
   /**
-   * Writes the usage screen — the program invocation followed by the listing
-   * of every supported flag — to stdout.
-   */
-  #printHelp(): void {
-    process.stdout.write(
-      `Usage: ${pkg.name} [options]\n\nOptions:\n${this.#createFlagParser().formatHelp()}\n`,
-    );
-  }
-
-  /**
    * Reports whether any non-interactive flag was supplied. The presence of
-   * `--license`, `--set`, or `--get-tokens` switches the wizard out of the
-   * interactive prompt flow and into single-command CLI mode.
+   * `--license`, `--set`, `--get-tokens`, or any `--save-*` flag switches the
+   * wizard out of the interactive prompt flow and into single-command CLI mode.
    */
   #isNonInteractive(): boolean {
     return (
@@ -328,12 +316,10 @@ export class LicenseWizard {
     }
 
     const detail = await this.#licenseRepository.getLicense(licenseId);
-    const slots = new LicenseTemplate(
-      detail.standardLicenseTemplate ?? "",
-    ).slots();
+    const template = new LicenseTemplate(detail.standardLicenseTemplate ?? "");
 
     if (this.#flags["get-tokens"]) {
-      this.#printTokens(licenseId, slots);
+      this.#reporter.tokens(licenseId, template.slots());
       return;
     }
 
@@ -356,19 +342,18 @@ export class LicenseWizard {
     }
 
     // --set values present: the user wants a customized license. Resolve each
-    // provided field against the license's real slots.
-    const { values, missing, unknown } = this.#resolveSlotValues(
-      slots,
-      setEntries,
-    );
+    // provided field against the license's copyright slots.
+    const { values, missing, unknown } = template.resolveSlots(setEntries);
 
     if (unknown.length > 0) {
-      this.#printUnknownFields(licenseId, unknown, slots);
+      this.#reporter.unknownFields(licenseId, unknown, template.slots());
+      this.#exitWithError();
       return;
     }
 
     if (missing.length > 0) {
-      this.#printMissingTokens(licenseId, values, missing);
+      this.#reporter.missingFields(licenseId, missing);
+      this.#exitWithError();
       return;
     }
 
@@ -414,8 +399,7 @@ export class LicenseWizard {
   /**
    * Generates the license file and records the selection in every project
    * manifest present, optionally persisting the resolved config (license and any
-   * copyright fields) to the requested save location, then prints a one-line
-   * confirmation to stdout.
+   * copyright fields) to the requested save location, then reports the result.
    *
    * @param licenseId - The SPDX identifier being generated.
    * @param slotValues - Resolved copyright slot values keyed by token.
@@ -438,11 +422,7 @@ export class LicenseWizard {
     await this.#licenseGenerator.generate(licenseId, slotValues);
     await this.#manifests.writeLicense(licenseId);
 
-    const savedNote =
-      saveTarget !== "" ? ` Saved config to ${saveTarget}.` : "";
-    process.stdout.write(
-      `Wrote LICENSE (${licenseId}) and recorded it in the project manifests.${savedNote}\n`,
-    );
+    this.#reporter.generated(licenseId, saveTarget);
   }
 
   /**
@@ -474,145 +454,22 @@ export class LicenseWizard {
   }
 
   /**
-   * Matches each supplied field against the license's slots and partitions the
-   * result. A field matches a slot by its label (case-insensitively, e.g.
-   * `year`) or by its exact bracket token (e.g. `<year>`). Returns the resolved
-   * values keyed by token, the slots still missing a value, and any supplied
-   * fields that match no slot.
-   *
-   * @param slots - The license's customizable copyright slots.
-   * @param entries - The supplied fields keyed as typed, mapped to their values.
-   */
-  #resolveSlotValues(
-    slots: TemplateSlot[],
-    entries: Map<string, string>,
-  ): {
-    values: Record<string, string>;
-    missing: TemplateSlot[];
-    unknown: string[];
-  } {
-    const values: Record<string, string> = {};
-    const unknown: string[] = [];
-
-    for (const [field, value] of entries) {
-      const slot = this.#matchSlot(slots, field);
-      if (slot) {
-        values[slot.token] = value;
-      } else {
-        unknown.push(field);
-      }
-    }
-
-    const missing = slots.filter((slot) => !(slot.token in values));
-
-    return { values, missing, unknown };
-  }
-
-  /**
-   * Finds the slot a supplied field refers to, matching either its label
-   * (case-insensitively) or its exact bracket token. Returns undefined when no
-   * slot matches.
-   *
-   * @param slots - The license's customizable copyright slots.
-   * @param field - The field name as typed on the command line.
-   */
-  #matchSlot(slots: TemplateSlot[], field: string): TemplateSlot | undefined {
-    const normalized = field.toLowerCase();
-    return slots.find(
-      (slot) => slot.token === field || slot.label.toLowerCase() === normalized,
-    );
-  }
-
-  /**
-   * Prints the copyright fields a license accepts, with a copy-pasteable
-   * `--set` example, to stdout. When the license has no customizable fields,
-   * says so instead.
-   *
-   * @param licenseId - The SPDX identifier being described.
-   * @param slots - The license's customizable copyright slots.
-   */
-  #printTokens(licenseId: string, slots: TemplateSlot[]): void {
-    if (slots.length === 0) {
-      process.stdout.write(
-        `${licenseId} has no customizable copyright fields; it is generated as official text unchanged.\n`,
-      );
-      return;
-    }
-
-    const list = slots.map((slot) => `  ${slot.label}`).join("\n");
-    const example = slots
-      .map((slot) => `--set "${slot.label}=<value>"`)
-      .join(" ");
-
-    process.stdout.write(
-      `${licenseId} accepts the following copyright field(s):\n\n${list}\n\n` +
-        `Generate a customized license by supplying every field, e.g.:\n\n` +
-        `  ${pkg.name} --license ${licenseId} ${example}\n\n` +
-        `Omit --set to write the official text unchanged.\n`,
-    );
-  }
-
-  /**
-   * Reports that a customized generation cannot proceed because some required
-   * fields were not supplied, listing what was provided and what is still
-   * missing. Written to stderr with a non-zero exit code.
-   *
-   * @param licenseId - The SPDX identifier being generated.
-   * @param values - The resolved slot values keyed by token.
-   * @param missing - The slots still awaiting a value.
-   */
-  #printMissingTokens(
-    licenseId: string,
-    values: Record<string, string>,
-    missing: TemplateSlot[],
-  ): void {
-    const missingList = missing.map((slot) => `  ${slot.label}`).join("\n");
-    const example = missing
-      .map((slot) => `--set "${slot.label}=<value>"`)
-      .join(" ");
-
-    process.stderr.write(
-      `Cannot generate a customized ${licenseId} license: missing required field(s):\n\n` +
-        `${missingList}\n\n` +
-        `Supply every field (e.g. ${example}), or run with --get-tokens to list them all.\n`,
-    );
-    process.exitCode = 1;
-  }
-
-  /**
-   * Reports that one or more supplied `--set` fields do not belong to the
-   * license, listing the fields it does accept. Written to stderr with a
-   * non-zero exit code.
-   *
-   * @param licenseId - The SPDX identifier being generated.
-   * @param unknown - The supplied field names that matched no slot.
-   * @param slots - The license's customizable copyright slots.
-   */
-  #printUnknownFields(
-    licenseId: string,
-    unknown: string[],
-    slots: TemplateSlot[],
-  ): void {
-    const accepted =
-      slots.length === 0
-        ? `${licenseId} has no customizable copyright fields.`
-        : `${licenseId} accepts: ${slots.map((slot) => slot.label).join(", ")}.`;
-
-    process.stderr.write(
-      `Unknown copyright field(s) for ${licenseId}: ${unknown.join(", ")}.\n` +
-        `${accepted}\nRun with --get-tokens to list them.\n`,
-    );
-    process.exitCode = 1;
-  }
-
-  /**
-   * Writes an error message to stderr and sets a non-zero exit code without
-   * throwing, so non-interactive failures surface cleanly to callers and agents.
+   * Reports an error message through the reporter and sets a non-zero exit code
+   * without throwing, so non-interactive failures surface cleanly to callers and
+   * agents.
    *
    * @param message - The error message to report.
    */
   #fail(message: string): void {
-    process.stderr.write(`${message}\n`);
+    this.#reporter.error(message);
+    this.#exitWithError();
+  }
+
+  /**
+   * Sets a non-zero exit code for a failure the reporter has already described,
+   * without throwing.
+   */
+  #exitWithError(): void {
     process.exitCode = 1;
   }
 
@@ -627,7 +484,7 @@ export class LicenseWizard {
    */
   async run() {
     if (this.#flags.help) {
-      this.#printHelp();
+      this.#reporter.usage(this.#createFlagParser().formatHelp());
       return [];
     }
 

@@ -1,4 +1,4 @@
-import type { TemplateSlot } from "@licensing/TemplateSlot.js";
+import type { SlotResolution, TemplateSlot } from "@licensing/TemplateSlot.js";
 
 const VAR_TAG =
   /<<var;\s*name="([^"]*)";\s*original="([^"]*)";\s*match="([^"]*)">>/g;
@@ -55,6 +55,46 @@ export class LicenseTemplate {
     }
 
     return slots;
+  }
+
+  /**
+   * Matches supplied field/value entries against this template's copyright slots
+   * and partitions the outcome. A field matches a slot by its label
+   * (case-insensitively, e.g. `year`) or by its exact bracket token (e.g.
+   * `<year>`). Returns the resolved values keyed by token, the slots still
+   * awaiting a value, and any supplied fields that match no slot.
+   *
+   * @param entries - The supplied fields keyed as typed, mapped to their values.
+   */
+  resolveSlots(entries: Map<string, string>): SlotResolution {
+    const slots = this.slots();
+    const values: Record<string, string> = {};
+    const unknown: string[] = [];
+
+    for (const [field, value] of entries) {
+      const slot = this.#matchSlot(slots, field);
+      if (slot) {
+        values[slot.token] = value;
+      } else {
+        unknown.push(field);
+      }
+    }
+
+    const missing = slots.filter((slot) => !(slot.token in values));
+
+    return { values, missing, unknown };
+  }
+
+  /**
+   * Finds the slot a supplied field refers to, matching either its label
+   * (case-insensitively) or its exact bracket token. Returns undefined when no
+   * slot matches.
+   */
+  #matchSlot(slots: TemplateSlot[], field: string): TemplateSlot | undefined {
+    const normalized = field.toLowerCase();
+    return slots.find(
+      (slot) => slot.token === field || slot.label.toLowerCase() === normalized,
+    );
   }
 
   /**

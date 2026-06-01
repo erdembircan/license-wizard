@@ -28,6 +28,20 @@ classDiagram
       +ClackRenderer(meta: object, spinner: Spinner)
     }
 
+    class IReporter {
+      <<interface>>
+      +usage(options: string) void
+      +tokens(licenseId: string, slots: TemplateSlot[]) void
+      +generated(licenseId: string, savedTo: string) void
+      +missingFields(licenseId: string, missing: TemplateSlot[]) void
+      +unknownFields(licenseId: string, unknown: string[], slots: TemplateSlot[]) void
+      +error(message: string) void
+    }
+
+    class CliReporter {
+      +CliReporter(programName: string)
+    }
+
     class Banner {
       +buildBanner(meta: object, options: object) string
     }
@@ -141,12 +155,19 @@ classDiagram
     class LicenseTemplate {
       +LicenseTemplate(template: string)
       +slots() TemplateSlot[]
+      +resolveSlots(entries: Map~string, string~) SlotResolution
       +render(values: Record~string, string~) string
     }
 
     class TemplateSlot {
       +token: string
       +label: string
+    }
+
+    class SlotResolution {
+      +values: Record~string, string~
+      +missing: TemplateSlot[]
+      +unknown: string[]
     }
 
     class LicenseGenerator {
@@ -268,10 +289,14 @@ classDiagram
   ClackRenderer ..|> IRenderer : implements
   ClackRenderer ..> Spinner : uses
   ClackRenderer ..> Banner : renders
+  CliReporter ..|> IReporter : implements
+  CliReporter ..> TemplateSlot : renders
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> FlagParser : reads defaults from
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
+  LicenseWizard ..> CliReporter : creates
+  LicenseWizard ..> IReporter : reports through
   LicenseWizard ..> Orchestrator : creates
   LicenseWizard ..> SpdxLicenseSource : creates
   LicenseWizard ..> LicenseRepository : creates
@@ -291,6 +316,7 @@ classDiagram
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
   LicenseTemplate ..> TemplateSlot : produces
+  LicenseTemplate ..> SlotResolution : produces
   LicenseWizard ..> LicenseTemplate : creates
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
