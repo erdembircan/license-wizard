@@ -83,18 +83,15 @@ class ThrowingWriter implements IFileSystemWriter {
   }
 }
 
-const makeManifest = (
-  reader: IFileSystemReader,
-  writer: IFileSystemWriter = new FakeWriter(),
-): NpmManifest => new NpmManifest(reader, writer);
+const makeManifest = (): NpmManifest => new NpmManifest();
 
 describe("NpmManifest", () => {
   describe("exists", () => {
     it("reflects whether package.json is present", async () => {
       expect(
-        await makeManifest(new FakeReader({ [PACKAGE_JSON]: "{}" })).exists(),
+        await makeManifest().exists(new FakeReader({ [PACKAGE_JSON]: "{}" })),
       ).toBe(true);
-      expect(await makeManifest(new FakeReader()).exists()).toBe(false);
+      expect(await makeManifest().exists(new FakeReader())).toBe(false);
     });
   });
 
@@ -104,11 +101,11 @@ describe("NpmManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app", license: "MIT" }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBe("MIT");
+      expect(await makeManifest().readLicense(reader)).toBe("MIT");
     });
 
     it("returns null when package.json does not exist", async () => {
-      expect(await makeManifest(new FakeReader()).readLicense()).toBeNull();
+      expect(await makeManifest().readLicense(new FakeReader())).toBeNull();
     });
 
     it("returns null when there is no license field", async () => {
@@ -116,7 +113,7 @@ describe("NpmManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBeNull();
+      expect(await makeManifest().readLicense(reader)).toBeNull();
     });
 
     it("returns null when the license field is not a string", async () => {
@@ -126,22 +123,24 @@ describe("NpmManifest", () => {
         }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBeNull();
+      expect(await makeManifest().readLicense(reader)).toBeNull();
     });
 
     it("throws FileSystemReaderError when the read fails", async () => {
-      const manifest = makeManifest(new ThrowingReader(new Error("disk")));
+      const reader = new ThrowingReader(new Error("disk"));
 
-      await expect(manifest.readLicense()).rejects.toThrow(
+      await expect(makeManifest().readLicense(reader)).rejects.toThrow(
         FileSystemReaderError,
       );
     });
 
     it("preserves the original error as cause on read failure", async () => {
       const cause = new Error("disk");
-      const manifest = makeManifest(new ThrowingReader(cause));
+      const reader = new ThrowingReader(cause);
 
-      const error = await manifest.readLicense().catch((e) => e);
+      const error = await makeManifest()
+        .readLicense(reader)
+        .catch((e) => e);
 
       expect(error.cause).toBe(cause);
     });
@@ -154,7 +153,7 @@ describe("NpmManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
 
-      await new NpmManifest(reader, writer).writeLicense("MIT");
+      await new NpmManifest().writeLicense(reader, writer, "MIT");
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!).license).toBe("MIT");
     });
@@ -165,7 +164,7 @@ describe("NpmManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app", license: "ISC" }),
       });
 
-      await new NpmManifest(reader, writer).writeLicense("Apache-2.0");
+      await new NpmManifest().writeLicense(reader, writer, "Apache-2.0");
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!).license).toBe(
         "Apache-2.0",
@@ -182,7 +181,7 @@ describe("NpmManifest", () => {
         }),
       });
 
-      await new NpmManifest(reader, writer).writeLicense("MIT");
+      await new NpmManifest().writeLicense(reader, writer, "MIT");
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!)).toEqual({
         name: "my-app",
@@ -194,7 +193,7 @@ describe("NpmManifest", () => {
     it("does not write when package.json does not exist", async () => {
       const writer = new FakeWriter();
 
-      await new NpmManifest(new FakeReader(), writer).writeLicense("MIT");
+      await new NpmManifest().writeLicense(new FakeReader(), writer, "MIT");
 
       expect(writer.written.has(PACKAGE_JSON)).toBe(false);
     });
@@ -203,14 +202,11 @@ describe("NpmManifest", () => {
       const reader = new FakeReader({
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
-      const manifest = new NpmManifest(
-        reader,
-        new ThrowingWriter(new Error("write")),
-      );
+      const writer = new ThrowingWriter(new Error("write"));
 
-      await expect(manifest.writeLicense("MIT")).rejects.toThrow(
-        FileSystemWriterError,
-      );
+      await expect(
+        new NpmManifest().writeLicense(reader, writer, "MIT"),
+      ).rejects.toThrow(FileSystemWriterError);
     });
 
     it("preserves the original error as cause on write failure", async () => {
@@ -218,9 +214,11 @@ describe("NpmManifest", () => {
         [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
       });
       const cause = new Error("write");
-      const manifest = new NpmManifest(reader, new ThrowingWriter(cause));
+      const writer = new ThrowingWriter(cause);
 
-      const error = await manifest.writeLicense("MIT").catch((e) => e);
+      const error = await new NpmManifest()
+        .writeLicense(reader, writer, "MIT")
+        .catch((e) => e);
 
       expect(error.cause).toBe(cause);
     });

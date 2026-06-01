@@ -11,23 +11,13 @@ const RC_FILE = ".licensewizardrc.json";
  * Stores the wizard configuration in the standalone `.licensewizardrc.json`
  * dot-file. Always an available save target; the entire file body is the
  * serialized configuration, so clearing it deletes the file outright.
+ *
+ * The store holds no file system access of its own — callers hand a reader or
+ * writer to each operation that needs one.
  */
 export class RcConfigStore implements IConfigStore {
   readonly id = RC_FILE;
   readonly label = RC_FILE;
-  readonly #reader: IFileSystemReader;
-  readonly #writer: IFileSystemWriter;
-
-  /**
-   * Creates a new RcConfigStore.
-   *
-   * @param reader - Used to check for and read the dot-file.
-   * @param writer - Used to persist and delete the dot-file.
-   */
-  constructor(reader: IFileSystemReader, writer: IFileSystemWriter) {
-    this.#reader = reader;
-    this.#writer = writer;
-  }
 
   /**
    * The dot-file is always an eligible save target, regardless of which
@@ -41,14 +31,15 @@ export class RcConfigStore implements IConfigStore {
    * Reads the configuration from `.licensewizardrc.json`, or `null` when the
    * file is absent.
    *
+   * @param reader - Used to check for and read the dot-file.
    * @throws {FileSystemReaderError} When a file system read operation fails.
    */
-  async read(): Promise<WizardConfig | null> {
+  async read(reader: IFileSystemReader): Promise<WizardConfig | null> {
     try {
-      if (!(await this.#reader.exists(RC_FILE))) {
+      if (!(await reader.exists(RC_FILE))) {
         return null;
       }
-      const raw = await this.#reader.read(RC_FILE);
+      const raw = await reader.read(RC_FILE);
       return JSON.parse(raw) as WizardConfig;
     } catch (cause) {
       if (cause instanceof FileSystemReaderError) {
@@ -60,13 +51,20 @@ export class RcConfigStore implements IConfigStore {
 
   /**
    * Writes the configuration to `.licensewizardrc.json`, replacing the file.
+   * The dot-file's whole body is the configuration, so nothing needs to be
+   * read back to preserve it.
    *
+   * @param writer - Used to persist the dot-file.
    * @param config - The configuration to write.
    * @throws {FileSystemWriterError} When the write operation fails.
    */
-  async write(config: WizardConfig): Promise<void> {
+  async write(
+    _reader: IFileSystemReader,
+    writer: IFileSystemWriter,
+    config: WizardConfig,
+  ): Promise<void> {
     try {
-      await this.#writer.write(RC_FILE, JSON.stringify(config, null, 2));
+      await writer.write(RC_FILE, JSON.stringify(config, null, 2));
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -78,12 +76,17 @@ export class RcConfigStore implements IConfigStore {
   /**
    * Deletes `.licensewizardrc.json` when it exists.
    *
+   * @param reader - Used to check whether the dot-file exists.
+   * @param writer - Used to delete the dot-file.
    * @throws {FileSystemWriterError} When the read or delete operation fails.
    */
-  async clear(): Promise<void> {
+  async clear(
+    reader: IFileSystemReader,
+    writer: IFileSystemWriter,
+  ): Promise<void> {
     try {
-      if (await this.#reader.exists(RC_FILE)) {
-        await this.#writer.delete(RC_FILE);
+      if (await reader.exists(RC_FILE)) {
+        await writer.delete(RC_FILE);
       }
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {

@@ -10,49 +10,45 @@ const LICENSE_FIELD = "license";
  * Base for project manifests stored as JSON with a top-level `"license"`
  * field. Handles existence checks, reading, and writing; subclasses define the
  * file name and how a raw `license` value is coerced to a single identifier.
+ *
+ * The manifest holds no file system access of its own — callers hand a reader
+ * or writer to each operation that needs one.
  */
 export abstract class JsonManifest implements IProjectManifest {
-  readonly #reader: IFileSystemReader;
-  readonly #writer: IFileSystemWriter;
   readonly #fileName: string;
 
   /**
    * Creates a new JsonManifest for the given manifest file.
    *
-   * @param reader - Used to check for and read the manifest.
-   * @param writer - Used to persist changes to the manifest.
    * @param fileName - The manifest file name (e.g. `package.json`).
    */
-  constructor(
-    reader: IFileSystemReader,
-    writer: IFileSystemWriter,
-    fileName: string,
-  ) {
-    this.#reader = reader;
-    this.#writer = writer;
+  constructor(fileName: string) {
     this.#fileName = fileName;
   }
 
   /**
    * Returns whether the manifest file exists in the working directory.
+   *
+   * @param reader - Used to check for the manifest file.
    */
-  async exists(): Promise<boolean> {
-    return this.#reader.exists(this.#fileName);
+  async exists(reader: IFileSystemReader): Promise<boolean> {
+    return reader.exists(this.#fileName);
   }
 
   /**
    * Reads the declared license identifier from the manifest. Returns `null`
    * when the manifest is absent or declares no usable license.
    *
+   * @param reader - Used to check for and read the manifest.
    * @throws {FileSystemReaderError} When a file system read operation fails.
    */
-  async readLicense(): Promise<string | null> {
+  async readLicense(reader: IFileSystemReader): Promise<string | null> {
     try {
-      if (!(await this.exists())) {
+      if (!(await this.exists(reader))) {
         return null;
       }
 
-      const raw = await this.#reader.read(this.#fileName);
+      const raw = await reader.read(this.#fileName);
       const manifest = JSON.parse(raw) as Record<string, unknown>;
       return this.extractLicenseId(manifest[LICENSE_FIELD]);
     } catch (cause) {
@@ -71,19 +67,25 @@ export abstract class JsonManifest implements IProjectManifest {
    * creating it when absent and overwriting it when present while preserving
    * all other fields. Does nothing when the manifest does not exist.
    *
+   * @param reader - Used to read the existing manifest so other fields survive.
+   * @param writer - Used to persist the updated manifest.
    * @param licenseId - The SPDX identifier to record.
    * @throws {FileSystemWriterError} When the read or write operation fails.
    */
-  async writeLicense(licenseId: string): Promise<void> {
+  async writeLicense(
+    reader: IFileSystemReader,
+    writer: IFileSystemWriter,
+    licenseId: string,
+  ): Promise<void> {
     try {
-      if (!(await this.exists())) {
+      if (!(await this.exists(reader))) {
         return;
       }
 
-      const raw = await this.#reader.read(this.#fileName);
+      const raw = await reader.read(this.#fileName);
       const manifest = JSON.parse(raw) as Record<string, unknown>;
       manifest[LICENSE_FIELD] = licenseId;
-      await this.#writer.write(
+      await writer.write(
         this.#fileName,
         `${JSON.stringify(manifest, null, 2)}\n`,
       );

@@ -1,4 +1,6 @@
 import type { IConfigStore } from "@configuration/interfaces/IConfigStore.js";
+import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -13,18 +15,31 @@ export type ConfigTarget = {
  * present project manifest). Reads honour store priority order; a write goes to
  * exactly one chosen store and clears the configuration from all the others, so
  * the configuration always has a single source of truth.
+ *
+ * Config owns the file system reader and writer and hands each store only the
+ * capability an operation needs, so no store holds ambient file system access.
  */
 export class Config {
   readonly #stores: readonly IConfigStore[];
+  readonly #reader: IFileSystemReader;
+  readonly #writer: IFileSystemWriter;
 
   /**
    * Creates a new Config over the given stores.
    *
    * @param stores - The stores to coordinate, in read-priority order (the
    *   first store that holds configuration wins).
+   * @param reader - Handed to stores for read operations.
+   * @param writer - Handed to stores for write operations.
    */
-  constructor(stores: readonly IConfigStore[]) {
+  constructor(
+    stores: readonly IConfigStore[],
+    reader: IFileSystemReader,
+    writer: IFileSystemWriter,
+  ) {
     this.#stores = stores;
+    this.#reader = reader;
+    this.#writer = writer;
   }
 
   /**
@@ -35,7 +50,7 @@ export class Config {
    */
   async read(): Promise<WizardConfig | null> {
     for (const store of this.#stores) {
-      const config = await store.read();
+      const config = await store.read(this.#reader);
       if (config) {
         return config;
       }
@@ -50,7 +65,7 @@ export class Config {
   async targets(): Promise<ConfigTarget[]> {
     const targets: ConfigTarget[] = [];
     for (const store of this.#stores) {
-      if (await store.available()) {
+      if (await store.available(this.#reader)) {
         targets.push({ id: store.id, label: store.label });
       }
     }
@@ -72,10 +87,10 @@ export class Config {
       throw new FileSystemWriterError(`Unknown config target: ${targetId}`);
     }
 
-    await target.write(config);
+    await target.write(this.#reader, this.#writer, config);
     for (const store of this.#stores) {
       if (store !== target) {
-        await store.clear();
+        await store.clear(this.#reader, this.#writer);
       }
     }
   }
@@ -88,7 +103,7 @@ export class Config {
    */
   async clear(): Promise<void> {
     for (const store of this.#stores) {
-      await store.clear();
+      await store.clear(this.#reader, this.#writer);
     }
   }
 }

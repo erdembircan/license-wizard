@@ -1,6 +1,31 @@
 import { describe, it, expect } from "vitest";
+import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { IProjectManifest } from "@configuration/interfaces/IProjectManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
+
+/**
+ * No-op reader/writer. The fake manifests ignore them entirely; the repository
+ * only needs something to forward to its manifests.
+ */
+const reader: IFileSystemReader = {
+  async read(): Promise<string> {
+    throw new Error("not used");
+  },
+  async exists(): Promise<boolean> {
+    return false;
+  },
+};
+
+const writer: IFileSystemWriter = {
+  async write(): Promise<void> {},
+  async delete(): Promise<void> {},
+};
+
+const makeRepository = (
+  manifests: IProjectManifest[],
+): ProjectManifestRepository =>
+  new ProjectManifestRepository(manifests, reader, writer);
 
 /**
  * Configurable in-memory manifest. Reports a license on read and, mirroring a
@@ -24,7 +49,11 @@ class FakeManifest implements IProjectManifest {
     return this.#present ? this.#license : null;
   }
 
-  async writeLicense(licenseId: string): Promise<void> {
+  async writeLicense(
+    _reader: IFileSystemReader,
+    _writer: IFileSystemWriter,
+    licenseId: string,
+  ): Promise<void> {
     if (this.#present) {
       this.written = licenseId;
     }
@@ -34,7 +63,7 @@ class FakeManifest implements IProjectManifest {
 describe("ProjectManifestRepository", () => {
   describe("readLicense", () => {
     it("returns the license from the highest-priority manifest that has one", async () => {
-      const repository = new ProjectManifestRepository([
+      const repository = makeRepository([
         new FakeManifest(true, "GPL-3.0-only"),
         new FakeManifest(true, "MIT"),
       ]);
@@ -43,7 +72,7 @@ describe("ProjectManifestRepository", () => {
     });
 
     it("falls back to the next manifest when the first declares no license", async () => {
-      const repository = new ProjectManifestRepository([
+      const repository = makeRepository([
         new FakeManifest(true, null),
         new FakeManifest(true, "MIT"),
       ]);
@@ -52,7 +81,7 @@ describe("ProjectManifestRepository", () => {
     });
 
     it("returns null when no manifest declares a license", async () => {
-      const repository = new ProjectManifestRepository([
+      const repository = makeRepository([
         new FakeManifest(false),
         new FakeManifest(true, null),
       ]);
@@ -65,7 +94,7 @@ describe("ProjectManifestRepository", () => {
     it("writes to every manifest that exists", async () => {
       const composer = new FakeManifest(true, "MIT");
       const pkg = new FakeManifest(true, "ISC");
-      const repository = new ProjectManifestRepository([composer, pkg]);
+      const repository = makeRepository([composer, pkg]);
 
       await repository.writeLicense("Apache-2.0");
 
@@ -76,7 +105,7 @@ describe("ProjectManifestRepository", () => {
     it("writes only to manifests that exist", async () => {
       const composer = new FakeManifest(false);
       const pkg = new FakeManifest(true, "ISC");
-      const repository = new ProjectManifestRepository([composer, pkg]);
+      const repository = makeRepository([composer, pkg]);
 
       await repository.writeLicense("MIT");
 
@@ -87,7 +116,7 @@ describe("ProjectManifestRepository", () => {
     it("does nothing when no manifest exists", async () => {
       const composer = new FakeManifest(false);
       const pkg = new FakeManifest(false);
-      const repository = new ProjectManifestRepository([composer, pkg]);
+      const repository = makeRepository([composer, pkg]);
 
       await repository.writeLicense("MIT");
 

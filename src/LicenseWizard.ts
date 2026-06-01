@@ -52,15 +52,20 @@ export class LicenseWizard {
 
     const reader = new NodeFileSystemReader();
     const writer = new NodeFileSystemWriter();
-    this.#config = new Config([
-      new RcConfigStore(reader, writer),
-      new ManifestConfigStore(reader, writer, PACKAGE_JSON),
-      new ManifestConfigStore(reader, writer, COMPOSER_JSON),
-    ]);
-    this.#manifests = new ProjectManifestRepository([
-      new ComposerManifest(reader, writer),
-      new NpmManifest(reader, writer),
-    ]);
+    this.#config = new Config(
+      [
+        new RcConfigStore(),
+        new ManifestConfigStore(PACKAGE_JSON),
+        new ManifestConfigStore(COMPOSER_JSON),
+      ],
+      reader,
+      writer,
+    );
+    this.#manifests = new ProjectManifestRepository(
+      [new ComposerManifest(), new NpmManifest()],
+      reader,
+      writer,
+    );
 
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);

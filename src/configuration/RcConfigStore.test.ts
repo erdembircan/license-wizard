@@ -81,7 +81,7 @@ class ThrowingWriter implements IFileSystemWriter {
 describe("RcConfigStore", () => {
   describe("available", () => {
     it("is always available", async () => {
-      const store = new RcConfigStore(new FakeReader(), new FakeWriter());
+      const store = new RcConfigStore();
 
       expect(await store.available()).toBe(true);
     });
@@ -90,28 +90,24 @@ describe("RcConfigStore", () => {
   describe("read", () => {
     it("returns the parsed config when the dot-file exists", async () => {
       const config: WizardConfig = { licenseId: "MIT" };
-      const store = new RcConfigStore(
-        new FakeReader({ [RC_FILE]: JSON.stringify(config) }),
-        new FakeWriter(),
-      );
+      const store = new RcConfigStore();
 
-      expect(await store.read()).toEqual(config);
+      expect(
+        await store.read(new FakeReader({ [RC_FILE]: JSON.stringify(config) })),
+      ).toEqual(config);
     });
 
     it("returns null when the dot-file is absent", async () => {
-      const store = new RcConfigStore(new FakeReader(), new FakeWriter());
+      const store = new RcConfigStore();
 
-      expect(await store.read()).toBeNull();
+      expect(await store.read(new FakeReader())).toBeNull();
     });
 
     it("wraps reader failures in FileSystemReaderError", async () => {
       const cause = new Error("disk error");
-      const store = new RcConfigStore(
-        new ThrowingReader(cause),
-        new FakeWriter(),
-      );
+      const store = new RcConfigStore();
 
-      const error = await store.read().catch((e) => e);
+      const error = await store.read(new ThrowingReader(cause)).catch((e) => e);
 
       expect(error).toBeInstanceOf(FileSystemReaderError);
       expect(error.cause).toBe(cause);
@@ -121,9 +117,9 @@ describe("RcConfigStore", () => {
   describe("write", () => {
     it("serializes the config to the dot-file", async () => {
       const writer = new FakeWriter();
-      const store = new RcConfigStore(new FakeReader(), writer);
+      const store = new RcConfigStore();
 
-      await store.write({ licenseId: "MIT" });
+      await store.write(new FakeReader(), writer, { licenseId: "MIT" });
 
       expect(JSON.parse(writer.written.get(RC_FILE)!)).toEqual({
         licenseId: "MIT",
@@ -136,28 +132,27 @@ describe("RcConfigStore", () => {
         licenseId: "MIT",
         tokens: { "<year>": "2026", "<copyright holders>": "Erdem Bircan" },
       };
-      const store = new RcConfigStore(
-        new FakeReader({ [RC_FILE]: "" }),
-        writer,
-      );
+      const store = new RcConfigStore();
 
-      await store.write(config);
-      const reread = new RcConfigStore(
-        new FakeReader({ [RC_FILE]: writer.written.get(RC_FILE)! }),
-        new FakeWriter(),
-      );
+      await store.write(new FakeReader({ [RC_FILE]: "" }), writer, config);
+      const reread = new RcConfigStore();
 
-      expect(await reread.read()).toEqual(config);
+      expect(
+        await reread.read(
+          new FakeReader({ [RC_FILE]: writer.written.get(RC_FILE)! }),
+        ),
+      ).toEqual(config);
     });
 
     it("wraps writer failures in FileSystemWriterError", async () => {
       const cause = new Error("write error");
-      const store = new RcConfigStore(
-        new FakeReader(),
-        new ThrowingWriter(cause),
-      );
+      const store = new RcConfigStore();
 
-      const error = await store.write({ licenseId: "MIT" }).catch((e) => e);
+      const error = await store
+        .write(new FakeReader(), new ThrowingWriter(cause), {
+          licenseId: "MIT",
+        })
+        .catch((e) => e);
 
       expect(error).toBeInstanceOf(FileSystemWriterError);
       expect(error.cause).toBe(cause);
@@ -167,21 +162,18 @@ describe("RcConfigStore", () => {
   describe("clear", () => {
     it("deletes the dot-file when it exists", async () => {
       const writer = new FakeWriter();
-      const store = new RcConfigStore(
-        new FakeReader({ [RC_FILE]: "{}" }),
-        writer,
-      );
+      const store = new RcConfigStore();
 
-      await store.clear();
+      await store.clear(new FakeReader({ [RC_FILE]: "{}" }), writer);
 
       expect(writer.deleted).toContain(RC_FILE);
     });
 
     it("does nothing when the dot-file is absent", async () => {
       const writer = new FakeWriter();
-      const store = new RcConfigStore(new FakeReader(), writer);
+      const store = new RcConfigStore();
 
-      await store.clear();
+      await store.clear(new FakeReader(), writer);
 
       expect(writer.deleted).toEqual([]);
     });

@@ -202,22 +202,22 @@ classDiagram
       <<interface>>
       +id: string
       +label: string
-      +available() Promise~boolean~
-      +read() Promise~WizardConfig | null~
-      +write(config: WizardConfig) Promise~void~
-      +clear() Promise~void~
+      +available(reader: IFileSystemReader) Promise~boolean~
+      +read(reader: IFileSystemReader) Promise~WizardConfig | null~
+      +write(reader: IFileSystemReader, writer: IFileSystemWriter, config: WizardConfig) Promise~void~
+      +clear(reader: IFileSystemReader, writer: IFileSystemWriter) Promise~void~
     }
 
     class RcConfigStore {
-      +RcConfigStore(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +RcConfigStore()
     }
 
     class ManifestConfigStore {
-      +ManifestConfigStore(reader: IFileSystemReader, writer: IFileSystemWriter, fileName: string)
+      +ManifestConfigStore(fileName: string)
     }
 
     class Config {
-      +Config(stores: IConfigStore[])
+      +Config(stores: IConfigStore[], reader: IFileSystemReader, writer: IFileSystemWriter)
       +read() Promise~WizardConfig | null~
       +targets() Promise~ConfigTarget[]~
       +write(config: WizardConfig, targetId: string) Promise~void~
@@ -226,30 +226,30 @@ classDiagram
 
     class IProjectManifest {
       <<interface>>
-      +exists() Promise~boolean~
-      +readLicense() Promise~string | null~
-      +writeLicense(licenseId: string) Promise~void~
+      +exists(reader: IFileSystemReader) Promise~boolean~
+      +readLicense(reader: IFileSystemReader) Promise~string | null~
+      +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
     }
 
     class JsonManifest {
       <<abstract>>
-      +JsonManifest(reader: IFileSystemReader, writer: IFileSystemWriter, fileName: string)
-      +exists() Promise~boolean~
-      +readLicense() Promise~string | null~
-      +writeLicense(licenseId: string) Promise~void~
+      +JsonManifest(fileName: string)
+      +exists(reader: IFileSystemReader) Promise~boolean~
+      +readLicense(reader: IFileSystemReader) Promise~string | null~
+      +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
       #extractLicenseId(value: unknown)* string | null
     }
 
     class NpmManifest {
-      +NpmManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +NpmManifest()
     }
 
     class ComposerManifest {
-      +ComposerManifest(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +ComposerManifest()
     }
 
     class ProjectManifestRepository {
-      +ProjectManifestRepository(manifests: IProjectManifest[])
+      +ProjectManifestRepository(manifests: IProjectManifest[], reader: IFileSystemReader, writer: IFileSystemWriter)
       +readLicense() Promise~string | null~
       +writeLicense(licenseId: string) Promise~void~
     }
@@ -297,6 +297,8 @@ classDiagram
   NodeFileSystemReader ..> FileSystemReaderError : throws
   NodeFileSystemWriter ..> FileSystemWriterError : throws
   Config ..> IConfigStore : coordinates
+  Config ..> IFileSystemReader : uses
+  Config ..> IFileSystemWriter : uses
   Config ..> WizardConfig : produces
   Config ..> ConfigTarget : produces
   Config ..> FileSystemWriterError : throws
@@ -318,6 +320,8 @@ classDiagram
   JsonManifest ..> FileSystemReaderError : throws
   JsonManifest ..> FileSystemWriterError : throws
   ProjectManifestRepository ..> IProjectManifest : coordinates
+  ProjectManifestRepository ..> IFileSystemReader : uses
+  ProjectManifestRepository ..> IFileSystemWriter : uses
   LicenseWizard ..> NodeFileSystemReader : creates
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates

@@ -83,18 +83,15 @@ class ThrowingWriter implements IFileSystemWriter {
   }
 }
 
-const makeManifest = (
-  reader: IFileSystemReader,
-  writer: IFileSystemWriter = new FakeWriter(),
-): ComposerManifest => new ComposerManifest(reader, writer);
+const makeManifest = (): ComposerManifest => new ComposerManifest();
 
 describe("ComposerManifest", () => {
   describe("exists", () => {
     it("reflects whether composer.json is present", async () => {
       expect(
-        await makeManifest(new FakeReader({ [COMPOSER_JSON]: "{}" })).exists(),
+        await makeManifest().exists(new FakeReader({ [COMPOSER_JSON]: "{}" })),
       ).toBe(true);
-      expect(await makeManifest(new FakeReader()).exists()).toBe(false);
+      expect(await makeManifest().exists(new FakeReader())).toBe(false);
     });
   });
 
@@ -104,7 +101,7 @@ describe("ComposerManifest", () => {
         [COMPOSER_JSON]: JSON.stringify({ name: "vendor/pkg", license: "MIT" }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBe("MIT");
+      expect(await makeManifest().readLicense(reader)).toBe("MIT");
     });
 
     it("returns the first entry of an array license", async () => {
@@ -114,7 +111,7 @@ describe("ComposerManifest", () => {
         }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBe("GPL-3.0-only");
+      expect(await makeManifest().readLicense(reader)).toBe("GPL-3.0-only");
     });
 
     it("returns null for an empty array license", async () => {
@@ -122,11 +119,11 @@ describe("ComposerManifest", () => {
         [COMPOSER_JSON]: JSON.stringify({ license: [] }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBeNull();
+      expect(await makeManifest().readLicense(reader)).toBeNull();
     });
 
     it("returns null when composer.json does not exist", async () => {
-      expect(await makeManifest(new FakeReader()).readLicense()).toBeNull();
+      expect(await makeManifest().readLicense(new FakeReader())).toBeNull();
     });
 
     it("returns null when there is no license field", async () => {
@@ -134,13 +131,13 @@ describe("ComposerManifest", () => {
         [COMPOSER_JSON]: JSON.stringify({ name: "vendor/pkg" }),
       });
 
-      expect(await makeManifest(reader).readLicense()).toBeNull();
+      expect(await makeManifest().readLicense(reader)).toBeNull();
     });
 
     it("throws FileSystemReaderError when the read fails", async () => {
-      const manifest = makeManifest(new ThrowingReader(new Error("disk")));
+      const reader = new ThrowingReader(new Error("disk"));
 
-      await expect(manifest.readLicense()).rejects.toThrow(
+      await expect(makeManifest().readLicense(reader)).rejects.toThrow(
         FileSystemReaderError,
       );
     });
@@ -153,7 +150,7 @@ describe("ComposerManifest", () => {
         [COMPOSER_JSON]: JSON.stringify({ name: "vendor/pkg" }),
       });
 
-      await new ComposerManifest(reader, writer).writeLicense("MIT");
+      await new ComposerManifest().writeLicense(reader, writer, "MIT");
 
       expect(JSON.parse(writer.written.get(COMPOSER_JSON)!).license).toBe(
         "MIT",
@@ -169,7 +166,7 @@ describe("ComposerManifest", () => {
         }),
       });
 
-      await new ComposerManifest(reader, writer).writeLicense("Apache-2.0");
+      await new ComposerManifest().writeLicense(reader, writer, "Apache-2.0");
 
       expect(JSON.parse(writer.written.get(COMPOSER_JSON)!).license).toBe(
         "Apache-2.0",
@@ -186,7 +183,7 @@ describe("ComposerManifest", () => {
         }),
       });
 
-      await new ComposerManifest(reader, writer).writeLicense("MIT");
+      await new ComposerManifest().writeLicense(reader, writer, "MIT");
 
       expect(JSON.parse(writer.written.get(COMPOSER_JSON)!)).toEqual({
         name: "vendor/pkg",
@@ -198,7 +195,11 @@ describe("ComposerManifest", () => {
     it("does not write when composer.json does not exist", async () => {
       const writer = new FakeWriter();
 
-      await new ComposerManifest(new FakeReader(), writer).writeLicense("MIT");
+      await new ComposerManifest().writeLicense(
+        new FakeReader(),
+        writer,
+        "MIT",
+      );
 
       expect(writer.written.has(COMPOSER_JSON)).toBe(false);
     });
@@ -207,14 +208,11 @@ describe("ComposerManifest", () => {
       const reader = new FakeReader({
         [COMPOSER_JSON]: JSON.stringify({ name: "vendor/pkg" }),
       });
-      const manifest = new ComposerManifest(
-        reader,
-        new ThrowingWriter(new Error("write")),
-      );
+      const writer = new ThrowingWriter(new Error("write"));
 
-      await expect(manifest.writeLicense("MIT")).rejects.toThrow(
-        FileSystemWriterError,
-      );
+      await expect(
+        new ComposerManifest().writeLicense(reader, writer, "MIT"),
+      ).rejects.toThrow(FileSystemWriterError);
     });
   });
 });
