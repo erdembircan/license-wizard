@@ -128,6 +128,21 @@ Supply every field (e.g. --set "copyright holders=<value>"), or run with --get-t
 
 A field name may be given either as its label (e.g. `year`, case-insensitive) or as its bracket token (e.g. `<year>`). Omit `--set` entirely to write the official text unchanged.
 
+#### Remembering your choice
+
+The interactive wizard offers to save your selection so the next run starts from it. In non-interactive mode the same persistence is opt-in through a `--save-*` flag — one per supported location:
+
+```bash
+# Save the choice (and any --set fields) to .licensewizardrc.json
+npx license-wizard --license MIT --save-rc
+
+# Or into the "license-wizard" field of package.json / composer.json
+npx license-wizard --license MIT --save-npm
+npx license-wizard --license MIT --save-composer
+```
+
+By default — with no `--save-*` flag — nothing is persisted. As in the interactive flow, saving writes to exactly one location and clears the configuration from the others. `--save-npm` and `--save-composer` require their manifest to exist; pass at most one `--save-*` flag at a time.
+
 ### Available flags
 
 | Flag | Description |
@@ -136,6 +151,9 @@ A field name may be given either as its label (e.g. `year`, case-insensitive) or
 | `--verify` | Verify the LICENSE file matches the saved configuration. |
 | `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively (no prompts). |
 | `--set <field=value>...` | Set a copyright field for the chosen license (repeatable). Implies non-interactive mode. |
+| `--save-rc` | Save the resolved config (license + fields) to `.licensewizardrc.json`. Implies non-interactive mode. |
+| `--save-npm` | Save the resolved config to the `"license-wizard"` field of `package.json` (must exist). Implies non-interactive mode. |
+| `--save-composer` | Save the resolved config to the `"license-wizard"` field of `composer.json` (must exist). Implies non-interactive mode. |
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit without generating. |
 
 Run `npx license-wizard --help` to print the same list from the CLI.

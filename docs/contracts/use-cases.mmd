@@ -11,21 +11,26 @@ flowchart TD
     HELP -->|Yes| HU[Print usage + flag listing]
     HU --> H
 
-    HELP -->|No| NI{--license, --set,<br/>or --get-tokens given?}
+    HELP -->|No| NI{--license, --set, --get-tokens,<br/>or a --save-* flag given?}
 
     %% ─── Non-interactive CLI path ───
     NI -->|Yes| NIL{--license given?}
     NIL -->|No| ERRL[Error: --license required] --> H
     NIL -->|Yes| GT{--get-tokens flag?}
     GT -->|Yes| LT[List the copyright fields<br/>the license accepts] --> H
-    GT -->|No| HS{--set values given?}
+    GT -->|No| SV{--save-* location<br/>valid?}
+    SV -->|more than one, or<br/>not present in project| ERRS[Report the save error] --> H
+    SV -->|none, or exactly one valid| HS{--set values given?}
     HS -->|No| STD[Use official text unchanged]
     HS -->|Yes| RES[Resolve fields against<br/>the license's copyright slots]
     RES --> CHK{every required field<br/>supplied and recognized?}
     CHK -->|No| NEED[Report the missing or<br/>unknown copyright fields] --> H
     CHK -->|Yes| CUST[Render customized copyright]
-    STD --> G
-    CUST --> G
+    STD --> PSV
+    CUST --> PSV
+    PSV[Persist config to the chosen<br/>--save location, if requested]
+    PSV -.->|if a --save-* flag was given,<br/>clears the other locations| LC
+    PSV --> G
 
     NI -->|No| M{--verify flag?}
 

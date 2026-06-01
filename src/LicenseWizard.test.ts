@@ -582,4 +582,94 @@ describe("LicenseWizard non-interactive mode", () => {
     expect(stderr).toContain("--license");
     expect(process.exitCode).toBe(1);
   });
+
+  it("does not write any config when no --save-* flag is given", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard(["--license", "MIT"]).run();
+
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(state.writtenConfig).toBeNull();
+    expect(state.saveTarget).toBeNull();
+  });
+
+  it("saves the config to the rc file with --save-rc", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard(["--license", "MIT", "--save-rc"]).run();
+
+    expect(state.saveTarget).toBe(".licensewizardrc.json");
+    expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(stdout).toContain("Saved config to .licensewizardrc.json");
+  });
+
+  it("persists collected tokens when saving a customized license", async () => {
+    state.detail = TEMPLATE_DETAIL;
+    state.configTargets = [{ id: "package.json", label: "package.json" }];
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "year=2026",
+      "--set",
+      "copyright holders=Erdem Bircan",
+      "--save-npm",
+    ]).run();
+
+    expect(state.saveTarget).toBe("package.json");
+    expect(state.writtenConfig).toEqual({
+      licenseId: "MIT",
+      tokens: {
+        "<year>": "2026",
+        "<copyright holders>": "Erdem Bircan",
+      },
+    });
+  });
+
+  it("errors and does not generate when the save location is not present", async () => {
+    // composer.json is not among the available targets.
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard(["--license", "MIT", "--save-composer"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenConfig).toBeNull();
+    expect(stderr).toContain("composer.json");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when more than one save location is requested", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+      { id: "package.json", label: "package.json" },
+    ];
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--save-rc",
+      "--save-npm",
+    ]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenConfig).toBeNull();
+    expect(stderr).toContain("at most one");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when a --save-* flag is given without --license", async () => {
+    await new LicenseWizard(["--save-rc"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain("--license");
+    expect(process.exitCode).toBe(1);
+  });
 });

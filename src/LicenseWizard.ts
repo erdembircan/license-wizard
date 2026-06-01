@@ -41,6 +41,9 @@ export class LicenseWizard {
   readonly #licenseRepository: LicenseRepository;
   readonly #licenseGenerator: LicenseGenerator;
   readonly #flags;
+  // Maps each save flag to the target id of the config store it writes to,
+  // read back from the store instances so the ids are not duplicated here.
+  readonly #saveTargetByFlag: Record<string, string>;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -52,12 +55,16 @@ export class LicenseWizard {
 
     const reader = new NodeFileSystemReader();
     const writer = new NodeFileSystemWriter();
+    const rcConfigStore = new RcConfigStore();
+    const npmConfigStore = new ManifestConfigStore(PACKAGE_JSON);
+    const composerConfigStore = new ManifestConfigStore(COMPOSER_JSON);
+    this.#saveTargetByFlag = {
+      "save-rc": rcConfigStore.id,
+      "save-npm": npmConfigStore.id,
+      "save-composer": composerConfigStore.id,
+    };
     this.#config = new Config(
-      [
-        new RcConfigStore(),
-        new ManifestConfigStore(PACKAGE_JSON),
-        new ManifestConfigStore(COMPOSER_JSON),
-      ],
+      [rcConfigStore, npmConfigStore, composerConfigStore],
       reader,
       writer,
     );
@@ -114,6 +121,24 @@ export class LicenseWizard {
         description:
           'Set a copyright field for the chosen license (repeatable), e.g. --set "year=2026". Implies non-interactive mode.',
         placeholder: "<field=value>",
+      },
+      "save-rc": {
+        type: "boolean",
+        default: false,
+        description:
+          "Save the resolved config (license + fields) to .licensewizardrc.json. Implies non-interactive mode.",
+      },
+      "save-npm": {
+        type: "boolean",
+        default: false,
+        description:
+          'Save the resolved config to the "license-wizard" field of package.json (must exist). Implies non-interactive mode.',
+      },
+      "save-composer": {
+        type: "boolean",
+        default: false,
+        description:
+          'Save the resolved config to the "license-wizard" field of composer.json (must exist). Implies non-interactive mode.',
       },
       "get-tokens": {
         type: "boolean",
@@ -276,7 +301,10 @@ export class LicenseWizard {
     return (
       this.#flags.license !== "" ||
       this.#flags.set.length > 0 ||
-      this.#flags["get-tokens"]
+      this.#flags["get-tokens"] ||
+      this.#flags["save-rc"] ||
+      this.#flags["save-npm"] ||
+      this.#flags["save-composer"]
     );
   }
 
@@ -294,7 +322,7 @@ export class LicenseWizard {
 
     if (licenseId === "") {
       this.#fail(
-        "The --license <spdx-id> flag is required when using --set or --get-tokens.",
+        "The --license <spdx-id> flag is required when using --set, --get-tokens, or a --save-* flag.",
       );
       return;
     }
@@ -309,6 +337,13 @@ export class LicenseWizard {
       return;
     }
 
+    // Validate the requested save location up front so generation never runs
+    // when the config cannot be persisted as asked.
+    const saveTarget = await this.#resolveSaveTarget();
+    if (saveTarget === null) {
+      return;
+    }
+
     const setEntries = this.#parseSetEntries(this.#flags.set);
     if (setEntries === null) {
       return;
@@ -316,7 +351,7 @@ export class LicenseWizard {
 
     // No --set values: generate the official text unchanged.
     if (setEntries.size === 0) {
-      await this.#generateNonInteractive(licenseId, {});
+      await this.#generateNonInteractive(licenseId, {}, saveTarget);
       return;
     }
 
@@ -337,24 +372,76 @@ export class LicenseWizard {
       return;
     }
 
-    await this.#generateNonInteractive(licenseId, values);
+    await this.#generateNonInteractive(licenseId, values, saveTarget);
+  }
+
+  /**
+   * Resolves which config store the `--save-*` flags request. Returns the empty
+   * string when none is given (the default — save nowhere), the target store id
+   * when exactly one available location is requested, or null after reporting an
+   * error when more than one is given or the requested location is not present
+   * in the project.
+   */
+  async #resolveSaveTarget(): Promise<string | null> {
+    const flags = this.#flags as Record<string, boolean | string | string[]>;
+    const requested = Object.entries(this.#saveTargetByFlag)
+      .filter(([flag]) => flags[flag])
+      .map(([, targetId]) => targetId);
+
+    if (requested.length === 0) {
+      return "";
+    }
+
+    if (requested.length > 1) {
+      this.#fail(
+        "Choose at most one save location (--save-rc, --save-npm, or --save-composer).",
+      );
+      return null;
+    }
+
+    const targetId = requested[0];
+    const available = await this.#config.targets();
+    if (!available.some((target) => target.id === targetId)) {
+      this.#fail(
+        `Cannot save to ${targetId}: it is not present in this project.`,
+      );
+      return null;
+    }
+
+    return targetId;
   }
 
   /**
    * Generates the license file and records the selection in every project
-   * manifest present, then prints a one-line confirmation to stdout.
+   * manifest present, optionally persisting the resolved config (license and any
+   * copyright fields) to the requested save location, then prints a one-line
+   * confirmation to stdout.
    *
    * @param licenseId - The SPDX identifier being generated.
    * @param slotValues - Resolved copyright slot values keyed by token.
+   * @param saveTarget - The config store id to persist to, or the empty string
+   *   to save nowhere.
    */
   async #generateNonInteractive(
     licenseId: string,
     slotValues: Record<string, string>,
+    saveTarget: string,
   ): Promise<void> {
+    if (saveTarget !== "") {
+      const config: WizardConfig = { licenseId };
+      if (Object.keys(slotValues).length > 0) {
+        config.tokens = slotValues;
+      }
+      await this.#config.write(config, saveTarget);
+    }
+
     await this.#licenseGenerator.generate(licenseId, slotValues);
     await this.#manifests.writeLicense(licenseId);
+
+    const savedNote =
+      saveTarget !== "" ? ` Saved config to ${saveTarget}.` : "";
     process.stdout.write(
-      `Wrote LICENSE (${licenseId}) and recorded it in the project manifests.\n`,
+      `Wrote LICENSE (${licenseId}) and recorded it in the project manifests.${savedNote}\n`,
     );
   }
 
