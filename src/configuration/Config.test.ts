@@ -2,7 +2,30 @@ import { describe, it, expect } from "vitest";
 import { Config } from "@configuration/Config.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 import type { IConfigStore } from "@configuration/interfaces/IConfigStore.js";
+import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
+
+/**
+ * No-op reader/writer. The fake stores ignore them entirely; Config only needs
+ * something to forward to its stores.
+ */
+const reader: IFileSystemReader = {
+  async read(): Promise<string> {
+    throw new Error("not used");
+  },
+  async exists(): Promise<boolean> {
+    return false;
+  },
+};
+
+const writer: IFileSystemWriter = {
+  async write(): Promise<void> {},
+  async delete(): Promise<void> {},
+};
+
+const makeConfig = (stores: IConfigStore[]): Config =>
+  new Config(stores, reader, writer);
 
 /**
  * In-memory fake store that records writes and clears, used to verify how
@@ -27,7 +50,11 @@ class FakeStore implements IConfigStore {
     return this.held;
   }
 
-  async write(config: WizardConfig): Promise<void> {
+  async write(
+    _reader: IFileSystemReader,
+    _writer: IFileSystemWriter,
+    config: WizardConfig,
+  ): Promise<void> {
     this.written = config;
     this.held = config;
   }
@@ -41,7 +68,7 @@ class FakeStore implements IConfigStore {
 describe("Config", () => {
   describe("read", () => {
     it("returns the config from the highest-priority store that holds one", async () => {
-      const config = new Config([
+      const config = makeConfig([
         new FakeStore("rc", "rc", true, null),
         new FakeStore("package.json", "package.json", true, {
           licenseId: "MIT",
@@ -55,7 +82,7 @@ describe("Config", () => {
     });
 
     it("prefers an earlier store over a later one when both hold a config", async () => {
-      const config = new Config([
+      const config = makeConfig([
         new FakeStore("rc", "rc", true, { licenseId: "MIT" }),
         new FakeStore("package.json", "package.json", true, {
           licenseId: "Apache-2.0",
@@ -66,7 +93,7 @@ describe("Config", () => {
     });
 
     it("returns null when no store holds a config", async () => {
-      const config = new Config([
+      const config = makeConfig([
         new FakeStore("rc", "rc", true, null),
         new FakeStore("package.json", "package.json", false, null),
       ]);
@@ -77,7 +104,7 @@ describe("Config", () => {
 
   describe("targets", () => {
     it("returns only available stores, in order", async () => {
-      const config = new Config([
+      const config = makeConfig([
         new FakeStore("rc", ".licensewizardrc.json", true),
         new FakeStore("package.json", "package.json", false),
         new FakeStore("composer.json", "composer.json", true),
@@ -93,7 +120,7 @@ describe("Config", () => {
   describe("write", () => {
     it("writes the config to the chosen store", async () => {
       const rc = new FakeStore("rc", "rc", true);
-      const config = new Config([rc]);
+      const config = makeConfig([rc]);
 
       await config.write({ licenseId: "MIT" }, "rc");
 
@@ -104,7 +131,7 @@ describe("Config", () => {
       const rc = new FakeStore("rc", "rc", true);
       const pkg = new FakeStore("package.json", "package.json", true);
       const composer = new FakeStore("composer.json", "composer.json", true);
-      const config = new Config([rc, pkg, composer]);
+      const config = makeConfig([rc, pkg, composer]);
 
       await config.write({ licenseId: "MIT" }, "package.json");
 
@@ -115,7 +142,7 @@ describe("Config", () => {
 
     it("does not clear the store it just wrote to", async () => {
       const rc = new FakeStore("rc", "rc", true);
-      const config = new Config([rc]);
+      const config = makeConfig([rc]);
 
       await config.write({ licenseId: "MIT" }, "rc");
 
@@ -123,7 +150,7 @@ describe("Config", () => {
     });
 
     it("throws FileSystemWriterError when the target is unknown", async () => {
-      const config = new Config([new FakeStore("rc", "rc", true)]);
+      const config = makeConfig([new FakeStore("rc", "rc", true)]);
 
       await expect(config.write({ licenseId: "MIT" }, "nope")).rejects.toThrow(
         FileSystemWriterError,
@@ -133,7 +160,7 @@ describe("Config", () => {
     it("clears available and unavailable stores alike", async () => {
       const rc = new FakeStore("rc", "rc", true);
       const composer = new FakeStore("composer.json", "composer.json", false);
-      const config = new Config([rc, composer]);
+      const config = makeConfig([rc, composer]);
 
       await config.write({ licenseId: "MIT" }, "rc");
 
@@ -150,7 +177,7 @@ describe("Config", () => {
       const composer = new FakeStore("composer.json", "composer.json", false, {
         licenseId: "MIT",
       });
-      const config = new Config([rc, pkg, composer]);
+      const config = makeConfig([rc, pkg, composer]);
 
       await config.clear();
 

@@ -80,59 +80,55 @@ class ThrowingWriter implements IFileSystemWriter {
   }
 }
 
-const makeStore = (
-  reader: IFileSystemReader,
-  writer: IFileSystemWriter = new FakeWriter(),
-): ManifestConfigStore => new ManifestConfigStore(reader, writer, PACKAGE_JSON);
+const makeStore = (): ManifestConfigStore =>
+  new ManifestConfigStore(PACKAGE_JSON);
 
 describe("ManifestConfigStore", () => {
   describe("available", () => {
     it("is available when the manifest exists", async () => {
-      const store = makeStore(new FakeReader({ [PACKAGE_JSON]: "{}" }));
+      const reader = new FakeReader({ [PACKAGE_JSON]: "{}" });
 
-      expect(await store.available()).toBe(true);
+      expect(await makeStore().available(reader)).toBe(true);
     });
 
     it("is unavailable when the manifest is absent", async () => {
-      const store = makeStore(new FakeReader());
+      const reader = new FakeReader();
 
-      expect(await store.available()).toBe(false);
+      expect(await makeStore().available(reader)).toBe(false);
     });
   });
 
   describe("read", () => {
     it("returns the config from the license-wizard field", async () => {
       const config: WizardConfig = { licenseId: "MIT" };
-      const store = makeStore(
-        new FakeReader({
-          [PACKAGE_JSON]: JSON.stringify({ [CONFIG_FIELD]: config }),
-        }),
-      );
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({ [CONFIG_FIELD]: config }),
+      });
 
-      expect(await store.read()).toEqual(config);
+      expect(await makeStore().read(reader)).toEqual(config);
     });
 
     it("returns null when the manifest has no license-wizard field", async () => {
-      const store = makeStore(
-        new FakeReader({
-          [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
-        }),
-      );
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
+      });
 
-      expect(await store.read()).toBeNull();
+      expect(await makeStore().read(reader)).toBeNull();
     });
 
     it("returns null when the manifest is absent", async () => {
-      const store = makeStore(new FakeReader());
+      const reader = new FakeReader();
 
-      expect(await store.read()).toBeNull();
+      expect(await makeStore().read(reader)).toBeNull();
     });
 
     it("wraps reader failures in FileSystemReaderError", async () => {
       const cause = new Error("disk error");
-      const store = makeStore(new ThrowingReader(cause));
+      const reader = new ThrowingReader(cause);
 
-      const error = await store.read().catch((e) => e);
+      const error = await makeStore()
+        .read(reader)
+        .catch((e) => e);
 
       expect(error).toBeInstanceOf(FileSystemReaderError);
       expect(error.cause).toBe(cause);
@@ -141,15 +137,12 @@ describe("ManifestConfigStore", () => {
 
   describe("write", () => {
     it("adds the license-wizard field while preserving other fields", async () => {
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({ name: "my-app", version: "1.0.0" }),
+      });
       const writer = new FakeWriter();
-      const store = makeStore(
-        new FakeReader({
-          [PACKAGE_JSON]: JSON.stringify({ name: "my-app", version: "1.0.0" }),
-        }),
-        writer,
-      );
 
-      await store.write({ licenseId: "MIT" });
+      await makeStore().write(reader, writer, { licenseId: "MIT" });
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!)).toEqual({
         name: "my-app",
@@ -159,17 +152,14 @@ describe("ManifestConfigStore", () => {
     });
 
     it("overwrites an existing license-wizard field", async () => {
-      const writer = new FakeWriter();
-      const store = makeStore(
-        new FakeReader({
-          [PACKAGE_JSON]: JSON.stringify({
-            [CONFIG_FIELD]: { licenseId: "Apache-2.0" },
-          }),
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({
+          [CONFIG_FIELD]: { licenseId: "Apache-2.0" },
         }),
-        writer,
-      );
+      });
+      const writer = new FakeWriter();
 
-      await store.write({ licenseId: "MIT" });
+      await makeStore().write(reader, writer, { licenseId: "MIT" });
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!)).toEqual({
         [CONFIG_FIELD]: { licenseId: "MIT" },
@@ -178,12 +168,12 @@ describe("ManifestConfigStore", () => {
 
     it("wraps writer failures in FileSystemWriterError", async () => {
       const cause = new Error("write error");
-      const store = makeStore(
-        new FakeReader({ [PACKAGE_JSON]: "{}" }),
-        new ThrowingWriter(cause),
-      );
+      const reader = new FakeReader({ [PACKAGE_JSON]: "{}" });
+      const writer = new ThrowingWriter(cause);
 
-      const error = await store.write({ licenseId: "MIT" }).catch((e) => e);
+      const error = await makeStore()
+        .write(reader, writer, { licenseId: "MIT" })
+        .catch((e) => e);
 
       expect(error).toBeInstanceOf(FileSystemWriterError);
       expect(error.cause).toBe(cause);
@@ -192,18 +182,15 @@ describe("ManifestConfigStore", () => {
 
   describe("clear", () => {
     it("removes the license-wizard field while preserving other fields", async () => {
-      const writer = new FakeWriter();
-      const store = makeStore(
-        new FakeReader({
-          [PACKAGE_JSON]: JSON.stringify({
-            name: "my-app",
-            [CONFIG_FIELD]: { licenseId: "MIT" },
-          }),
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({
+          name: "my-app",
+          [CONFIG_FIELD]: { licenseId: "MIT" },
         }),
-        writer,
-      );
+      });
+      const writer = new FakeWriter();
 
-      await store.clear();
+      await makeStore().clear(reader, writer);
 
       expect(JSON.parse(writer.written.get(PACKAGE_JSON)!)).toEqual({
         name: "my-app",
@@ -211,24 +198,21 @@ describe("ManifestConfigStore", () => {
     });
 
     it("does nothing when the manifest has no license-wizard field", async () => {
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
+      });
       const writer = new FakeWriter();
-      const store = makeStore(
-        new FakeReader({
-          [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
-        }),
-        writer,
-      );
 
-      await store.clear();
+      await makeStore().clear(reader, writer);
 
       expect(writer.written.has(PACKAGE_JSON)).toBe(false);
     });
 
     it("does nothing when the manifest is absent", async () => {
+      const reader = new FakeReader();
       const writer = new FakeWriter();
-      const store = makeStore(new FakeReader(), writer);
 
-      await store.clear();
+      await makeStore().clear(reader, writer);
 
       expect(writer.written.has(PACKAGE_JSON)).toBe(false);
     });

@@ -12,28 +12,21 @@ const CONFIG_FIELD = "license-wizard";
  * `"license-wizard"` field (e.g. `package.json`, `composer.json`). Available
  * only when the manifest file exists; writing and clearing preserve every other
  * field in the file.
+ *
+ * The store holds no file system access of its own — callers hand a reader or
+ * writer to each operation that needs one.
  */
 export class ManifestConfigStore implements IConfigStore {
   readonly id: string;
   readonly label: string;
-  readonly #reader: IFileSystemReader;
-  readonly #writer: IFileSystemWriter;
   readonly #fileName: string;
 
   /**
    * Creates a new ManifestConfigStore for the given manifest file.
    *
-   * @param reader - Used to check for and read the manifest.
-   * @param writer - Used to persist changes to the manifest.
    * @param fileName - The manifest file name (e.g. `package.json`).
    */
-  constructor(
-    reader: IFileSystemReader,
-    writer: IFileSystemWriter,
-    fileName: string,
-  ) {
-    this.#reader = reader;
-    this.#writer = writer;
+  constructor(fileName: string) {
     this.#fileName = fileName;
     this.id = fileName;
     this.label = fileName;
@@ -42,23 +35,26 @@ export class ManifestConfigStore implements IConfigStore {
   /**
    * A manifest is an eligible save target only when its file exists in the
    * working directory.
+   *
+   * @param reader - Used to check for the manifest file.
    */
-  async available(): Promise<boolean> {
-    return this.#reader.exists(this.#fileName);
+  async available(reader: IFileSystemReader): Promise<boolean> {
+    return reader.exists(this.#fileName);
   }
 
   /**
    * Reads the configuration from the manifest's `"license-wizard"` field, or
    * `null` when the manifest is absent or has no such field.
    *
+   * @param reader - Used to check for and read the manifest.
    * @throws {FileSystemReaderError} When a file system read operation fails.
    */
-  async read(): Promise<WizardConfig | null> {
+  async read(reader: IFileSystemReader): Promise<WizardConfig | null> {
     try {
-      if (!(await this.#reader.exists(this.#fileName))) {
+      if (!(await reader.exists(this.#fileName))) {
         return null;
       }
-      const manifest = await this.#readManifest();
+      const manifest = await this.#readManifest(reader);
       const field = manifest[CONFIG_FIELD];
       return field === undefined ? null : (field as WizardConfig);
     } catch (cause) {
@@ -77,16 +73,22 @@ export class ManifestConfigStore implements IConfigStore {
    * creating the field when absent and overwriting it when present while
    * preserving all other fields.
    *
+   * @param reader - Used to read the existing manifest so other fields survive.
+   * @param writer - Used to persist the updated manifest.
    * @param config - The configuration to write.
    * @throws {FileSystemWriterError} When the read or write operation fails.
    */
-  async write(config: WizardConfig): Promise<void> {
+  async write(
+    reader: IFileSystemReader,
+    writer: IFileSystemWriter,
+    config: WizardConfig,
+  ): Promise<void> {
     try {
-      const manifest = (await this.#reader.exists(this.#fileName))
-        ? await this.#readManifest()
+      const manifest = (await reader.exists(this.#fileName))
+        ? await this.#readManifest(reader)
         : {};
       manifest[CONFIG_FIELD] = config;
-      await this.#writeManifest(manifest);
+      await this.#writeManifest(writer, manifest);
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -103,19 +105,24 @@ export class ManifestConfigStore implements IConfigStore {
    * other field intact. Does nothing when the manifest is absent or has no such
    * field.
    *
+   * @param reader - Used to check for and read the existing manifest.
+   * @param writer - Used to persist the updated manifest.
    * @throws {FileSystemWriterError} When the read or write operation fails.
    */
-  async clear(): Promise<void> {
+  async clear(
+    reader: IFileSystemReader,
+    writer: IFileSystemWriter,
+  ): Promise<void> {
     try {
-      if (!(await this.#reader.exists(this.#fileName))) {
+      if (!(await reader.exists(this.#fileName))) {
         return;
       }
-      const manifest = await this.#readManifest();
+      const manifest = await this.#readManifest(reader);
       if (!(CONFIG_FIELD in manifest)) {
         return;
       }
       delete manifest[CONFIG_FIELD];
-      await this.#writeManifest(manifest);
+      await this.#writeManifest(writer, manifest);
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -127,13 +134,18 @@ export class ManifestConfigStore implements IConfigStore {
     }
   }
 
-  async #readManifest(): Promise<Record<string, unknown>> {
-    const raw = await this.#reader.read(this.#fileName);
+  async #readManifest(
+    reader: IFileSystemReader,
+  ): Promise<Record<string, unknown>> {
+    const raw = await reader.read(this.#fileName);
     return JSON.parse(raw) as Record<string, unknown>;
   }
 
-  async #writeManifest(manifest: Record<string, unknown>): Promise<void> {
-    await this.#writer.write(
+  async #writeManifest(
+    writer: IFileSystemWriter,
+    manifest: Record<string, unknown>,
+  ): Promise<void> {
+    await writer.write(
       this.#fileName,
       `${JSON.stringify(manifest, null, 2)}\n`,
     );

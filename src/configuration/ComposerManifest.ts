@@ -1,6 +1,4 @@
 import { JsonManifest } from "@configuration/abstracts/JsonManifest.js";
-import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
-import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 
 const COMPOSER_JSON = "composer.json";
 
@@ -12,12 +10,9 @@ const COMPOSER_JSON = "composer.json";
 export class ComposerManifest extends JsonManifest {
   /**
    * Creates a new ComposerManifest.
-   *
-   * @param reader - Used to check for and read `composer.json`.
-   * @param writer - Used to persist changes to `composer.json`.
    */
-  constructor(reader: IFileSystemReader, writer: IFileSystemWriter) {
-    super(reader, writer, COMPOSER_JSON);
+  constructor() {
+    super(COMPOSER_JSON);
   }
 
   protected extractLicenseId(value: unknown): string | null {
