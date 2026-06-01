@@ -27,6 +27,7 @@ const state = vi.hoisted(() => {
     configTargets: [] as { id: string; label: string }[],
     writtenConfig: null as WizardConfig | null,
     saveTarget: null as string | null,
+    configCleared: false,
     projectLicense: null as string | null,
     writtenProjectLicense: null as string | null,
     detail: defaultDetail(),
@@ -39,6 +40,7 @@ const state = vi.hoisted(() => {
       self.configTargets = [];
       self.writtenConfig = null;
       self.saveTarget = null;
+      self.configCleared = false;
       self.projectLicense = null;
       self.writtenProjectLicense = null;
       self.detail = defaultDetail();
@@ -70,12 +72,16 @@ vi.mock("@configuration/Config.js", () => ({
     read: () => Promise<WizardConfig | null>;
     targets: () => Promise<{ id: string; label: string }[]>;
     write: (config: WizardConfig, targetId: string) => Promise<void>;
+    clear: () => Promise<void>;
   }) {
     this.read = async () => state.config;
     this.targets = async () => state.configTargets;
     this.write = async (config, targetId) => {
       state.writtenConfig = config;
       state.saveTarget = targetId;
+    };
+    this.clear = async () => {
+      state.configCleared = true;
     };
   }),
 }));
@@ -315,7 +321,7 @@ describe("LicenseWizard config write-back", () => {
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
   });
 
-  it("does not write config when the user skips saving", async () => {
+  it("clears the config without writing when the user skips saving", async () => {
     state.answer = (q: Question): string | boolean => {
       if (q.id === "saveConfig") return "skip";
       if (q.type === "confirm") return false;
@@ -325,6 +331,7 @@ describe("LicenseWizard config write-back", () => {
     await new LicenseWizard([]).run();
 
     expect(state.writtenConfig).toBeNull();
+    expect(state.configCleared).toBe(true);
   });
 });
 
@@ -376,7 +383,7 @@ describe("LicenseWizard config save", () => {
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
   });
 
-  it("does not save the config when skip is chosen", async () => {
+  it("saves nowhere but clears every location when skip is chosen", async () => {
     state.configTargets = [{ id: "package.json", label: "package.json" }];
     state.answer = (q: Question): string | boolean => {
       if (q.id === "saveConfig") return "skip";
@@ -388,5 +395,6 @@ describe("LicenseWizard config save", () => {
 
     expect(state.saveTarget).toBeNull();
     expect(state.writtenConfig).toBeNull();
+    expect(state.configCleared).toBe(true);
   });
 });

@@ -79,4 +79,16 @@ export class Config {
       }
     }
   }
+
+  /**
+   * Clears the configuration from every store, leaving none behind. Used when
+   * the user declines to save so no stale configuration lingers in any location.
+   *
+   * @throws {FileSystemWriterError} When a file system operation fails.
+   */
+  async clear(): Promise<void> {
+    for (const store of this.#stores) {
+      await store.clear();
+    }
+  }
 }

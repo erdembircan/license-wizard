@@ -140,7 +140,8 @@ export class LicenseWizard {
    * target — the `.licensewizardrc.json` dot-file is always present, and each
    * project manifest appears only when its file exists — plus a "skip" option.
    * Choosing a target later writes the config there and clears it everywhere
-   * else; choosing "skip" writes nothing.
+   * else; choosing "skip" saves nowhere and clears the config from every
+   * location.
    */
   async #buildSaveConfigQuestion(): Promise<SelectQuestion> {
     const targets = await this.#config.targets();
@@ -155,7 +156,11 @@ export class LicenseWizard {
           value: target.id,
           label: target.label,
         })),
-        { value: SKIP_SAVE, label: "Skip", hint: "don't save the config" },
+        {
+          value: SKIP_SAVE,
+          label: "Skip",
+          hint: "save nowhere, clear any existing",
+        },
       ],
     };
   }
@@ -245,8 +250,9 @@ export class LicenseWizard {
 
   /**
    * Runs the interactive wizard, collects answers, persists the configuration
-   * to the chosen save location (clearing it from the others) unless the user
-   * skips, writes the selected license to a `LICENSE` file in the working
+   * to the chosen save location (clearing it from the others) — or, when the
+   * user skips, clears the configuration from every location — writes the
+   * selected license to a `LICENSE` file in the working
    * directory, and records the selection in every project manifest present
    * (`composer.json`, `package.json`). Returns the collected answers.
    * When `--help` is passed, prints the usage screen and exits without running.
@@ -276,16 +282,16 @@ export class LicenseWizard {
         ? this.#slotValuesFrom(licenseAnswer.fields)
         : {};
 
-    if (
-      typeof saveConfigAnswer?.value === "string" &&
-      saveConfigAnswer.value !== SKIP_SAVE &&
-      typeof licenseAnswer?.value === "string"
-    ) {
-      const config: WizardConfig = { licenseId: licenseAnswer.value };
-      if (Object.keys(slotValues).length > 0) {
-        config.tokens = slotValues;
+    if (typeof saveConfigAnswer?.value === "string") {
+      if (saveConfigAnswer.value === SKIP_SAVE) {
+        await this.#config.clear();
+      } else if (typeof licenseAnswer?.value === "string") {
+        const config: WizardConfig = { licenseId: licenseAnswer.value };
+        if (Object.keys(slotValues).length > 0) {
+          config.tokens = slotValues;
+        }
+        await this.#config.write(config, saveConfigAnswer.value);
       }
-      await this.#config.write(config, saveConfigAnswer.value);
     }
 
     if (typeof licenseAnswer?.value === "string") {

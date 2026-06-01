@@ -32,7 +32,7 @@ flowchart TD
     end
 
     OG -->|options object| LW
-    LW -->|saves config to chosen<br/>location, clears the rest,<br/>or skips| LC
+    LW -->|saves config to chosen<br/>location and clears the rest,<br/>or skip clears every location| LC
     LW --> G[License is generated]
     G -->|writes license id<br/>to all present manifests| PJ
     G --> H([Done])

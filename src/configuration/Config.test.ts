@@ -140,4 +140,24 @@ describe("Config", () => {
       expect(composer.cleared).toBe(true);
     });
   });
+
+  describe("clear", () => {
+    it("clears the config from every store", async () => {
+      const rc = new FakeStore("rc", "rc", true, { licenseId: "MIT" });
+      const pkg = new FakeStore("package.json", "package.json", true, {
+        licenseId: "MIT",
+      });
+      const composer = new FakeStore("composer.json", "composer.json", false, {
+        licenseId: "MIT",
+      });
+      const config = new Config([rc, pkg, composer]);
+
+      await config.clear();
+
+      expect(rc.cleared).toBe(true);
+      expect(pkg.cleared).toBe(true);
+      expect(composer.cleared).toBe(true);
+      expect(await config.read()).toBeNull();
+    });
+  });
 });
