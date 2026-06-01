@@ -100,3 +100,86 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 });
+
+describe("CliReporter color handling", () => {
+  const ESC = "[";
+
+  /**
+   * Builds a fake output stream that records writes and reports the given TTY
+   * status, standing in for process.stdout/stderr.
+   */
+  function fakeStream(isTTY: boolean) {
+    const stream = {
+      isTTY,
+      text: "",
+      write(chunk: string): boolean {
+        stream.text += chunk;
+        return true;
+      },
+    };
+    return stream;
+  }
+
+  let savedTerm: string | undefined;
+  let savedNoColor: string | undefined;
+
+  beforeEach(() => {
+    savedTerm = process.env.TERM;
+    savedNoColor = process.env.NO_COLOR;
+  });
+
+  afterEach(() => {
+    if (savedTerm === undefined) delete process.env.TERM;
+    else process.env.TERM = savedTerm;
+    if (savedNoColor === undefined) delete process.env.NO_COLOR;
+    else process.env.NO_COLOR = savedNoColor;
+  });
+
+  it("emits no ANSI codes when the stream is not a TTY (agent/pipe usage)", () => {
+    const stream = fakeStream(false);
+    new CliReporter("license-wizard", stream, stream).generated("MIT", "");
+
+    expect(stream.text).not.toContain(ESC);
+    expect(stream.text).toBe(
+      "Wrote LICENSE (MIT) and recorded it in the project manifests.\n",
+    );
+  });
+
+  it("emits ANSI codes on an interactive terminal", () => {
+    process.env.TERM = "xterm";
+    delete process.env.NO_COLOR;
+    const stream = fakeStream(true);
+
+    new CliReporter("license-wizard", stream, stream).generated(
+      "MIT",
+      ".licensewizardrc.json",
+    );
+
+    expect(stream.text).toContain(ESC);
+    // The underlying message text is still present alongside the codes.
+    expect(stream.text).toContain("Wrote LICENSE");
+    expect(stream.text).toContain(".licensewizardrc.json");
+  });
+
+  it("stays plain on a TTY when NO_COLOR is set", () => {
+    process.env.TERM = "xterm";
+    process.env.NO_COLOR = "1";
+    const stream = fakeStream(true);
+
+    new CliReporter("license-wizard", stream, stream).error("boom");
+
+    expect(stream.text).toBe("boom\n");
+  });
+
+  it("stays plain on a dumb terminal", () => {
+    process.env.TERM = "dumb";
+    delete process.env.NO_COLOR;
+    const stream = fakeStream(true);
+
+    new CliReporter("license-wizard", stream, stream).tokens("MIT", [
+      { token: "<year>", label: "year" },
+    ]);
+
+    expect(stream.text).not.toContain(ESC);
+  });
+});
