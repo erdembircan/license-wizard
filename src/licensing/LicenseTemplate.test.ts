@@ -99,4 +99,75 @@ describe("LicenseTemplate", () => {
       expect(result).toContain('Permission to use the "Software".');
     });
   });
+
+  describe("resolveSlots", () => {
+    it("maps supplied fields to their tokens and reports nothing missing or unknown", () => {
+      const result = new LicenseTemplate(MIT_TEMPLATE).resolveSlots(
+        new Map([
+          ["year", "2026"],
+          ["copyright holders", "Erdem Bircan"],
+        ]),
+      );
+
+      expect(result).toEqual({
+        values: {
+          "<year>": "2026",
+          "<copyright holders>": "Erdem Bircan",
+        },
+        missing: [],
+        unknown: [],
+      });
+    });
+
+    it("matches a field by its label case-insensitively or by its bracket token", () => {
+      const result = new LicenseTemplate(MIT_TEMPLATE).resolveSlots(
+        new Map([
+          ["YEAR", "2026"],
+          ["<copyright holders>", "Erdem Bircan"],
+        ]),
+      );
+
+      expect(result.values).toEqual({
+        "<year>": "2026",
+        "<copyright holders>": "Erdem Bircan",
+      });
+      expect(result.unknown).toEqual([]);
+    });
+
+    it("reports slots left without a value as missing", () => {
+      const result = new LicenseTemplate(MIT_TEMPLATE).resolveSlots(
+        new Map([["year", "2026"]]),
+      );
+
+      expect(result.values).toEqual({ "<year>": "2026" });
+      expect(result.missing).toEqual([
+        { token: "<copyright holders>", label: "copyright holders" },
+      ]);
+      expect(result.unknown).toEqual([]);
+    });
+
+    it("collects supplied fields that match no slot as unknown", () => {
+      const result = new LicenseTemplate(MIT_TEMPLATE).resolveSlots(
+        new Map([
+          ["year", "2026"],
+          ["author", "Erdem"],
+        ]),
+      );
+
+      expect(result.values).toEqual({ "<year>": "2026" });
+      expect(result.unknown).toEqual(["author"]);
+    });
+
+    it("treats every field as unknown when the license has no slots", () => {
+      const result = new LicenseTemplate("").resolveSlots(
+        new Map([["year", "2026"]]),
+      );
+
+      expect(result).toEqual({
+        values: {},
+        missing: [],
+        unknown: ["year"],
+      });
+    });
+  });
 });

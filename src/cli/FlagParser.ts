@@ -1,8 +1,12 @@
 import { parseArgs } from "node:util";
 
-type FlagType = "boolean" | "string";
+type FlagType = "boolean" | "string" | "list";
 
-type FlagValueType<T extends FlagType> = T extends "boolean" ? boolean : string;
+type FlagValueType<T extends FlagType> = T extends "boolean"
+  ? boolean
+  : T extends "list"
+    ? string[]
+    : string;
 
 type FlagDefinition<T extends FlagType = FlagType> = {
   type: T;
@@ -10,7 +14,8 @@ type FlagDefinition<T extends FlagType = FlagType> = {
   description: string;
   /**
    * Placeholder shown after a value-accepting flag in the help listing
-   * (e.g. `<spdx-id>`). Ignored for boolean flags, which take no value.
+   * (e.g. `<spdx-id>`). Ignored for boolean flags, which take no value. For
+   * `list` flags the placeholder is suffixed with `...` to signal repeatability.
    */
   placeholder?: string;
 };
@@ -44,12 +49,21 @@ export class FlagParser<T extends FlagDefinitions> {
   parse(args: string[]): ParsedFlags<T> {
     const options: Record<
       string,
-      { type: "boolean" | "string"; default: boolean | string }
+      {
+        type: "boolean" | "string";
+        multiple?: boolean;
+        default: boolean | string | string[];
+      }
     > = {};
     const definedNames = Object.keys(this.#flags);
 
     for (const [name, config] of Object.entries(this.#flags)) {
-      options[name] = { type: config.type, default: config.default };
+      // A `list` flag is a repeatable string option; node collects every
+      // occurrence into an array when `multiple` is set.
+      options[name] =
+        config.type === "list"
+          ? { type: "string", multiple: true, default: config.default }
+          : { type: config.type, default: config.default };
     }
 
     const { values } = parseArgs({
@@ -61,8 +75,8 @@ export class FlagParser<T extends FlagDefinitions> {
 
     const result = {} as ParsedFlags<T>;
     for (const name of definedNames) {
-      (result as Record<string, boolean | string>)[name] =
-        (values[name] as boolean | string | undefined) ??
+      (result as Record<string, boolean | string | string[]>)[name] =
+        (values[name] as boolean | string | string[] | undefined) ??
         this.#flags[name].default;
     }
 
@@ -71,12 +85,19 @@ export class FlagParser<T extends FlagDefinitions> {
 
   /**
    * Renders an aligned listing of every defined flag, its accepted value (for
-   * string flags) and its description, suitable for a `--help` screen.
+   * string and list flags) and its description, suitable for a `--help` screen.
+   * List flags append `...` after their placeholder to signal that they may be
+   * passed more than once.
    */
   formatHelp(): string {
     const entries = Object.entries(this.#flags).map(([name, config]) => {
+      const placeholder = config.placeholder ?? "<value>";
       const value =
-        config.type === "string" ? ` ${config.placeholder ?? "<value>"}` : "";
+        config.type === "string"
+          ? ` ${placeholder}`
+          : config.type === "list"
+            ? ` ${placeholder}...`
+            : "";
       return {
         invocation: `--${name}${value}`,
         description: config.description,

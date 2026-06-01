@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Answer } from "@cli/Answer.js";
 import type { Question } from "@cli/Question.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -140,17 +140,6 @@ async function licenseDefaultFor(args: string[]): Promise<string | undefined> {
 describe("LicenseWizard license default injection", () => {
   beforeEach(() => {
     state.reset();
-  });
-
-  it("uses the --license flag value over the project manifest license and config", async () => {
-    state.projectLicense = "ISC";
-    state.config = { licenseId: "Apache-2.0" };
-
-    expect(await licenseDefaultFor(["--license", "MIT"])).toBe("MIT");
-  });
-
-  it("uses the --license flag value when no config is saved", async () => {
-    expect(await licenseDefaultFor(["--license", "MIT"])).toBe("MIT");
   });
 
   it("uses the project manifest license over the saved config when no flag is given", async () => {
@@ -396,5 +385,291 @@ describe("LicenseWizard config save", () => {
     expect(state.saveTarget).toBeNull();
     expect(state.writtenConfig).toBeNull();
     expect(state.configCleared).toBe(true);
+  });
+});
+
+describe("LicenseWizard non-interactive mode", () => {
+  const TEMPLATE_DETAIL: LicenseDetail = {
+    licenseId: "MIT",
+    name: "MIT License",
+    licenseText: "PLAIN LICENSE TEXT",
+    standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+  };
+
+  const originalExitCode = process.exitCode;
+  let stdout: string;
+  let stderr: string;
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    state.reset();
+    stdout = "";
+    stderr = "";
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stdout += String(chunk);
+      return true;
+    }) as typeof process.stdout.write);
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stderr += String(chunk);
+      return true;
+    }) as typeof process.stderr.write);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    process.exitCode = originalExitCode;
+  });
+
+  it("generates the standard license without rendering any prompt for --license", async () => {
+    await new LicenseWizard(["--license", "MIT"]).run();
+
+    expect(state.rendered).toEqual([]);
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(state.writtenProjectLicense).toBe("MIT");
+    expect(stdout).toContain("Wrote LICENSE (MIT)");
+  });
+
+  it("uses the flag's license directly, ignoring manifest and saved config", async () => {
+    state.projectLicense = "ISC";
+    state.config = { licenseId: "Apache-2.0" };
+
+    await new LicenseWizard(["--license", "MIT"]).run();
+
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+  });
+
+  it("generates standard text when the license has fields but no --set is given", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard(["--license", "MIT"]).run();
+
+    expect(state.rendered).toEqual([]);
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+  });
+
+  it("generates a customized license when every field is supplied via --set", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "year=2026",
+      "--set",
+      "copyright holders=Erdem Bircan",
+    ]).run();
+
+    expect(state.generateCalls).toEqual([
+      {
+        licenseId: "MIT",
+        slotValues: {
+          "<year>": "2026",
+          "<copyright holders>": "Erdem Bircan",
+        },
+      },
+    ]);
+    expect(state.writtenProjectLicense).toBe("MIT");
+  });
+
+  it("matches supplied fields case-insensitively and by bracket token", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "YEAR=2026",
+      "--set",
+      "<copyright holders>=Erdem Bircan",
+    ]).run();
+
+    expect(state.generateCalls).toEqual([
+      {
+        licenseId: "MIT",
+        slotValues: {
+          "<year>": "2026",
+          "<copyright holders>": "Erdem Bircan",
+        },
+      },
+    ]);
+  });
+
+  it("preserves '=' characters in a field value", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "year=2026",
+      "--set",
+      "copyright holders=a=b",
+    ]).run();
+
+    expect(state.generateCalls[0]?.slotValues["<copyright holders>"]).toBe(
+      "a=b",
+    );
+  });
+
+  it("lists the required fields and does not generate when --set is incomplete", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard(["--license", "MIT", "--set", "year=2026"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+    expect(stderr).toContain("missing required field");
+    expect(stderr).toContain("copyright holders");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("reports unknown fields and does not generate", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard(["--license", "MIT", "--set", "author=x"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain("Unknown copyright field");
+    expect(stderr).toContain("author");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects a malformed --set value lacking '='", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard(["--license", "MIT", "--set", "year"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain("Invalid --set");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("--get-tokens lists the fields and does not generate", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard(["--license", "MIT", "--get-tokens"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stdout).toContain("year");
+    expect(stdout).toContain("copyright holders");
+    expect(stdout).toContain("--set");
+  });
+
+  it("--get-tokens reports no fields for a license without customizable copyright", async () => {
+    await new LicenseWizard(["--license", "MIT", "--get-tokens"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stdout).toContain("no customizable copyright fields");
+  });
+
+  it("errors when --set is given without --license", async () => {
+    await new LicenseWizard(["--set", "year=2026"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain("--license");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when --get-tokens is given without --license", async () => {
+    await new LicenseWizard(["--get-tokens"]).run();
+
+    expect(stderr).toContain("--license");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("does not write any config when no --save-* flag is given", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard(["--license", "MIT"]).run();
+
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(state.writtenConfig).toBeNull();
+    expect(state.saveTarget).toBeNull();
+  });
+
+  it("saves the config to the rc file with --save-rc", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard(["--license", "MIT", "--save-rc"]).run();
+
+    expect(state.saveTarget).toBe(".licensewizardrc.json");
+    expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(stdout).toContain("Saved config to .licensewizardrc.json");
+  });
+
+  it("persists collected tokens when saving a customized license", async () => {
+    state.detail = TEMPLATE_DETAIL;
+    state.configTargets = [{ id: "package.json", label: "package.json" }];
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "year=2026",
+      "--set",
+      "copyright holders=Erdem Bircan",
+      "--save-npm",
+    ]).run();
+
+    expect(state.saveTarget).toBe("package.json");
+    expect(state.writtenConfig).toEqual({
+      licenseId: "MIT",
+      tokens: {
+        "<year>": "2026",
+        "<copyright holders>": "Erdem Bircan",
+      },
+    });
+  });
+
+  it("errors and does not generate when the save location is not present", async () => {
+    // composer.json is not among the available targets.
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard(["--license", "MIT", "--save-composer"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenConfig).toBeNull();
+    expect(stderr).toContain("composer.json");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when more than one save location is requested", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+      { id: "package.json", label: "package.json" },
+    ];
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--save-rc",
+      "--save-npm",
+    ]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenConfig).toBeNull();
+    expect(stderr).toContain("at most one");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when a --save-* flag is given without --license", async () => {
+    await new LicenseWizard(["--save-rc"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain("--license");
+    expect(process.exitCode).toBe(1);
   });
 });
