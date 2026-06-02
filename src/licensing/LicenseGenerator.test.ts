@@ -75,6 +75,32 @@ describe("LicenseGenerator", () => {
     expect(writer.written.get("LICENSE")).toBe(detail.licenseText);
   });
 
+  it("hard-wraps long license lines before writing", async () => {
+    const longLine =
+      "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.";
+    const detail: LicenseDetail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: `MIT License\n\n${longLine}`,
+      standardLicenseTemplate: "",
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const writer = new FakeWriter();
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      writer,
+    );
+
+    await generator.generate("MIT");
+
+    const written = writer.written.get("LICENSE")!;
+    for (const line of written.split("\n")) {
+      expect(line.length).toBeLessThanOrEqual(80);
+    }
+    expect(written.replace(/\s+/g, " ")).toContain(longLine);
+  });
+
   it("fetches the license for the given identifier", async () => {
     const source = makeSource();
     const generator = new LicenseGenerator(

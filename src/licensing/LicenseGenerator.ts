@@ -1,6 +1,7 @@
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
+import { wrapText } from "@licensing/TextWrapper.js";
 
 const LICENSE_FILENAME = "LICENSE";
 
@@ -10,7 +11,9 @@ const LICENSE_FILENAME = "LICENSE";
  *
  * When slot values are supplied the license's SPDX template is rendered with
  * those values substituted into the copyright line; otherwise the standard
- * (non-template) license text is written exactly as retrieved.
+ * (non-template) license text is used. In both cases the text is hard-wrapped
+ * to a conventional column width before being written, since SPDX stores each
+ * paragraph as a single unwrapped line.
  */
 export class LicenseGenerator {
   readonly #repository: LicenseRepository;
@@ -33,7 +36,8 @@ export class LicenseGenerator {
    *
    * When `slotValues` contains entries and the license has an SPDX template,
    * the template is rendered with those values substituted into the copyright
-   * line; otherwise the standard license text is written unchanged.
+   * line; otherwise the standard license text is used. The resulting text is
+   * hard-wrapped to a conventional column width before being written.
    *
    * @param licenseId - The SPDX identifier of the license to generate.
    * @param slotValues - Copyright slot values keyed by token (e.g. `{ "<year>": "2026" }`).
@@ -49,6 +53,6 @@ export class LicenseGenerator {
         ? new LicenseTemplate(detail.standardLicenseTemplate).render(slotValues)
         : detail.licenseText;
 
-    await this.#writer.write(LICENSE_FILENAME, content);
+    await this.#writer.write(LICENSE_FILENAME, wrapText(content));
   }
 }
