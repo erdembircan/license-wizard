@@ -1,5 +1,5 @@
 import { styleText } from "node:util";
-import type { IReporter } from "@cli/interfaces/IReporter.js";
+import type { DryRunReport, IReporter } from "@cli/interfaces/IReporter.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ManifestCheck, VerifyReport } from "../LicenseVerifier.js";
@@ -100,6 +100,56 @@ export class CliReporter implements IReporter {
     this.#out.write(
       `${mark}Wrote LICENSE (${id}) and recorded it in the project manifests.${savedNote}\n`,
     );
+  }
+
+  /**
+   * Renders the dry-run preview to stdout: the license text that would have
+   * been written, followed by a summary of every write that was skipped. No
+   * files are touched on this path.
+   */
+  dryRun(report: DryRunReport): void {
+    const mark = this.#mark(this.#out, "✓", "yellow");
+    const heading = this.#paint(
+      this.#out,
+      ["bold", "yellow"],
+      "Dry run — no files were written.",
+    );
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    const plan = this.#dryRunPlan(report);
+
+    this.#out.write(
+      `${mark}${heading}\n\n` +
+        `Would write LICENSE (${id}):\n\n${report.content}\n\n` +
+        `${plan}\n`,
+    );
+  }
+
+  /**
+   * Builds the indented list of writes a dry run skipped: which project
+   * manifests would have recorded the selection and what would have happened to
+   * the saved config.
+   */
+  #dryRunPlan(report: DryRunReport): string {
+    const lines: string[] = [];
+
+    const manifests =
+      report.manifests.length > 0
+        ? report.manifests
+            .map((name) => this.#paint(this.#out, "cyan", name))
+            .join(", ")
+        : "none present";
+    lines.push(`  Record ${report.licenseId} in manifests: ${manifests}`);
+
+    if (report.save.action === "save") {
+      lines.push(
+        `  Save config to ${this.#paint(this.#out, "cyan", report.save.target)}`,
+      );
+    } else if (report.save.action === "clear") {
+      lines.push("  Clear saved config from every location");
+    }
+
+    const label = this.#paint(this.#out, "dim", "Would also:");
+    return `${label}\n${lines.join("\n")}`;
   }
 
   /**

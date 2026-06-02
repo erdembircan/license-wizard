@@ -926,3 +926,131 @@ describe("LicenseWizard verify mode", () => {
     expect(process.exitCode).toBe(1);
   });
 });
+
+describe("LicenseWizard dry-run mode", () => {
+  const TEMPLATE_DETAIL: LicenseDetail = {
+    licenseId: "MIT",
+    name: "MIT License",
+    licenseText: "PLAIN LICENSE TEXT",
+    standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+  };
+
+  const originalExitCode = process.exitCode;
+  let stdout: string;
+  let stderr: string;
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    state.reset();
+    stdout = "";
+    stderr = "";
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stdout += String(chunk);
+      return true;
+    }) as typeof process.stdout.write);
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stderr += String(chunk);
+      return true;
+    }) as typeof process.stderr.write);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    process.exitCode = originalExitCode;
+  });
+
+  it("prints the rendered license and writes nothing for a non-interactive dry run", async () => {
+    state.declaredLicenses = [{ name: "package.json", licenseId: null }];
+
+    await new LicenseWizard(["--license", "MIT", "--dry-run"]).run();
+
+    expect(stdout).toContain("Dry run — no files were written.");
+    expect(stdout).toContain("Would write LICENSE (MIT):");
+    expect(stdout).toContain("RENDERED LICENSE");
+    expect(stdout).toContain("Record MIT in manifests: package.json");
+    // No write of any kind happened.
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+    expect(state.writtenConfig).toBeNull();
+    expect(state.configCleared).toBe(false);
+    expect(process.exitCode).toBe(originalExitCode);
+  });
+
+  it("renders the customized license under --dry-run without writing", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "year=2026",
+      "--set",
+      "copyright holders=Erdem Bircan",
+      "--dry-run",
+    ]).run();
+
+    expect(stdout).toContain("RENDERED LICENSE");
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+  });
+
+  it("previews the save location but does not persist config under --dry-run", async () => {
+    state.configTargets = [
+      { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
+    ];
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--save-rc",
+      "--dry-run",
+    ]).run();
+
+    expect(stdout).toContain("Save config to .licensewizardrc.json");
+    expect(state.writtenConfig).toBeNull();
+    expect(state.saveTarget).toBeNull();
+    expect(state.generateCalls).toEqual([]);
+  });
+
+  it("still reports incomplete --set fields under --dry-run without rendering", async () => {
+    state.detail = TEMPLATE_DETAIL;
+
+    await new LicenseWizard([
+      "--license",
+      "MIT",
+      "--set",
+      "year=2026",
+      "--dry-run",
+    ]).run();
+
+    expect(stdout).not.toContain("Dry run");
+    expect(stderr).toContain("missing required field");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("runs the interactive prompts then previews without writing under --dry-run", async () => {
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "select") return "standard";
+      return "MIT";
+    };
+
+    await new LicenseWizard(["--dry-run"]).run();
+
+    // The prompt flow still ran.
+    expect(state.rendered.some((q) => q.id === "license")).toBe(true);
+    expect(stdout).toContain("Dry run — no files were written.");
+    expect(stdout).toContain("RENDERED LICENSE");
+    // Nothing was written or cleared.
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+    expect(state.writtenConfig).toBeNull();
+    expect(state.configCleared).toBe(false);
+  });
+});

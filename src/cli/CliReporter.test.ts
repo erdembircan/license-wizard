@@ -76,6 +76,48 @@ describe("CliReporter", () => {
     expect(stdout).toContain("Saved config to .licensewizardrc.json.");
   });
 
+  it("prints the rendered license and the skipped writes for a dry run", () => {
+    new CliReporter("license-wizard").dryRun({
+      licenseId: "MIT",
+      content: "RENDERED LICENSE TEXT",
+      save: { action: "save", target: ".licensewizardrc.json" },
+      manifests: ["package.json", "composer.json"],
+    });
+
+    expect(stdout).toContain("Dry run — no files were written.");
+    expect(stdout).toContain("Would write LICENSE (MIT):");
+    expect(stdout).toContain("RENDERED LICENSE TEXT");
+    expect(stdout).toContain(
+      "Record MIT in manifests: package.json, composer.json",
+    );
+    expect(stdout).toContain("Save config to .licensewizardrc.json");
+    expect(stderr).toBe("");
+  });
+
+  it("notes a config clear and absent manifests in a dry run", () => {
+    new CliReporter("license-wizard").dryRun({
+      licenseId: "MIT",
+      content: "RENDERED LICENSE TEXT",
+      save: { action: "clear" },
+      manifests: [],
+    });
+
+    expect(stdout).toContain("Record MIT in manifests: none present");
+    expect(stdout).toContain("Clear saved config from every location");
+  });
+
+  it("omits any config line in a dry run when nothing would be saved", () => {
+    new CliReporter("license-wizard").dryRun({
+      licenseId: "MIT",
+      content: "RENDERED LICENSE TEXT",
+      save: { action: "none" },
+      manifests: ["package.json"],
+    });
+
+    expect(stdout).not.toContain("Save config");
+    expect(stdout).not.toContain("Clear saved config");
+  });
+
   it("writes the missing-fields error to stderr", () => {
     new CliReporter("license-wizard").missingFields("MIT", [
       { token: "<copyright holders>", label: "copyright holders" },

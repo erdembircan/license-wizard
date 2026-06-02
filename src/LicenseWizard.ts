@@ -28,7 +28,7 @@ import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import { LicenseInstaller } from "./LicenseInstaller.js";
-import type { ConfigSave } from "./LicenseInstaller.js";
+import type { ConfigSave, LicenseSelection } from "./LicenseInstaller.js";
 import { LicenseVerifier } from "./LicenseVerifier.js";
 import pkg from "../package.json" with { type: "json" };
 
@@ -46,6 +46,7 @@ export class LicenseWizard {
   readonly #config: Config;
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
+  readonly #generator: LicenseGenerator;
   readonly #installer: LicenseInstaller;
   readonly #verifier: LicenseVerifier;
   readonly #reporter: IReporter;
@@ -85,16 +86,16 @@ export class LicenseWizard {
 
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);
-    const generator = new LicenseGenerator(this.#licenseRepository, writer);
+    this.#generator = new LicenseGenerator(this.#licenseRepository, writer);
     this.#installer = new LicenseInstaller(
       this.#config,
       this.#manifests,
-      generator,
+      this.#generator,
     );
     this.#verifier = new LicenseVerifier(
       this.#config,
       this.#manifests,
-      generator,
+      this.#generator,
       reader,
     );
     this.#reporter = new CliReporter(pkg.name);
@@ -164,6 +165,12 @@ export class LicenseWizard {
         type: "boolean",
         default: false,
         description: "List the license's copyright fields and exit.",
+      },
+      "dry-run": {
+        type: "boolean",
+        default: false,
+        description:
+          "Print the license that would be generated and skip every write (LICENSE, config, manifests).",
       },
     });
   }
@@ -451,7 +458,8 @@ export class LicenseWizard {
   /**
    * Applies the resolved selection through the installer — persisting the config
    * to the requested save location, writing the `LICENSE`, and recording the
-   * selection in every present manifest — then reports the result.
+   * selection in every present manifest — then reports the result. Under
+   * `--dry-run` it previews the selection instead, writing nothing.
    *
    * @param licenseId - The SPDX identifier being generated.
    * @param slotValues - Resolved copyright slot values keyed by token.
@@ -463,16 +471,47 @@ export class LicenseWizard {
     slotValues: Record<string, string>,
     saveTarget: string,
   ): Promise<void> {
-    await this.#installer.install({
+    const selection: LicenseSelection = {
       licenseId,
       tokens: slotValues,
       save:
         saveTarget === ""
           ? { action: "none" }
           : { action: "save", target: saveTarget },
-    });
+    };
 
+    if (this.#flags["dry-run"]) {
+      await this.#preview(selection);
+      return;
+    }
+
+    await this.#installer.install(selection);
     this.#reporter.generated(licenseId, saveTarget);
+  }
+
+  /**
+   * Renders the selection's license and reports what a real run would have
+   * written — the `LICENSE` file, the present project manifests, and the config
+   * save location — without performing any write. Shared by the interactive and
+   * non-interactive `--dry-run` paths so both preview the same plan.
+   *
+   * @param selection - The resolved license, copyright tokens, and save instruction.
+   */
+  async #preview(selection: LicenseSelection): Promise<void> {
+    const content = await this.#generator.render(
+      selection.licenseId,
+      selection.tokens,
+    );
+    const manifests = (await this.#manifests.declaredLicenses()).map(
+      (manifest) => manifest.name,
+    );
+
+    this.#reporter.dryRun({
+      licenseId: selection.licenseId,
+      content,
+      save: selection.save,
+      manifests,
+    });
   }
 
   /**
@@ -572,7 +611,9 @@ export class LicenseWizard {
    * (`composer.json`, `package.json`). Returns the collected answers.
    * When `--help` is passed, prints the usage screen and exits without running.
    * When `--verify` is passed, runs the standalone verification mode instead,
-   * ignoring every other selection flag.
+   * ignoring every other selection flag. When `--dry-run` is passed, the
+   * resolved license is rendered and printed along with the writes that would
+   * have happened, but no `LICENSE`, config, or manifest is written.
    */
   async run() {
     if (this.#flags.help) {
@@ -607,11 +648,17 @@ export class LicenseWizard {
     const saveConfigAnswer = answers.find((a) => a.questionId === "saveConfig");
 
     if (typeof licenseAnswer?.value === "string") {
-      await this.#installer.install({
+      const selection: LicenseSelection = {
         licenseId: licenseAnswer.value,
         tokens: this.#slotValuesFrom(licenseAnswer.fields),
         save: this.#interactiveSave(saveConfigAnswer),
-      });
+      };
+
+      if (this.#flags["dry-run"]) {
+        await this.#preview(selection);
+      } else {
+        await this.#installer.install(selection);
+      }
     }
 
     return answers;

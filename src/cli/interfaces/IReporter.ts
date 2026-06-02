@@ -1,6 +1,14 @@
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
+import type { ConfigSave } from "../../LicenseInstaller.js";
 import type { VerifyReport } from "../../LicenseVerifier.js";
+
+export type DryRunReport = {
+  licenseId: string;
+  content: string;
+  save: ConfigSave;
+  manifests: string[];
+};
 
 /**
  * Contract for rendering non-interactive CLI output to the terminal — the usage
@@ -32,6 +40,16 @@ export interface IReporter {
    *   empty string when nothing was saved.
    */
   generated(licenseId: string, savedTo: string): void;
+
+  /**
+   * Renders the dry-run preview: the license text that would have been written,
+   * followed by a summary of every write that was skipped — the `LICENSE` file,
+   * the project manifests that would have recorded the selection, and the config
+   * save location, if any.
+   *
+   * @param report - The rendered license and the writes that were skipped.
+   */
+  dryRun(report: DryRunReport): void;
 
   /**
    * Renders the error shown when a customized generation is missing required

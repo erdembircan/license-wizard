@@ -164,6 +164,28 @@ npx license-wizard --license MIT --save-composer
 
 By default — with no `--save-*` flag — nothing is persisted. As in the interactive flow, saving writes to exactly one location and clears the configuration from the others. `--save-npm` and `--save-composer` require their manifest to exist; pass at most one `--save-*` flag at a time.
 
+#### Previewing without writing
+
+Add `--dry-run` to any run to see exactly what would happen without touching the filesystem. The license that *would* be generated is printed to the terminal, followed by a summary of the writes that were skipped — no `LICENSE` file, no config, and no manifest updates are performed:
+
+```bash
+$ npx license-wizard --license MIT --set "year=2026" --set "copyright holders=Erdem Bircan" --save-npm --dry-run
+Dry run — no files were written.
+
+Would write LICENSE (MIT):
+
+MIT License
+
+Copyright (c) 2026 Erdem Bircan
+...
+
+Would also:
+  Record MIT in manifests: package.json
+  Save config to package.json
+```
+
+`--dry-run` works the same way in the interactive wizard: answer the prompts as usual, and the final step previews the result instead of writing it. It is not combined with `--verify`, which is its own read/reconcile mode.
+
 ### Verifying an existing LICENSE
 
 Once a configuration is saved, `--verify` checks that the project still matches what that configuration describes, across two surfaces:
@@ -229,6 +251,7 @@ A passing `--verify --strict` run exits zero, making it a drop-in check step:
 | `--save-npm` | Save the resolved config to the `"license-wizard"` field of `package.json` (must exist). Implies non-interactive mode. |
 | `--save-composer` | Save the resolved config to the `"license-wizard"` field of `composer.json` (must exist). Implies non-interactive mode. |
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit without generating. |
+| `--dry-run` | Preview the license and skip every write. |
 
 Run `npx license-wizard --help` to print the same list from the CLI.
 
