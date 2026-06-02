@@ -1,3 +1,4 @@
+import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 
 /**
@@ -52,6 +53,16 @@ export interface IReporter {
     unknown: string[],
     slots: TemplateSlot[],
   ): void;
+
+  /**
+   * Renders the error shown when the requested license identifier does not
+   * exist, offering the closest available identifiers as suggestions.
+   *
+   * @param licenseId - The unrecognized SPDX identifier the user requested.
+   * @param suggestions - The closest available licenses, ranked best-first; may
+   *   be empty when nothing resembles the request.
+   */
+  licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]): void;
 
   /**
    * Renders a plain error message.

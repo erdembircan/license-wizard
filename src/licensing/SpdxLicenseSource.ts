@@ -1,6 +1,7 @@
 import type { ILicenseSource } from "@licensing/interfaces/ILicenseSource.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
+import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 
 const INDEX_URL =
   "https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json";
@@ -107,6 +108,87 @@ export class SpdxLicenseSource implements ILicenseSource {
   }
 
   /**
+   * Ranks every indexed license by how closely its identifier resembles the
+   * query and returns the closest `limit` entries, best match first. Comparison
+   * ignores case and separators (so `apache-2-0` finds `Apache-2.0`), falling
+   * back to edit distance so near-misses still surface.
+   *
+   * @param query - The (possibly mistyped) term to find close matches for.
+   * @param limit - The maximum number of suggestions to return.
+   */
+  async suggest(query: string, limit: number): Promise<LicenseIndexEntry[]> {
+    const index = await this.#loadIndex();
+    const normalizedQuery = this.#normalize(query);
+
+    return index
+      .map((entry) => ({
+        entry,
+        score: this.#similarityScore(normalizedQuery, entry),
+      }))
+      .sort(
+        (a, b) =>
+          a.score - b.score ||
+          a.entry.licenseId.localeCompare(b.entry.licenseId),
+      )
+      .slice(0, Math.max(0, limit))
+      .map(({ entry: { licenseId, name } }) => ({ licenseId, name }));
+  }
+
+  /**
+   * Scores how far an index entry is from the normalized query — lower is a
+   * closer match. An exact normalized identifier match scores 0; a query that
+   * appears within the identifier or name scores near-best; otherwise the score
+   * is the edit distance between the query and the entry's identifier.
+   */
+  #similarityScore(normalizedQuery: string, entry: SpdxIndexItem): number {
+    const normalizedId = this.#normalize(entry.licenseId);
+    const normalizedName = this.#normalize(entry.name);
+    const distance = this.#editDistance(normalizedQuery, normalizedId);
+
+    if (
+      normalizedId.includes(normalizedQuery) ||
+      normalizedName.includes(normalizedQuery)
+    ) {
+      return Math.min(distance, 1);
+    }
+
+    return distance;
+  }
+
+  /**
+   * Lower-cases the text and strips every non-alphanumeric character so that
+   * separator and case differences (e.g. `apache-2-0` vs `Apache-2.0`) do not
+   * count against a match.
+   */
+  #normalize(text: string): string {
+    return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  /**
+   * Computes the Levenshtein edit distance between two strings — the minimum
+   * number of single-character insertions, deletions, or substitutions that
+   * turn one into the other.
+   */
+  #editDistance(a: string, b: string): number {
+    let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+
+    for (let i = 1; i <= a.length; i++) {
+      const current = [i];
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        current[j] = Math.min(
+          current[j - 1] + 1,
+          previous[j] + 1,
+          previous[j - 1] + cost,
+        );
+      }
+      previous = current;
+    }
+
+    return previous[b.length];
+  }
+
+  /**
    * Fetches the full license text and metadata for the given SPDX identifier.
    *
    * @param licenseId - The SPDX identifier of the license to fetch.
@@ -123,7 +205,7 @@ export class SpdxLicenseSource implements ILicenseSource {
     const entry = index.find((e) => e.licenseId.toLowerCase() === key);
 
     if (!entry) {
-      throw new Error(`License not found: ${licenseId}`);
+      throw new LicenseNotFoundError(licenseId);
     }
 
     const response = await fetch(entry.detailsUrl);

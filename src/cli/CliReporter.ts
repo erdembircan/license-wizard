@@ -1,5 +1,6 @@
 import { styleText } from "node:util";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
+import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 
 type Style = Parameters<typeof styleText>[0];
@@ -146,6 +147,51 @@ export class CliReporter implements IReporter {
     this.#err.write(
       `${this.#mark(this.#err, "✗", "red")}${heading} ${unknownList}.\n` +
         `${accepted}\nRun with --get-tokens to list them.\n`,
+    );
+  }
+
+  /**
+   * Renders the unknown-license error to stderr: acknowledges that no license
+   * matches the requested identifier and, when any close matches exist, lists
+   * the nearest available identifiers with a copy-pasteable `--license` hint.
+   */
+  licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]): void {
+    const heading = this.#paint(
+      this.#err,
+      ["bold", "red"],
+      `No license matches "${licenseId}".`,
+    );
+    const mark = this.#mark(this.#err, "✗", "red");
+
+    if (suggestions.length === 0) {
+      this.#err.write(
+        `${mark}${heading}\n` +
+          `Run ${this.#programName} with no flags to search the full list interactively.\n`,
+      );
+      return;
+    }
+
+    const width = Math.max(...suggestions.map((s) => s.licenseId.length));
+    const list = suggestions
+      .map((entry) => {
+        const id = this.#paint(
+          this.#err,
+          "cyan",
+          entry.licenseId.padEnd(width),
+        );
+        const name = this.#paint(this.#err, "dim", entry.name);
+        return `  ${id}  ${name}`;
+      })
+      .join("\n");
+    const example = this.#paint(
+      this.#err,
+      "dim",
+      `${this.#programName} --license ${suggestions[0].licenseId}`,
+    );
+
+    this.#err.write(
+      `${mark}${heading} Did you mean one of these?\n\n${list}\n\n` +
+        `Re-run with the exact identifier, e.g.:\n\n  ${example}\n`,
     );
   }
 

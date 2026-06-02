@@ -130,6 +130,25 @@ Supply every field (e.g. --set "copyright holders=<value>"), or run with --get-t
 
 A field name may be given either as its label (e.g. `year`, case-insensitive) or as its bracket token (e.g. `<year>`). Omit `--set` entirely to write the official text unchanged.
 
+#### Unrecognized license identifiers
+
+SPDX identifiers are exact — `apache-2-0` is not `Apache-2.0`. Rather than fail with a stack trace on a typo, License Wizard tells you no license matches and offers the closest available identifiers, then exits with a non-zero status:
+
+```bash
+$ npx license-wizard --license apache-2-0
+No license matches "apache-2-0". Did you mean one of these?
+
+  Apache-2.0  Apache License 2.0
+  Apache-1.0  Apache License 1.0
+  Apache-1.1  Apache License 1.1
+  APSL-2.0    Apple Public Source License 2.0
+  mpich2      mpich2 License
+
+Re-run with the exact identifier, e.g.:
+
+  license-wizard --license Apache-2.0
+```
+
 #### Remembering your choice
 
 The interactive wizard offers to save your selection so the next run starts from it. In non-interactive mode the same persistence is opt-in through a `--save-*` flag — one per supported location:

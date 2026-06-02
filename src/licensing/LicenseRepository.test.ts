@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
+import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import { LicenseRepositoryError } from "@licensing/errors/LicenseRepositoryError.js";
 import type { ILicenseSource } from "@licensing/interfaces/ILicenseSource.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -7,6 +8,7 @@ import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 
 const makeSource = (): ILicenseSource => ({
   search: vi.fn(async (): Promise<LicenseIndexEntry[]> => []),
+  suggest: vi.fn(async (): Promise<LicenseIndexEntry[]> => []),
   fetchLicense: vi.fn(
     async (): Promise<LicenseDetail> => ({
       licenseId: "MIT",
@@ -99,6 +101,54 @@ describe("LicenseRepository", () => {
       const error = await repo.getLicense("FAKE-LICENSE").catch((e) => e);
 
       expect(error.cause).toBe(cause);
+    });
+
+    it("passes a LicenseNotFoundError through unwrapped", async () => {
+      const source = makeSource();
+      const notFound = new LicenseNotFoundError("FAKE-LICENSE");
+      vi.mocked(source.fetchLicense).mockRejectedValueOnce(notFound);
+      const repo = new LicenseRepository(source);
+
+      const error = await repo.getLicense("FAKE-LICENSE").catch((e) => e);
+
+      expect(error).toBe(notFound);
+      expect(error).not.toBeInstanceOf(LicenseRepositoryError);
+    });
+  });
+
+  describe("suggest", () => {
+    it("returns the suggestions provided by the source", async () => {
+      const entries: LicenseIndexEntry[] = [
+        { licenseId: "Apache-2.0", name: "Apache License 2.0" },
+      ];
+      const source = makeSource();
+      vi.mocked(source.suggest).mockResolvedValueOnce(entries);
+      const repo = new LicenseRepository(source);
+
+      const result = await repo.suggest("apache-2-0", 5);
+
+      expect(result).toEqual(entries);
+    });
+
+    it("forwards the query and limit to the source", async () => {
+      const source = makeSource();
+      const repo = new LicenseRepository(source);
+
+      await repo.suggest("apache-2-0", 5);
+
+      expect(source.suggest).toHaveBeenCalledWith("apache-2-0", 5);
+    });
+
+    it("throws LicenseRepositoryError when the source fails", async () => {
+      const source = makeSource();
+      vi.mocked(source.suggest).mockRejectedValueOnce(
+        new Error("Network error"),
+      );
+      const repo = new LicenseRepository(source);
+
+      await expect(repo.suggest("apache", 5)).rejects.toThrow(
+        LicenseRepositoryError,
+      );
     });
   });
 

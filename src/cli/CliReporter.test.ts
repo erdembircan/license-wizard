@@ -99,6 +99,30 @@ describe("CliReporter", () => {
     expect(stderr).toBe("something went wrong\n");
     expect(stdout).toBe("");
   });
+
+  it("lists the suggested licenses with a --license hint on an unknown id", () => {
+    new CliReporter("license-wizard").licenseNotFound("apache-2-0", [
+      { licenseId: "Apache-2.0", name: "Apache License 2.0" },
+      { licenseId: "Apache-1.1", name: "Apache Software License 1.1" },
+    ]);
+
+    expect(stderr).toContain('No license matches "apache-2-0".');
+    expect(stderr).toContain("Did you mean one of these?");
+    expect(stderr).toContain("Apache-2.0");
+    expect(stderr).toContain("Apache License 2.0");
+    expect(stderr).toContain("Apache-1.1");
+    expect(stderr).toContain("license-wizard --license Apache-2.0");
+    expect(stdout).toBe("");
+  });
+
+  it("points at the interactive search when nothing resembles the unknown id", () => {
+    new CliReporter("license-wizard").licenseNotFound("zzzz", []);
+
+    expect(stderr).toContain('No license matches "zzzz".');
+    expect(stderr).not.toContain("Did you mean");
+    expect(stderr).toContain("license-wizard with no flags");
+    expect(stdout).toBe("");
+  });
 });
 
 describe("CliReporter color handling", () => {

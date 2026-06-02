@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
+import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 
 const makeLicenseItem = (
   licenseId: string,
@@ -115,7 +116,74 @@ describe("SpdxLicenseSource", () => {
     });
   });
 
+  describe("suggest", () => {
+    /**
+     * Serves an index of the given licenses for any suggestion query.
+     */
+    const mockIndex = (licenses: ReturnType<typeof makeLicenseItem>[]) => {
+      vi.mocked(fetch).mockImplementation(() =>
+        Promise.resolve(makeIndexResponse(licenses)),
+      );
+    };
+
+    it("matches an identifier despite separator and case differences", async () => {
+      mockIndex([
+        makeLicenseItem("Apache-2.0", "Apache License 2.0"),
+        makeLicenseItem("MIT", "MIT License"),
+        makeLicenseItem("GPL-3.0-only", "GNU General Public License v3.0 only"),
+      ]);
+
+      const source = new SpdxLicenseSource();
+      const result = await source.suggest("apache-2-0", 5);
+
+      expect(result[0]).toEqual({
+        licenseId: "Apache-2.0",
+        name: "Apache License 2.0",
+      });
+    });
+
+    it("returns at most the requested number of suggestions", async () => {
+      mockIndex([
+        makeLicenseItem("Apache-2.0", "Apache License 2.0"),
+        makeLicenseItem("Apache-1.1", "Apache Software License 1.1"),
+        makeLicenseItem("Apache-1.0", "Apache Software License 1.0"),
+        makeLicenseItem("MIT", "MIT License"),
+      ]);
+
+      const source = new SpdxLicenseSource();
+      const result = await source.suggest("apache", 2);
+
+      expect(result).toHaveLength(2);
+    });
+
+    it("offers nearest candidates even when no identifier contains the query", async () => {
+      mockIndex([
+        makeLicenseItem("MIT", "MIT License"),
+        makeLicenseItem("ISC", "ISC License"),
+      ]);
+
+      const source = new SpdxLicenseSource();
+      const result = await source.suggest("MTI", 5);
+
+      expect(result.map((entry) => entry.licenseId)).toContain("MIT");
+    });
+  });
+
   describe("fetchLicense", () => {
+    it("throws LicenseNotFoundError for an unknown identifier", async () => {
+      vi.mocked(fetch).mockImplementation(() =>
+        Promise.resolve(
+          makeIndexResponse([makeLicenseItem("MIT", "MIT License")]),
+        ),
+      );
+
+      const source = new SpdxLicenseSource();
+
+      await expect(source.fetchLicense("NOPE-1.0")).rejects.toBeInstanceOf(
+        LicenseNotFoundError,
+      );
+    });
+
     it("surfaces the standardLicenseTemplate from the detail response", async () => {
       mockIndexAndDetail({
         licenseId: "MIT",

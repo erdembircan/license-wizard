@@ -10,6 +10,7 @@ import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterErr
 
 const makeSource = (): ILicenseSource => ({
   search: vi.fn(async (): Promise<LicenseIndexEntry[]> => []),
+  suggest: vi.fn(async (): Promise<LicenseIndexEntry[]> => []),
   fetchLicense: vi.fn(
     async (): Promise<LicenseDetail> => ({
       licenseId: "MIT",

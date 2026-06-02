@@ -50,6 +50,7 @@ classDiagram
       +generated(licenseId: string, savedTo: string) void
       +missingFields(licenseId: string, missing: TemplateSlot[]) void
       +unknownFields(licenseId: string, unknown: string[], slots: TemplateSlot[]) void
+      +licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]) void
       +error(message: string) void
     }
 
@@ -136,6 +137,7 @@ classDiagram
     class LicenseRepository {
       +LicenseRepository(source: ILicenseSource)
       +search(query: string) Promise~LicenseIndexEntry[]~
+      +suggest(query: string, limit: number) Promise~LicenseIndexEntry[]~
       +getLicense(licenseId: string) Promise~LicenseDetail~
     }
 
@@ -145,9 +147,16 @@ classDiagram
       +LicenseRepositoryError(message: string, cause?: unknown)
     }
 
+    class LicenseNotFoundError {
+      +name: string
+      +licenseId: string
+      +LicenseNotFoundError(licenseId: string)
+    }
+
     class ILicenseSource {
       <<interface>>
       +search(query: string) Promise~LicenseIndexEntry[]~
+      +suggest(query: string, limit: number) Promise~LicenseIndexEntry[]~
       +fetchLicense(licenseId: string) Promise~LicenseDetail~
     }
 
@@ -335,6 +344,10 @@ classDiagram
   LicenseRepository ..> LicenseIndexEntry : produces
   LicenseRepository ..> LicenseDetail : produces
   LicenseRepository ..> LicenseRepositoryError : throws
+  LicenseRepository ..> LicenseNotFoundError : throws
+  SpdxLicenseSource ..> LicenseNotFoundError : throws
+  LicenseWizard ..> LicenseNotFoundError : handles
+  CliReporter ..> LicenseIndexEntry : renders
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
