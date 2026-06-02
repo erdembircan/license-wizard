@@ -38,6 +38,11 @@ const state = vi.hoisted(() => {
     notFoundLicenseId: null as string | null,
     suggestions: [] as LicenseIndexEntry[],
     generateCalls: [] as GenerateCall[],
+    // The content the stub generator's `render` returns, used by verify to
+    // stand in for the freshly re-rendered license.
+    renderedContent: "RENDERED LICENSE",
+    // The on-disk LICENSE the stub reader serves, or null when absent.
+    licenseFile: null as string | null,
     // Maps a question to the answer the stub renderer returns.
     answer: defaultAnswer,
     reset() {
@@ -53,6 +58,8 @@ const state = vi.hoisted(() => {
       self.notFoundLicenseId = null;
       self.suggestions = [];
       self.generateCalls = [];
+      self.renderedContent = "RENDERED LICENSE";
+      self.licenseFile = null;
       self.answer = defaultAnswer;
     },
   };
@@ -127,16 +134,40 @@ vi.mock("@licensing/SpdxLicenseSource.js", () => ({
   }),
 }));
 
-// Stub license generation: capture the arguments instead of writing files.
+// Stub license generation: capture the arguments instead of writing files, and
+// serve the state-controlled rendered content for verify comparisons.
 vi.mock("@licensing/LicenseGenerator.js", () => ({
   LicenseGenerator: vi.fn(function (this: {
     generate: (
       licenseId: string,
       slotValues?: Record<string, string>,
     ) => Promise<void>;
+    render: (
+      licenseId: string,
+      slotValues?: Record<string, string>,
+    ) => Promise<string>;
   }) {
     this.generate = async (licenseId, slotValues = {}) => {
       state.generateCalls.push({ licenseId, slotValues });
+    };
+    this.render = async () => state.renderedContent;
+  }),
+}));
+
+// Stub the file-system reader so verify can control whether a LICENSE file
+// exists and what it contains, without touching the real working directory.
+vi.mock("@configuration/NodeFileSystemReader.js", () => ({
+  NodeFileSystemReader: vi.fn(function (this: {
+    exists: (path: string) => Promise<boolean>;
+    read: (path: string) => Promise<string>;
+  }) {
+    this.exists = async (path: string) =>
+      path === "LICENSE" ? state.licenseFile !== null : false;
+    this.read = async (path: string) => {
+      if (path === "LICENSE" && state.licenseFile !== null) {
+        return state.licenseFile;
+      }
+      throw new Error(`no such file: ${path}`);
     };
   }),
 }));
@@ -715,5 +746,114 @@ describe("LicenseWizard non-interactive mode", () => {
     expect(state.generateCalls).toEqual([]);
     expect(stderr).toContain('No license matches "zzzz"');
     expect(process.exitCode).toBe(1);
+  });
+});
+
+describe("LicenseWizard verify mode", () => {
+  const originalExitCode = process.exitCode;
+  let stdout: string;
+  let stderr: string;
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    state.reset();
+    stdout = "";
+    stderr = "";
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stdout += String(chunk);
+      return true;
+    }) as typeof process.stdout.write);
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stderr += String(chunk);
+      return true;
+    }) as typeof process.stderr.write);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    process.exitCode = originalExitCode;
+  });
+
+  it("confirms a match and never rewrites when LICENSE equals the rendered license", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "RENDERED LICENSE";
+    state.renderedContent = "RENDERED LICENSE";
+
+    await new LicenseWizard(["--verify"]).run();
+
+    expect(stdout).toContain("LICENSE is up to date");
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(originalExitCode);
+  });
+
+  it("rewrites the LICENSE by default when it differs from the saved config", async () => {
+    state.config = { licenseId: "MIT", tokens: { "<year>": "2026" } };
+    state.licenseFile = "STALE LICENSE";
+    state.renderedContent = "FRESH LICENSE";
+
+    await new LicenseWizard(["--verify"]).run();
+
+    expect(stdout).toContain("regenerated it from MIT");
+    expect(state.generateCalls).toEqual([
+      { licenseId: "MIT", slotValues: { "<year>": "2026" } },
+    ]);
+  });
+
+  it("fails without rewriting under --strict when LICENSE differs", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "STALE LICENSE";
+    state.renderedContent = "FRESH LICENSE";
+
+    await new LicenseWizard(["--verify", "--strict"]).run();
+
+    expect(stderr).toContain("out of sync");
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("fails when there is no LICENSE file to verify", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = null;
+
+    await new LicenseWizard(["--verify"]).run();
+
+    expect(stderr).toContain("no LICENSE file");
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("fails when there is no saved configuration to verify against", async () => {
+    state.config = null;
+    state.licenseFile = "SOME LICENSE";
+
+    await new LicenseWizard(["--verify"]).run();
+
+    expect(stderr).toContain("no saved configuration");
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("ignores other selection flags when --verify is supplied", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "RENDERED LICENSE";
+    state.renderedContent = "RENDERED LICENSE";
+
+    await new LicenseWizard([
+      "--verify",
+      "--license",
+      "Apache-2.0",
+      "--save-rc",
+    ]).run();
+
+    // No prompts, no non-interactive generation — just the verify confirmation.
+    expect(state.rendered).toEqual([]);
+    expect(stdout).toContain("LICENSE is up to date");
+    expect(state.writtenConfig).toBeNull();
   });
 });

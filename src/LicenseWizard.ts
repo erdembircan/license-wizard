@@ -29,6 +29,7 @@ import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import { LicenseInstaller } from "./LicenseInstaller.js";
 import type { ConfigSave } from "./LicenseInstaller.js";
+import { LicenseVerifier } from "./LicenseVerifier.js";
 import pkg from "../package.json" with { type: "json" };
 
 const GENERATION_MODE_ID = "generationMode";
@@ -46,6 +47,7 @@ export class LicenseWizard {
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #installer: LicenseInstaller;
+  readonly #verifier: LicenseVerifier;
   readonly #reporter: IReporter;
   readonly #flags;
   // Maps each save flag to the target id of the config store it writes to,
@@ -83,11 +85,13 @@ export class LicenseWizard {
 
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);
+    const generator = new LicenseGenerator(this.#licenseRepository, writer);
     this.#installer = new LicenseInstaller(
       this.#config,
       this.#manifests,
-      new LicenseGenerator(this.#licenseRepository, writer),
+      generator,
     );
+    this.#verifier = new LicenseVerifier(this.#config, generator, reader);
     this.#reporter = new CliReporter(pkg.name);
   }
 
@@ -115,7 +119,14 @@ export class LicenseWizard {
       verify: {
         type: "boolean",
         default: false,
-        description: "Verify the LICENSE file matches the saved configuration.",
+        description:
+          "Verify LICENSE matches the saved config, regenerating it on a mismatch (standalone mode).",
+      },
+      strict: {
+        type: "boolean",
+        default: false,
+        description:
+          "With --verify, fail (exit non-zero) on a mismatch instead of rewriting LICENSE (for CI).",
       },
       license: {
         type: "string",
@@ -488,6 +499,45 @@ export class LicenseWizard {
   }
 
   /**
+   * Runs the standalone `--verify` mode: re-renders the license from the saved
+   * configuration and compares it against the on-disk `LICENSE`. A missing
+   * `LICENSE` or missing configuration is reported as a failure (both are
+   * required). On a mismatch the file is rewritten to match by default, or —
+   * when `--strict` is set — left untouched and reported as a failure with a
+   * non-zero exit code, so the check can gate a CI pipeline. Like the other
+   * non-interactive paths, failures are written to stderr and set the exit code
+   * without throwing.
+   */
+  async #runVerify(): Promise<void> {
+    const outcome = await this.#verifier.verify({
+      fix: !this.#flags.strict,
+    });
+
+    switch (outcome.kind) {
+      case "missing-license":
+        this.#fail(
+          "Cannot verify: no LICENSE file found. Generate one first, e.g. with --license <spdx-id>.",
+        );
+        return;
+      case "missing-config":
+        this.#fail(
+          "Cannot verify: no saved configuration found. Save one first with a --save-* flag.",
+        );
+        return;
+      case "match":
+        this.#reporter.verifyMatch(outcome.licenseId);
+        return;
+      case "fixed":
+        this.#reporter.verifyFixed(outcome.licenseId);
+        return;
+      case "mismatch":
+        this.#reporter.verifyMismatch(outcome.licenseId);
+        this.#exitWithError();
+        return;
+    }
+  }
+
+  /**
    * Reports an error message through the reporter and sets a non-zero exit code
    * without throwing, so non-interactive failures surface cleanly to callers and
    * agents.
@@ -515,10 +565,19 @@ export class LicenseWizard {
    * directory, and records the selection in every project manifest present
    * (`composer.json`, `package.json`). Returns the collected answers.
    * When `--help` is passed, prints the usage screen and exits without running.
+   * When `--verify` is passed, runs the standalone verification mode instead,
+   * ignoring every other selection flag.
    */
   async run() {
     if (this.#flags.help) {
       this.#reporter.usage(this.#createFlagParser().formatHelp());
+      return [];
+    }
+
+    // --verify is a standalone mode: it ignores every other selection flag and
+    // checks the existing LICENSE against the saved configuration instead.
+    if (this.#flags.verify) {
+      await this.#runVerify();
       return [];
     }
 

@@ -100,6 +100,30 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 
+  it("confirms an up-to-date LICENSE on verify to stdout", () => {
+    new CliReporter("license-wizard").verifyMatch("MIT");
+
+    expect(stdout).toContain("LICENSE is up to date");
+    expect(stdout).toContain("MIT");
+    expect(stderr).toBe("");
+  });
+
+  it("notes a regenerated LICENSE on verify to stdout", () => {
+    new CliReporter("license-wizard").verifyFixed("MIT");
+
+    expect(stdout).toContain("did not match");
+    expect(stdout).toContain("regenerated it from MIT");
+    expect(stderr).toBe("");
+  });
+
+  it("writes the verify mismatch error to stderr with a fix hint", () => {
+    new CliReporter("license-wizard").verifyMismatch("MIT");
+
+    expect(stderr).toContain("out of sync with the saved MIT configuration");
+    expect(stderr).toContain("license-wizard --verify");
+    expect(stdout).toBe("");
+  });
+
   it("lists the suggested licenses with a --license hint on an unknown id", () => {
     new CliReporter("license-wizard").licenseNotFound("apache-2-0", [
       { licenseId: "Apache-2.0", name: "Apache License 2.0" },

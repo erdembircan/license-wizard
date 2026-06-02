@@ -196,6 +196,46 @@ export class CliReporter implements IReporter {
   }
 
   /**
+   * Renders the verify "in sync" confirmation to stdout.
+   */
+  verifyMatch(licenseId: string): void {
+    const mark = this.#mark(this.#out, "✓", "green");
+    const id = this.#paint(this.#out, "bold", licenseId);
+    this.#out.write(
+      `${mark}LICENSE is up to date with the saved ${id} configuration.\n`,
+    );
+  }
+
+  /**
+   * Renders the verify "rewrote the file" notice to stdout.
+   */
+  verifyFixed(licenseId: string): void {
+    const mark = this.#mark(this.#out, "✓", "green");
+    const id = this.#paint(this.#out, "bold", licenseId);
+    this.#out.write(
+      `${mark}LICENSE did not match the saved configuration; ` +
+        `regenerated it from ${id}.\n`,
+    );
+  }
+
+  /**
+   * Renders the verify mismatch error to stderr, including how to reconcile it.
+   */
+  verifyMismatch(licenseId: string): void {
+    const mark = this.#mark(this.#err, "✗", "red");
+    const heading = this.#paint(
+      this.#err,
+      ["bold", "red"],
+      `LICENSE is out of sync with the saved ${licenseId} configuration.`,
+    );
+    const fix = this.#paint(this.#err, "dim", `${this.#programName} --verify`);
+    this.#err.write(
+      `${mark}${heading}\n` +
+        `Run ${fix} to regenerate it, or update the configuration to match.\n`,
+    );
+  }
+
+  /**
    * Renders a plain error message to stderr.
    */
   error(message: string): void {
