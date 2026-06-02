@@ -2,6 +2,7 @@ import { styleText } from "node:util";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
+import type { ManifestCheck, VerifyReport } from "../LicenseVerifier.js";
 
 type Style = Parameters<typeof styleText>[0];
 
@@ -196,43 +197,103 @@ export class CliReporter implements IReporter {
   }
 
   /**
-   * Renders the verify "in sync" confirmation to stdout.
+   * Renders the verify "in sync" confirmation to stdout, noting that the
+   * manifests were checked too when any are present.
    */
-  verifyMatch(licenseId: string): void {
+  verifyMatch(report: VerifyReport): void {
     const mark = this.#mark(this.#out, "✓", "green");
-    const id = this.#paint(this.#out, "bold", licenseId);
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    const surfaces =
+      report.manifests.length > 0
+        ? "LICENSE and project manifests are"
+        : "LICENSE is";
     this.#out.write(
-      `${mark}LICENSE is up to date with the saved ${id} configuration.\n`,
+      `${mark}${surfaces} up to date with the saved ${id} configuration.\n`,
     );
   }
 
   /**
-   * Renders the verify "rewrote the file" notice to stdout.
+   * Renders the verify "reconciled the drift" notice to stdout, listing each
+   * surface that was brought back in sync.
    */
-  verifyFixed(licenseId: string): void {
+  verifyFixed(report: VerifyReport): void {
     const mark = this.#mark(this.#out, "✓", "green");
-    const id = this.#paint(this.#out, "bold", licenseId);
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    const list = this.#driftList(this.#out, report, "fixed");
     this.#out.write(
-      `${mark}LICENSE did not match the saved configuration; ` +
-        `regenerated it from ${id}.\n`,
+      `${mark}Reconciled the project with the saved ${id} configuration:\n${list}\n`,
     );
   }
 
   /**
-   * Renders the verify mismatch error to stderr, including how to reconcile it.
+   * Renders the verify mismatch error to stderr, listing every surface that
+   * drifted and how to reconcile it.
    */
-  verifyMismatch(licenseId: string): void {
+  verifyMismatch(report: VerifyReport): void {
     const mark = this.#mark(this.#err, "✗", "red");
     const heading = this.#paint(
       this.#err,
       ["bold", "red"],
-      `LICENSE is out of sync with the saved ${licenseId} configuration.`,
+      `Project is out of sync with the saved ${report.licenseId} configuration:`,
     );
+    const list = this.#driftList(this.#err, report, "mismatch");
     const fix = this.#paint(this.#err, "dim", `${this.#programName} --verify`);
     this.#err.write(
-      `${mark}${heading}\n` +
-        `Run ${fix} to regenerate it, or update the configuration to match.\n`,
+      `${mark}${heading}\n${list}\n` +
+        `Run ${fix} to reconcile, or update the configuration to match.\n`,
     );
+  }
+
+  /**
+   * Builds the indented, per-surface drift listing shared by the verify fixed
+   * and mismatch reports — the `LICENSE` file when its status matches the given
+   * one, followed by every manifest with that status, each described against the
+   * configured identifier.
+   */
+  #driftList(
+    stream: OutputStream,
+    report: VerifyReport,
+    status: "fixed" | "mismatch",
+  ): string {
+    const verb =
+      status === "fixed"
+        ? { license: "regenerated", manifest: "updated" }
+        : { license: "does not match", manifest: "declares" };
+    const lines: string[] = [];
+
+    if (report.license === status) {
+      lines.push(`  LICENSE ${this.#paint(stream, "yellow", verb.license)}`);
+    }
+
+    for (const manifest of report.manifests) {
+      if (manifest.status !== status) {
+        continue;
+      }
+      const name = this.#paint(stream, "cyan", manifest.name);
+      const detail =
+        status === "fixed"
+          ? `${verb.manifest} to ${report.licenseId}${this.#was(manifest)}`
+          : `${verb.manifest} ${this.#declared(manifest)} (expected ${report.licenseId})`;
+      lines.push(`  ${name} license ${detail}`);
+    }
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Describes what a drifted manifest previously declared, as a parenthetical
+   * suffix for the fixed listing — `(was X)`, or empty when it declared nothing.
+   */
+  #was(manifest: ManifestCheck): string {
+    return manifest.declared === null ? "" : ` (was ${manifest.declared})`;
+  }
+
+  /**
+   * Describes what a manifest declared for the mismatch listing — the declared
+   * identifier, or "no license" when the field is absent.
+   */
+  #declared(manifest: ManifestCheck): string {
+    return manifest.declared === null ? "no license" : manifest.declared;
   }
 
   /**

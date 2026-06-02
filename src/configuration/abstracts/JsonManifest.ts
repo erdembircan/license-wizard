@@ -27,6 +27,13 @@ export abstract class JsonManifest implements IProjectManifest {
   }
 
   /**
+   * The manifest's file name (e.g. `package.json`).
+   */
+  get name(): string {
+    return this.#fileName;
+  }
+
+  /**
    * Returns whether the manifest file exists in the working directory.
    *
    * @param reader - Used to check for the manifest file.

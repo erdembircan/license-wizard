@@ -43,6 +43,10 @@ const state = vi.hoisted(() => {
     renderedContent: "RENDERED LICENSE",
     // The on-disk LICENSE the stub reader serves, or null when absent.
     licenseFile: null as string | null,
+    // The declared license of each present manifest, used by verify.
+    declaredLicenses: [] as { name: string; licenseId: string | null }[],
+    // Targeted manifest writes captured during a verify fix.
+    manifestWrites: [] as { name: string; licenseId: string }[],
     // Maps a question to the answer the stub renderer returns.
     answer: defaultAnswer,
     reset() {
@@ -60,6 +64,8 @@ const state = vi.hoisted(() => {
       self.generateCalls = [];
       self.renderedContent = "RENDERED LICENSE";
       self.licenseFile = null;
+      self.declaredLicenses = [];
+      self.manifestWrites = [];
       self.answer = defaultAnswer;
     },
   };
@@ -101,15 +107,25 @@ vi.mock("@configuration/Config.js", () => ({
   }),
 }));
 
-// Stub the project manifests: read returns the controlled value, write captures it.
+// Stub the project manifests: read returns the controlled value, write captures
+// it, and verify reads the controlled declared licenses / captures targeted
+// writes.
 vi.mock("@configuration/ProjectManifestRepository.js", () => ({
   ProjectManifestRepository: vi.fn(function (this: {
     readLicense: () => Promise<string | null>;
     writeLicense: (licenseId: string) => Promise<void>;
+    declaredLicenses: () => Promise<
+      { name: string; licenseId: string | null }[]
+    >;
+    writeLicenseTo: (name: string, licenseId: string) => Promise<void>;
   }) {
     this.readLicense = async () => state.projectLicense;
     this.writeLicense = async (licenseId: string) => {
       state.writtenProjectLicense = licenseId;
+    };
+    this.declaredLicenses = async () => state.declaredLicenses;
+    this.writeLicenseTo = async (name: string, licenseId: string) => {
+      state.manifestWrites.push({ name, licenseId });
     };
   }),
 }));
@@ -799,7 +815,8 @@ describe("LicenseWizard verify mode", () => {
 
     await new LicenseWizard(["--verify"]).run();
 
-    expect(stdout).toContain("regenerated it from MIT");
+    expect(stdout).toContain("Reconciled the project");
+    expect(stdout).toContain("LICENSE regenerated");
     expect(state.generateCalls).toEqual([
       { licenseId: "MIT", slotValues: { "<year>": "2026" } },
     ]);
@@ -855,5 +872,57 @@ describe("LicenseWizard verify mode", () => {
     expect(state.rendered).toEqual([]);
     expect(stdout).toContain("LICENSE is up to date");
     expect(state.writtenConfig).toBeNull();
+  });
+
+  it("confirms LICENSE and manifests together when both are in sync", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "RENDERED LICENSE";
+    state.renderedContent = "RENDERED LICENSE";
+    state.declaredLicenses = [{ name: "package.json", licenseId: "MIT" }];
+
+    await new LicenseWizard(["--verify"]).run();
+
+    expect(stdout).toContain("LICENSE and project manifests are up to date");
+    expect(state.manifestWrites).toEqual([]);
+    expect(process.exitCode).toBe(originalExitCode);
+  });
+
+  it("updates a drifted manifest license by default and exits zero", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "RENDERED LICENSE";
+    state.renderedContent = "RENDERED LICENSE";
+    state.declaredLicenses = [
+      { name: "package.json", licenseId: "Apache-2.0" },
+    ];
+
+    await new LicenseWizard(["--verify"]).run();
+
+    expect(stdout).toContain(
+      "package.json license updated to MIT (was Apache-2.0)",
+    );
+    expect(state.manifestWrites).toEqual([
+      { name: "package.json", licenseId: "MIT" },
+    ]);
+    // The LICENSE file matched, so it is not regenerated.
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(originalExitCode);
+  });
+
+  it("fails on a drifted manifest under --strict without writing", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "RENDERED LICENSE";
+    state.renderedContent = "RENDERED LICENSE";
+    state.declaredLicenses = [
+      { name: "package.json", licenseId: "Apache-2.0" },
+    ];
+
+    await new LicenseWizard(["--verify", "--strict"]).run();
+
+    expect(stderr).toContain("out of sync");
+    expect(stderr).toContain(
+      "package.json license declares Apache-2.0 (expected MIT)",
+    );
+    expect(state.manifestWrites).toEqual([]);
+    expect(process.exitCode).toBe(1);
   });
 });

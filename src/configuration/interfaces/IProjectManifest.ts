@@ -13,6 +13,12 @@ import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWri
  */
 export interface IProjectManifest {
   /**
+   * The manifest's file name (e.g. `package.json`), used to identify it when
+   * reporting drift or targeting a single manifest for a write.
+   */
+  readonly name: string;
+
+  /**
    * Returns whether the manifest file exists in the working directory.
    *
    * @param reader - Used to check for the manifest file.

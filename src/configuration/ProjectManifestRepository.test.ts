@@ -33,12 +33,18 @@ const makeRepository = (
  */
 class FakeManifest implements IProjectManifest {
   written: string | null = null;
+  readonly name: string;
   readonly #present: boolean;
   readonly #license: string | null;
 
-  constructor(present: boolean, license: string | null = null) {
+  constructor(
+    present: boolean,
+    license: string | null = null,
+    name = "package.json",
+  ) {
     this.#present = present;
     this.#license = license;
+    this.name = name;
   }
 
   async exists(): Promise<boolean> {
@@ -121,6 +127,62 @@ describe("ProjectManifestRepository", () => {
       await repository.writeLicense("MIT");
 
       expect(composer.written).toBeNull();
+      expect(pkg.written).toBeNull();
+    });
+  });
+
+  describe("declaredLicenses", () => {
+    it("returns each present manifest's declared license, in priority order", async () => {
+      const repository = makeRepository([
+        new FakeManifest(true, "GPL-3.0-only", "composer.json"),
+        new FakeManifest(true, "MIT", "package.json"),
+      ]);
+
+      expect(await repository.declaredLicenses()).toEqual([
+        { name: "composer.json", licenseId: "GPL-3.0-only" },
+        { name: "package.json", licenseId: "MIT" },
+      ]);
+    });
+
+    it("omits absent manifests and maps a present one with no license to null", async () => {
+      const repository = makeRepository([
+        new FakeManifest(false, "MIT", "composer.json"),
+        new FakeManifest(true, null, "package.json"),
+      ]);
+
+      expect(await repository.declaredLicenses()).toEqual([
+        { name: "package.json", licenseId: null },
+      ]);
+    });
+
+    it("returns an empty list when no manifest exists", async () => {
+      const repository = makeRepository([
+        new FakeManifest(false),
+        new FakeManifest(false),
+      ]);
+
+      expect(await repository.declaredLicenses()).toEqual([]);
+    });
+  });
+
+  describe("writeLicenseTo", () => {
+    it("writes only to the manifest with the matching name", async () => {
+      const composer = new FakeManifest(true, "MIT", "composer.json");
+      const pkg = new FakeManifest(true, "ISC", "package.json");
+      const repository = makeRepository([composer, pkg]);
+
+      await repository.writeLicenseTo("package.json", "Apache-2.0");
+
+      expect(pkg.written).toBe("Apache-2.0");
+      expect(composer.written).toBeNull();
+    });
+
+    it("does nothing when no manifest matches the name", async () => {
+      const pkg = new FakeManifest(true, "ISC", "package.json");
+      const repository = makeRepository([pkg]);
+
+      await repository.writeLicenseTo("composer.json", "Apache-2.0");
+
       expect(pkg.written).toBeNull();
     });
   });

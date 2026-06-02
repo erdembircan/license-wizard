@@ -91,7 +91,12 @@ export class LicenseWizard {
       this.#manifests,
       generator,
     );
-    this.#verifier = new LicenseVerifier(this.#config, generator, reader);
+    this.#verifier = new LicenseVerifier(
+      this.#config,
+      this.#manifests,
+      generator,
+      reader,
+    );
     this.#reporter = new CliReporter(pkg.name);
   }
 
@@ -120,13 +125,13 @@ export class LicenseWizard {
         type: "boolean",
         default: false,
         description:
-          "Verify LICENSE matches the saved config, regenerating it on a mismatch (standalone mode).",
+          "Verify LICENSE and manifest license fields match the saved config, reconciling drift (standalone mode).",
       },
       strict: {
         type: "boolean",
         default: false,
         description:
-          "With --verify, fail (exit non-zero) on a mismatch instead of rewriting LICENSE (for CI).",
+          "With --verify, fail (exit non-zero) on any drift instead of reconciling it (for CI).",
       },
       license: {
         type: "string",
@@ -499,11 +504,12 @@ export class LicenseWizard {
   }
 
   /**
-   * Runs the standalone `--verify` mode: re-renders the license from the saved
-   * configuration and compares it against the on-disk `LICENSE`. A missing
-   * `LICENSE` or missing configuration is reported as a failure (both are
-   * required). On a mismatch the file is rewritten to match by default, or —
-   * when `--strict` is set — left untouched and reported as a failure with a
+   * Runs the standalone `--verify` mode: checks both the on-disk `LICENSE` and
+   * every present manifest's declared license against the saved configuration.
+   * A missing `LICENSE` or missing configuration is reported as a failure (both
+   * are required). When anything has drifted the file is rewritten and the
+   * drifted manifests are updated by default, or — when `--strict` is set —
+   * everything is left untouched and the drift is reported as a failure with a
    * non-zero exit code, so the check can gate a CI pipeline. Like the other
    * non-interactive paths, failures are written to stderr and set the exit code
    * without throwing.
@@ -525,13 +531,13 @@ export class LicenseWizard {
         );
         return;
       case "match":
-        this.#reporter.verifyMatch(outcome.licenseId);
+        this.#reporter.verifyMatch(outcome);
         return;
       case "fixed":
-        this.#reporter.verifyFixed(outcome.licenseId);
+        this.#reporter.verifyFixed(outcome);
         return;
       case "mismatch":
-        this.#reporter.verifyMismatch(outcome.licenseId);
+        this.#reporter.verifyMismatch(outcome);
         this.#exitWithError();
         return;
     }
