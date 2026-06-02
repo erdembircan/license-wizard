@@ -251,7 +251,7 @@ A passing `--verify --strict` run exits zero, making it a drop-in check step:
 | `--save-npm` | Save the resolved config to the `"license-wizard"` field of `package.json` (must exist). Implies non-interactive mode. |
 | `--save-composer` | Save the resolved config to the `"license-wizard"` field of `composer.json` (must exist). Implies non-interactive mode. |
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit without generating. |
-| `--dry-run` | Print the license that would be generated and skip every write — no `LICENSE`, config, or manifest update. Works in both interactive and non-interactive mode. |
+| `--dry-run` | Preview the license and skip every write. |
 
 Run `npx license-wizard --help` to print the same list from the CLI.
 
