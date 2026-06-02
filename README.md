@@ -19,6 +19,8 @@ Most projects declare a license in `package.json` or `composer.json`, yet the ac
 
 License Wizard closes that gap. It walks you through choosing a license, pulls the canonical SPDX text, fills in your copyright details, and writes a proper `LICENSE` file — then records the choice back into your project's manifests so everything stays consistent.
 
+It's also designed to be easy for AI agents to use. The same predictable flow that guides a human works just as well when an agent drives it, so coding assistants can quickly generate a correct `LICENSE` file for a project without hand-copying text or guessing at copyright placeholders.
+
 ## Features
 
 - **Full SPDX catalog** — search and pick from the complete, up-to-date SPDX License List with type-ahead autocomplete.
