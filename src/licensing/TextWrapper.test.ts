@@ -72,4 +72,54 @@ describe("wrapText", () => {
       expect(line.length).toBeLessThanOrEqual(80);
     }
   });
+
+  it("reflows a paragraph that was soft-wrapped at a wider width", () => {
+    // Two source lines, the first past the width, are one paragraph wrapped
+    // wider than 80. Reflowing then re-wrapping must match wrapping the
+    // equivalent single joined line — i.e. no short orphan lines remain.
+    const firstLine =
+      "Permission is hereby granted, free of charge, to any person obtaining a copy of";
+    const secondLine =
+      "this software and associated documentation files, to deal in the Software.";
+    const softWrapped = `${firstLine}\n${secondLine}`;
+    const joined = `${firstLine} ${secondLine}`;
+
+    expect(wrapText(softWrapped, 80)).toBe(wrapText(joined, 80));
+  });
+
+  it("does not merge a short deliberate line into the following paragraph", () => {
+    const heading = "1. Definitions";
+    const longBody =
+      "This clause runs well past the chosen width so that it would otherwise wrap onto a second line.";
+
+    const wrapped = wrapText(`${heading}\n${longBody}`, 80);
+
+    expect(wrapped.split("\n")[0]).toBe(heading);
+  });
+
+  it("leaves text already wrapped within the width untouched", () => {
+    const text =
+      "This text is already\nwrapped narrowly on\npurpose, every line short.";
+
+    expect(wrapText(text, 80)).toBe(text);
+  });
+
+  it("does not merge lines at different indentation", () => {
+    const flush =
+      "This flush-left line is deliberately longer than the chosen width so it passes the threshold.";
+    const indented = "    a differently indented following line";
+
+    const wrapped = wrapText(`${flush}\n${indented}`, 80);
+
+    expect(wrapped.split("\n")).toContain(indented);
+  });
+
+  it("is idempotent", () => {
+    const text =
+      "A long paragraph line that certainly exceeds the chosen width and will be wrapped into several lines by the pass.";
+
+    const once = wrapText(text, 40);
+
+    expect(wrapText(once, 40)).toBe(once);
+  });
 });
