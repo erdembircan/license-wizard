@@ -13,6 +13,17 @@ export interface ILicenseSource {
   search(query: string): Promise<LicenseIndexEntry[]>;
 
   /**
+   * Returns the licenses whose identifier or name most closely resembles the
+   * given query, ranked best-first. Unlike `search`, this never returns an empty
+   * result for a non-empty index — it always offers the nearest candidates, so
+   * it is suited to recovering from a mistyped identifier.
+   *
+   * @param query - The (possibly mistyped) term to find close matches for.
+   * @param limit - The maximum number of suggestions to return.
+   */
+  suggest(query: string, limit: number): Promise<LicenseIndexEntry[]>;
+
+  /**
    * Fetches the full license detail for the given SPDX license identifier.
    *
    * @param licenseId - The SPDX identifier of the license to fetch.

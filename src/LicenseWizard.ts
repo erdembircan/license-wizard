@@ -20,7 +20,9 @@ import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { RcConfigStore } from "@configuration/RcConfigStore.js";
+import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
@@ -34,6 +36,7 @@ const SAVE_CONFIG_ID = "saveConfig";
 const SKIP_SAVE = "skip";
 const PACKAGE_JSON = "package.json";
 const COMPOSER_JSON = "composer.json";
+const SUGGESTION_LIMIT = 5;
 
 /**
  * Entry point for the license-wizard CLI application.
@@ -317,7 +320,11 @@ export class LicenseWizard {
       return;
     }
 
-    const detail = await this.#licenseRepository.getLicense(licenseId);
+    const detail = await this.#resolveLicenseDetail(licenseId);
+    if (detail === null) {
+      return;
+    }
+
     const template = new LicenseTemplate(detail.standardLicenseTemplate ?? "");
 
     if (this.#flags["get-tokens"]) {
@@ -360,6 +367,33 @@ export class LicenseWizard {
     }
 
     await this.#generateNonInteractive(licenseId, values, saveTarget);
+  }
+
+  /**
+   * Fetches the requested license's detail, or reports the closest available
+   * identifiers and returns null when the id is unrecognized. Treating a missing
+   * license as a recoverable user mistake keeps the CLI from crashing on a typo
+   * and instead points at the licenses that do exist.
+   *
+   * @param licenseId - The SPDX identifier requested via `--license`.
+   */
+  async #resolveLicenseDetail(
+    licenseId: string,
+  ): Promise<LicenseDetail | null> {
+    try {
+      return await this.#licenseRepository.getLicense(licenseId);
+    } catch (error) {
+      if (error instanceof LicenseNotFoundError) {
+        const suggestions = await this.#licenseRepository.suggest(
+          licenseId,
+          SUGGESTION_LIMIT,
+        );
+        this.#reporter.licenseNotFound(licenseId, suggestions);
+        this.#exitWithError();
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**

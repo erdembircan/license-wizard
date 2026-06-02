@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Answer } from "@cli/Answer.js";
 import type { Question } from "@cli/Question.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
+import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
+import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 
 type GenerateCall = { licenseId: string; slotValues: Record<string, string> };
@@ -31,6 +33,10 @@ const state = vi.hoisted(() => {
     projectLicense: null as string | null,
     writtenProjectLicense: null as string | null,
     detail: defaultDetail(),
+    // When set, the stub source rejects fetchLicense with a not-found error for
+    // this id, standing in for an unrecognized SPDX identifier.
+    notFoundLicenseId: null as string | null,
+    suggestions: [] as LicenseIndexEntry[],
     generateCalls: [] as GenerateCall[],
     // Maps a question to the answer the stub renderer returns.
     answer: defaultAnswer,
@@ -44,6 +50,8 @@ const state = vi.hoisted(() => {
       self.projectLicense = null;
       self.writtenProjectLicense = null;
       self.detail = defaultDetail();
+      self.notFoundLicenseId = null;
+      self.suggestions = [];
       self.generateCalls = [];
       self.answer = defaultAnswer;
     },
@@ -100,14 +108,22 @@ vi.mock("@configuration/ProjectManifestRepository.js", () => ({
 }));
 
 // Stub the SPDX source so the license `onAnswer` resolves a template without
-// touching the network.
+// touching the network. When `notFoundLicenseId` matches the request, it
+// rejects with a not-found error so the unknown-license path can be exercised.
 vi.mock("@licensing/SpdxLicenseSource.js", () => ({
   SpdxLicenseSource: vi.fn(function (this: {
     search: () => Promise<[]>;
-    fetchLicense: () => Promise<LicenseDetail>;
+    suggest: () => Promise<LicenseIndexEntry[]>;
+    fetchLicense: (licenseId: string) => Promise<LicenseDetail>;
   }) {
     this.search = async () => [];
-    this.fetchLicense = async () => state.detail;
+    this.suggest = async () => state.suggestions;
+    this.fetchLicense = async (licenseId: string) => {
+      if (state.notFoundLicenseId === licenseId) {
+        throw new LicenseNotFoundError(licenseId);
+      }
+      return state.detail;
+    };
   }),
 }));
 
@@ -670,6 +686,34 @@ describe("LicenseWizard non-interactive mode", () => {
 
     expect(state.generateCalls).toEqual([]);
     expect(stderr).toContain("--license");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("reports the closest matches instead of crashing on an unknown license id", async () => {
+    state.notFoundLicenseId = "apache-2-0";
+    state.suggestions = [
+      { licenseId: "Apache-2.0", name: "Apache License 2.0" },
+      { licenseId: "Apache-1.1", name: "Apache Software License 1.1" },
+    ];
+
+    await new LicenseWizard(["--license", "apache-2-0"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+    expect(stderr).toContain('No license matches "apache-2-0"');
+    expect(stderr).toContain("Apache-2.0");
+    expect(stderr).toContain("Apache-1.1");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("still reports a clear error when nothing resembles the unknown id", async () => {
+    state.notFoundLicenseId = "zzzz";
+    state.suggestions = [];
+
+    await new LicenseWizard(["--license", "zzzz"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain('No license matches "zzzz"');
     expect(process.exitCode).toBe(1);
   });
 });
