@@ -188,3 +188,5 @@ When you opt in to saving during a run, License Wizard writes to `.licensewizard
 ## License
 
 [Apache-2.0](LICENSE) © Erdem Bircan
+
+<!-- dummy test PR: no-op change to validate PR tooling, safe to close -->
