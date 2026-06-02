@@ -65,6 +65,30 @@ export interface IReporter {
   licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]): void;
 
   /**
+   * Renders the confirmation shown when `--verify` finds the `LICENSE` file
+   * already matches the saved configuration.
+   *
+   * @param licenseId - The verified SPDX identifier.
+   */
+  verifyMatch(licenseId: string): void;
+
+  /**
+   * Renders the notice shown when `--verify` found a mismatch and rewrote the
+   * `LICENSE` file to match the saved configuration.
+   *
+   * @param licenseId - The SPDX identifier the file was regenerated for.
+   */
+  verifyFixed(licenseId: string): void;
+
+  /**
+   * Renders the error shown when `--verify --strict` found the `LICENSE` file
+   * out of sync with the saved configuration and left it untouched.
+   *
+   * @param licenseId - The SPDX identifier the file was expected to match.
+   */
+  verifyMismatch(licenseId: string): void;
+
+  /**
    * Renders a plain error message.
    *
    * @param message - The error message to report.

@@ -58,11 +58,16 @@ flowchart TD
     G -->|writes license id<br/>to all present manifests| PJ
     G --> H([Done])
 
-    %% ─── Verification path ───
+    %% ─── Verification path (standalone: ignores every other flag) ───
     M -->|Yes| V[Verify]
     V -.->|reads| EL[/Existing LICENSE file/]
-    V --> R{License matches config?}
+    V -.->|re-renders license<br/>from saved config| LC
+    V --> HASL{LICENSE file exists?}
+    HASL -->|No| ERRNL[Error: no LICENSE to verify] --> H
+    HASL -->|Yes| HASC{Saved config exists?}
+    HASC -->|No| ERRNC[Error: no saved config] --> H
+    HASC -->|Yes| R{Re-rendered license<br/>matches LICENSE?<br/>compared by hash}
     R -->|Yes| PASS([Pass])
-    R -->|No| AG{Auto-generate enabled?}
-    AG -->|Yes| G
-    AG -->|No| FAIL([Fail])
+    R -->|No| AG{--strict given?}
+    AG -->|No, default| G2[Rewrite LICENSE<br/>from saved config] --> H
+    AG -->|Yes| FAIL([Fail: exit non-zero])

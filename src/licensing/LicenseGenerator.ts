@@ -1,9 +1,8 @@
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import { LICENSE_FILENAME } from "@licensing/LicenseFilename.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { wrapText } from "@licensing/TextWrapper.js";
-
-const LICENSE_FILENAME = "LICENSE";
 
 /**
  * Generates a license file by fetching the selected license's text and
@@ -46,6 +45,30 @@ export class LicenseGenerator {
     licenseId: string,
     slotValues: Record<string, string> = {},
   ): Promise<void> {
+    await this.#writer.write(
+      LICENSE_FILENAME,
+      await this.render(licenseId, slotValues),
+    );
+  }
+
+  /**
+   * Produces the exact `LICENSE` file content for the given selection without
+   * writing it, so callers that need to compare against an existing file (such
+   * as verification) and the `generate` path that writes it share one source of
+   * truth for how a license is rendered.
+   *
+   * When `slotValues` contains entries and the license has an SPDX template,
+   * the template is rendered with those values substituted into the copyright
+   * line; otherwise the standard license text is used. The resulting text is
+   * hard-wrapped to a conventional column width.
+   *
+   * @param licenseId - The SPDX identifier of the license to render.
+   * @param slotValues - Copyright slot values keyed by token (e.g. `{ "<year>": "2026" }`).
+   */
+  async render(
+    licenseId: string,
+    slotValues: Record<string, string> = {},
+  ): Promise<string> {
     const detail = await this.#repository.getLicense(licenseId);
 
     const content =
@@ -53,6 +76,6 @@ export class LicenseGenerator {
         ? new LicenseTemplate(detail.standardLicenseTemplate).render(slotValues)
         : detail.licenseText;
 
-    await this.#writer.write(LICENSE_FILENAME, wrapText(content));
+    return wrapText(content);
   }
 }

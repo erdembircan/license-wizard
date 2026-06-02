@@ -164,12 +164,56 @@ npx license-wizard --license MIT --save-composer
 
 By default — with no `--save-*` flag — nothing is persisted. As in the interactive flow, saving writes to exactly one location and clears the configuration from the others. `--save-npm` and `--save-composer` require their manifest to exist; pass at most one `--save-*` flag at a time.
 
+### Verifying an existing LICENSE
+
+Once a configuration is saved, `--verify` checks that the `LICENSE` file on disk still matches what that configuration would produce. It is a **standalone mode**: when `--verify` is given, every other selection flag is ignored. Verification re-renders the license from the saved configuration — read by store priority, the `.licensewizardrc.json` dot-file first, then the project manifests — and compares it against the file currently on disk (by hash).
+
+Both a `LICENSE` file **and** a saved configuration are required. If either is missing, License Wizard reports the problem and exits with a non-zero status.
+
+```bash
+npx license-wizard --verify
+```
+
+By default, verification **self-heals**: if the file drifts out of sync (an edited copyright line, a stale license, a manual change), it is regenerated from the saved configuration in place:
+
+```bash
+$ npx license-wizard --verify
+LICENSE did not match the saved configuration; regenerated it from MIT.
+```
+
+When nothing has drifted, it simply confirms and exits zero:
+
+```bash
+$ npx license-wizard --verify
+LICENSE is up to date with the saved MIT configuration.
+```
+
+#### Strict mode (CI)
+
+In CI you usually want a drifted `LICENSE` to **fail the build** rather than be silently rewritten. Add `--strict` to make a mismatch an error: License Wizard leaves the file untouched, reports the drift, and exits with a non-zero status so the pipeline stops.
+
+```bash
+$ npx license-wizard --verify --strict
+LICENSE is out of sync with the saved MIT configuration.
+Run license-wizard --verify to regenerate it, or update the configuration to match.
+$ echo $?
+1
+```
+
+A passing `--verify --strict` run exits zero, making it a drop-in check step:
+
+```yaml
+- name: Check LICENSE is in sync
+  run: npx license-wizard --verify --strict
+```
+
 ### Available flags
 
 | Flag | Description |
 | --- | --- |
 | `--help` | Show this help message and exit. |
-| `--verify` | Verify the LICENSE file matches the saved configuration. |
+| `--verify` | Verify the `LICENSE` file matches the saved configuration, regenerating it on a mismatch. Standalone mode — ignores every other selection flag. |
+| `--strict` | With `--verify`, fail (exit non-zero) on a mismatch instead of rewriting `LICENSE` — for CI. |
 | `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively (no prompts). |
 | `--set <field=value>...` | Set a copyright field for the chosen license (repeatable). Implies non-interactive mode. |
 | `--save-rc` | Save the resolved config (license + fields) to `.licensewizardrc.json`. Implies non-interactive mode. |

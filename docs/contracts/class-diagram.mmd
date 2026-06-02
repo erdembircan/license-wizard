@@ -11,6 +11,11 @@ classDiagram
     +install(selection: LicenseSelection) Promise~void~
   }
 
+  class LicenseVerifier {
+    +LicenseVerifier(config: Config, generator: LicenseGenerator, reader: IFileSystemReader)
+    +verify(options: VerifyOptions) Promise~VerifyOutcome~
+  }
+
   class LicenseSelection {
     +licenseId: string
     +tokens: Record~string, string~
@@ -18,6 +23,14 @@ classDiagram
   }
 
   class ConfigSave {
+    <<union>>
+  }
+
+  class VerifyOptions {
+    +fix: boolean
+  }
+
+  class VerifyOutcome {
     <<union>>
   }
 
@@ -197,6 +210,7 @@ classDiagram
     class LicenseGenerator {
       +LicenseGenerator(repository: LicenseRepository, writer: IFileSystemWriter)
       +generate(licenseId: string, slotValues?: Record~string, string~) Promise~void~
+      +render(licenseId: string, slotValues?: Record~string, string~) Promise~string~
     }
   }
 
@@ -328,10 +342,17 @@ classDiagram
   LicenseWizard ..> LicenseInstaller : creates
   LicenseWizard ..> LicenseInstaller : applies selection through
   LicenseWizard ..> LicenseSelection : builds
+  LicenseWizard ..> LicenseVerifier : creates
+  LicenseWizard ..> LicenseVerifier : verifies through
   LicenseInstaller ..> Config : uses
   LicenseInstaller ..> ProjectManifestRepository : writes selection to
   LicenseInstaller ..> LicenseGenerator : uses
   LicenseInstaller ..> LicenseSelection : applies
+  LicenseVerifier ..> Config : reads config from
+  LicenseVerifier ..> LicenseGenerator : re-renders and rewrites with
+  LicenseVerifier ..> IFileSystemReader : reads LICENSE through
+  LicenseVerifier ..> VerifyOptions : configured by
+  LicenseVerifier ..> VerifyOutcome : returns
   LicenseSelection ..> ConfigSave : has
   Orchestrator ..> QuestionRepository : gets questions from
   Orchestrator ..> IRenderer : feeds questions to

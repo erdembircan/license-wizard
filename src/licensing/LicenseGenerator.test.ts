@@ -208,4 +208,71 @@ describe("LicenseGenerator", () => {
 
     expect(writer.written.get("LICENSE")).toBe(detail.licenseText);
   });
+
+  it("renders the license content without writing any file", async () => {
+    const detail: LicenseDetail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "MIT License\n\nPermission is hereby granted...",
+      standardLicenseTemplate: "",
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const writer = new FakeWriter();
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      writer,
+    );
+
+    const content = await generator.render("MIT");
+
+    expect(content).toBe(detail.licenseText);
+    expect(writer.written.size).toBe(0);
+  });
+
+  it("renders the same content that generate writes", async () => {
+    const longLine =
+      "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.";
+    const detail: LicenseDetail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: `MIT License\n\n${longLine}`,
+      standardLicenseTemplate: "",
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValue(detail);
+    const writer = new FakeWriter();
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      writer,
+    );
+
+    const rendered = await generator.render("MIT");
+    await generator.generate("MIT");
+
+    expect(writer.written.get("LICENSE")).toBe(rendered);
+  });
+
+  it("renders the customized copyright when slot values are given", async () => {
+    const detail: LicenseDetail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "Copyright (c) <year> <copyright holders>",
+      standardLicenseTemplate:
+        '<<var;name="copyright";original="Copyright (c) <year> <copyright holders>";match=".{0,5000}">>',
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      new FakeWriter(),
+    );
+
+    const content = await generator.render("MIT", {
+      "<year>": "2026",
+      "<copyright holders>": "Erdem Bircan",
+    });
+
+    expect(content).toBe("Copyright (c) 2026 Erdem Bircan");
+  });
 });
