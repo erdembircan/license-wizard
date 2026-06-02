@@ -2,6 +2,11 @@ import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemRea
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { IProjectManifest } from "@configuration/interfaces/IProjectManifest.js";
 
+export type ManifestLicense = {
+  name: string;
+  licenseId: string | null;
+};
+
 /**
  * Coordinates license resolution across the project manifests present in the
  * working directory. Reads honour the manifests' priority order; writes fan
@@ -57,6 +62,42 @@ export class ProjectManifestRepository {
    */
   async writeLicense(licenseId: string): Promise<void> {
     for (const manifest of this.#manifests) {
+      await manifest.writeLicense(this.#reader, this.#writer, licenseId);
+    }
+  }
+
+  /**
+   * Returns the license declared by each manifest present in the working
+   * directory, in priority order, paired with its file name. Absent manifests
+   * are omitted; a present manifest that declares no usable license maps to a
+   * `null` identifier. Used by verification to compare each manifest's
+   * declaration against the saved configuration.
+   */
+  async declaredLicenses(): Promise<ManifestLicense[]> {
+    const declared: ManifestLicense[] = [];
+    for (const manifest of this.#manifests) {
+      if (await manifest.exists(this.#reader)) {
+        declared.push({
+          name: manifest.name,
+          licenseId: await manifest.readLicense(this.#reader),
+        });
+      }
+    }
+    return declared;
+  }
+
+  /**
+   * Records the given license identifier in the single manifest with the given
+   * file name. Does nothing when no manifest matches the name or the matched
+   * manifest does not exist. Lets verification reconcile only the manifests
+   * that actually drifted, leaving correct ones untouched.
+   *
+   * @param name - The file name of the manifest to write to.
+   * @param licenseId - The SPDX identifier to record.
+   */
+  async writeLicenseTo(name: string, licenseId: string): Promise<void> {
+    const manifest = this.#manifests.find((entry) => entry.name === name);
+    if (manifest) {
       await manifest.writeLicense(this.#reader, this.#writer, licenseId);
     }
   }

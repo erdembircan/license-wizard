@@ -100,26 +100,68 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 
-  it("confirms an up-to-date LICENSE on verify to stdout", () => {
-    new CliReporter("license-wizard").verifyMatch("MIT");
+  it("confirms an up-to-date project on verify to stdout, LICENSE only when no manifests", () => {
+    new CliReporter("license-wizard").verifyMatch({
+      licenseId: "MIT",
+      license: "match",
+      manifests: [],
+    });
 
     expect(stdout).toContain("LICENSE is up to date");
+    expect(stdout).not.toContain("manifests");
     expect(stdout).toContain("MIT");
     expect(stderr).toBe("");
   });
 
-  it("notes a regenerated LICENSE on verify to stdout", () => {
-    new CliReporter("license-wizard").verifyFixed("MIT");
+  it("notes that manifests were checked too when present and in sync", () => {
+    new CliReporter("license-wizard").verifyMatch({
+      licenseId: "MIT",
+      license: "match",
+      manifests: [{ name: "package.json", declared: "MIT", status: "match" }],
+    });
 
-    expect(stdout).toContain("did not match");
-    expect(stdout).toContain("regenerated it from MIT");
+    expect(stdout).toContain("LICENSE and project manifests are up to date");
     expect(stderr).toBe("");
   });
 
-  it("writes the verify mismatch error to stderr with a fix hint", () => {
-    new CliReporter("license-wizard").verifyMismatch("MIT");
+  it("lists each reconciled surface on a verify fix to stdout", () => {
+    new CliReporter("license-wizard").verifyFixed({
+      licenseId: "MIT",
+      license: "fixed",
+      manifests: [
+        { name: "composer.json", declared: "Apache-2.0", status: "fixed" },
+        { name: "package.json", declared: "MIT", status: "match" },
+      ],
+    });
+
+    expect(stdout).toContain("Reconciled the project");
+    expect(stdout).toContain("LICENSE regenerated");
+    expect(stdout).toContain(
+      "composer.json license updated to MIT (was Apache-2.0)",
+    );
+    // The already-matching manifest is not listed as reconciled.
+    expect(stdout).not.toContain("package.json");
+    expect(stderr).toBe("");
+  });
+
+  it("writes the verify mismatch error to stderr, listing every drifted surface with a fix hint", () => {
+    new CliReporter("license-wizard").verifyMismatch({
+      licenseId: "MIT",
+      license: "mismatch",
+      manifests: [
+        { name: "composer.json", declared: "Apache-2.0", status: "mismatch" },
+        { name: "package.json", declared: null, status: "mismatch" },
+      ],
+    });
 
     expect(stderr).toContain("out of sync with the saved MIT configuration");
+    expect(stderr).toContain("LICENSE does not match");
+    expect(stderr).toContain(
+      "composer.json license declares Apache-2.0 (expected MIT)",
+    );
+    expect(stderr).toContain(
+      "package.json license declares no license (expected MIT)",
+    );
     expect(stderr).toContain("license-wizard --verify");
     expect(stdout).toBe("");
   });

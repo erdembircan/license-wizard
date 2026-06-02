@@ -12,7 +12,7 @@ classDiagram
   }
 
   class LicenseVerifier {
-    +LicenseVerifier(config: Config, generator: LicenseGenerator, reader: IFileSystemReader)
+    +LicenseVerifier(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator, reader: IFileSystemReader)
     +verify(options: VerifyOptions) Promise~VerifyOutcome~
   }
 
@@ -31,6 +31,22 @@ classDiagram
   }
 
   class VerifyOutcome {
+    <<union>>
+  }
+
+  class VerifyReport {
+    +licenseId: string
+    +license: DriftStatus
+    +manifests: ManifestCheck[]
+  }
+
+  class ManifestCheck {
+    +name: string
+    +declared: string | null
+    +status: DriftStatus
+  }
+
+  class DriftStatus {
     <<union>>
   }
 
@@ -285,6 +301,7 @@ classDiagram
 
     class IProjectManifest {
       <<interface>>
+      +name: string
       +exists(reader: IFileSystemReader) Promise~boolean~
       +readLicense(reader: IFileSystemReader) Promise~string | null~
       +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
@@ -293,6 +310,7 @@ classDiagram
     class JsonManifest {
       <<abstract>>
       +JsonManifest(fileName: string)
+      +name: string
       +exists(reader: IFileSystemReader) Promise~boolean~
       +readLicense(reader: IFileSystemReader) Promise~string | null~
       +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
@@ -311,6 +329,13 @@ classDiagram
       +ProjectManifestRepository(manifests: IProjectManifest[], reader: IFileSystemReader, writer: IFileSystemWriter)
       +readLicense() Promise~string | null~
       +writeLicense(licenseId: string) Promise~void~
+      +declaredLicenses() Promise~ManifestLicense[]~
+      +writeLicenseTo(name: string, licenseId: string) Promise~void~
+    }
+
+    class ManifestLicense {
+      +name: string
+      +licenseId: string | null
     }
   }
 
@@ -329,6 +354,7 @@ classDiagram
   ClackRenderer ..> Banner : renders
   CliReporter ..|> IReporter : implements
   CliReporter ..> TemplateSlot : renders
+  CliReporter ..> VerifyReport : renders
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> FlagParser : reads defaults from
   LicenseWizard ..> QuestionRepository : creates
@@ -349,10 +375,16 @@ classDiagram
   LicenseInstaller ..> LicenseGenerator : uses
   LicenseInstaller ..> LicenseSelection : applies
   LicenseVerifier ..> Config : reads config from
+  LicenseVerifier ..> ProjectManifestRepository : checks and reconciles manifests through
   LicenseVerifier ..> LicenseGenerator : re-renders and rewrites with
   LicenseVerifier ..> IFileSystemReader : reads LICENSE through
   LicenseVerifier ..> VerifyOptions : configured by
   LicenseVerifier ..> VerifyOutcome : returns
+  VerifyOutcome ..> VerifyReport : carries
+  VerifyReport ..> ManifestCheck : aggregates
+  VerifyReport ..> DriftStatus : statuses by
+  ManifestCheck ..> DriftStatus : status by
+  ProjectManifestRepository ..> ManifestLicense : produces
   LicenseSelection ..> ConfigSave : has
   Orchestrator ..> QuestionRepository : gets questions from
   Orchestrator ..> IRenderer : feeds questions to

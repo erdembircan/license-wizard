@@ -62,12 +62,13 @@ flowchart TD
     M -->|Yes| V[Verify]
     V -.->|reads| EL[/Existing LICENSE file/]
     V -.->|re-renders license<br/>from saved config| LC
+    V -.->|reads declared license<br/>of each present manifest| PJ
     V --> HASL{LICENSE file exists?}
     HASL -->|No| ERRNL[Error: no LICENSE to verify] --> H
     HASL -->|Yes| HASC{Saved config exists?}
     HASC -->|No| ERRNC[Error: no saved config] --> H
-    HASC -->|Yes| R{Re-rendered license<br/>matches LICENSE?<br/>compared by hash}
+    HASC -->|Yes| R{LICENSE and every manifest's<br/>license in sync with config?<br/>file by hash, manifests by id}
     R -->|Yes| PASS([Pass])
     R -->|No| AG{--strict given?}
-    AG -->|No, default| G2[Rewrite LICENSE<br/>from saved config] --> H
-    AG -->|Yes| FAIL([Fail: exit non-zero])
+    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests] --> H
+    AG -->|Yes| FAIL([Fail: exit non-zero,<br/>report every drifted surface])

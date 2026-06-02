@@ -1,5 +1,6 @@
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
+import type { VerifyReport } from "../../LicenseVerifier.js";
 
 /**
  * Contract for rendering non-interactive CLI output to the terminal — the usage
@@ -65,28 +66,30 @@ export interface IReporter {
   licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]): void;
 
   /**
-   * Renders the confirmation shown when `--verify` finds the `LICENSE` file
-   * already matches the saved configuration.
+   * Renders the confirmation shown when `--verify` finds the `LICENSE` file and
+   * every project manifest already match the saved configuration.
    *
-   * @param licenseId - The verified SPDX identifier.
+   * @param report - The verification result; everything is in sync.
    */
-  verifyMatch(licenseId: string): void;
+  verifyMatch(report: VerifyReport): void;
 
   /**
-   * Renders the notice shown when `--verify` found a mismatch and rewrote the
-   * `LICENSE` file to match the saved configuration.
+   * Renders the notice shown when `--verify` found drift and reconciled it —
+   * rewriting the `LICENSE` file and/or updating manifest license fields to
+   * match the saved configuration.
    *
-   * @param licenseId - The SPDX identifier the file was regenerated for.
+   * @param report - The verification result; lists what was reconciled.
    */
-  verifyFixed(licenseId: string): void;
+  verifyFixed(report: VerifyReport): void;
 
   /**
    * Renders the error shown when `--verify --strict` found the `LICENSE` file
-   * out of sync with the saved configuration and left it untouched.
+   * or a manifest out of sync with the saved configuration and left it
+   * untouched.
    *
-   * @param licenseId - The SPDX identifier the file was expected to match.
+   * @param report - The verification result; lists what drifted.
    */
-  verifyMismatch(licenseId: string): void;
+  verifyMismatch(report: VerifyReport): void;
 
   /**
    * Renders a plain error message.
