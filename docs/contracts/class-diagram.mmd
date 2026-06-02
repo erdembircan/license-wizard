@@ -77,10 +77,18 @@ classDiagram
       +usage(options: string) void
       +tokens(licenseId: string, slots: TemplateSlot[]) void
       +generated(licenseId: string, savedTo: string) void
+      +dryRun(report: DryRunReport) void
       +missingFields(licenseId: string, missing: TemplateSlot[]) void
       +unknownFields(licenseId: string, unknown: string[], slots: TemplateSlot[]) void
       +licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]) void
       +error(message: string) void
+    }
+
+    class DryRunReport {
+      +licenseId: string
+      +content: string
+      +save: ConfigSave
+      +manifests: string[]
     }
 
     class CliReporter {
@@ -355,6 +363,7 @@ classDiagram
   CliReporter ..|> IReporter : implements
   CliReporter ..> TemplateSlot : renders
   CliReporter ..> VerifyReport : renders
+  CliReporter ..> DryRunReport : renders
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> FlagParser : reads defaults from
   LicenseWizard ..> QuestionRepository : creates
@@ -365,9 +374,11 @@ classDiagram
   LicenseWizard ..> SpdxLicenseSource : creates
   LicenseWizard ..> LicenseRepository : creates
   LicenseWizard ..> LicenseGenerator : creates
+  LicenseWizard ..> LicenseGenerator : renders dry-run preview through
   LicenseWizard ..> LicenseInstaller : creates
   LicenseWizard ..> LicenseInstaller : applies selection through
   LicenseWizard ..> LicenseSelection : builds
+  LicenseWizard ..> DryRunReport : builds
   LicenseWizard ..> LicenseVerifier : creates
   LicenseWizard ..> LicenseVerifier : verifies through
   LicenseInstaller ..> Config : uses
@@ -386,6 +397,7 @@ classDiagram
   ManifestCheck ..> DriftStatus : status by
   ProjectManifestRepository ..> ManifestLicense : produces
   LicenseSelection ..> ConfigSave : has
+  DryRunReport ..> ConfigSave : carries
   Orchestrator ..> QuestionRepository : gets questions from
   Orchestrator ..> IRenderer : feeds questions to
   ClackRenderer ..> Question : renders

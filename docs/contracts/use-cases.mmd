@@ -26,10 +26,15 @@ flowchart TD
     RES --> CHK{every required field<br/>supplied and recognized?}
     CHK -->|No| NEED[Report the missing or<br/>unknown copyright fields] --> H
     CHK -->|Yes| CUST[Render customized copyright]
-    STD --> PSV
-    CUST --> PSV
-    PSV[Persist config to the chosen<br/>--save location, if requested]
-    PSV -.->|if a --save-* flag was given,<br/>clears the other locations| LC
+    STD --> DR
+    CUST --> DR
+
+    %% ─── Dry-run gate (shared by both generation paths) ───
+    DR{--dry-run flag given?}
+    DR -->|Yes| DRP[Render the license to the terminal;<br/>skip every write — no LICENSE,<br/>config, or manifest update] --> H
+    DR -->|No| PSV
+    PSV[Persist config to the chosen save location,<br/>clearing the others — or, when skipped<br/>interactively, clearing every location]
+    PSV -.->|writes or clears config| LC
     PSV --> G
 
     NI -->|No| M{--verify flag?}
@@ -53,8 +58,8 @@ flowchart TD
     end
 
     OG -->|options object| LW
-    LW -->|saves config to chosen<br/>location and clears the rest,<br/>or skip clears every location| LC
-    LW --> G[License is generated]
+    LW --> DR
+    G[License is generated]
     G -->|writes license id<br/>to all present manifests| PJ
     G --> H([Done])
 
