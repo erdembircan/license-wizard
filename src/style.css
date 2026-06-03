@@ -217,8 +217,23 @@
   .terminal-body {
     @apply px-5 py-4 font-mono leading-relaxed;
     font-size: 13px;
-    min-height: 21rem;
+    /* Fixed height + internal scroll so switching tabs never resizes the
+       window — the longer interactive scene scrolls inside instead. */
+    height: 23rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     color: var(--color-term-text);
+  }
+
+  .terminal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  .terminal-body::-webkit-scrollbar-thumb {
+    background: var(--color-term-line);
+    border-radius: 999px;
+  }
+  .terminal-body::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   .copy-field {

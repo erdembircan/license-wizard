@@ -50,11 +50,13 @@ function initTerminal(): void {
     line.style.whiteSpace = "pre-wrap";
     line.textContent = text;
     bodyEl!.appendChild(line);
+    bodyEl!.scrollTop = bodyEl!.scrollHeight;
     return line;
   }
 
   function play(scene: TerminalScene, token: number): void {
     bodyEl!.innerHTML = "";
+    bodyEl!.scrollTop = 0;
     const prompt = addLine("");
     prompt.classList.add("caret");
     prompt.textContent = "$ ";
