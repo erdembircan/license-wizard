@@ -69,7 +69,7 @@ function initTerminal(): void {
 
   // Builds one output line. Tree lines (◇ ◆ │ └) get a CSS-drawn gutter so the
   // connectors form one continuous vertical line; other lines are plain text
-  // with an optional tinted leading marker (⏺ agent action / ✓ success).
+  // with an optional tinted leading marker (⏺ agent action / ✦ success spark).
   function buildLineEl(
     line: TerminalLine,
     isFirstTreeRow: boolean,
