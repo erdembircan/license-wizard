@@ -1,7 +1,10 @@
 import * as clack from "@clack/prompts";
 import { buildBanner } from "@cli/Banner.js";
 import type { Answer } from "@cli/Answer.js";
-import type { IRenderer } from "@cli/interfaces/IRenderer.js";
+import type {
+  CompletionSummary,
+  IRenderer,
+} from "@cli/interfaces/IRenderer.js";
 import type {
   AutocompleteOption,
   AutocompleteQuestion,
@@ -16,6 +19,10 @@ import { debounce } from "@cli/Debounce.js";
 
 const MIN_SEARCH_LENGTH = 3;
 const DEBOUNCE_DELAY_MS = 100;
+
+// The spark glyph the wizard signs its closing note with, matching the
+// non-interactive reporter's success mark.
+const SPARK = "✦";
 
 /**
  * Renders questions to the terminal using the Clack prompt library.
@@ -76,7 +83,36 @@ export class ClackRenderer implements IRenderer {
    * Returns the message displayed when the user cancels the prompt session.
    */
   onCancel(): string {
-    return "Operation cancelled.";
+    return "Spell interrupted — nothing was conjured.";
+  }
+
+  /**
+   * Renders the closing note shown after the wizard writes the license: a framed
+   * summary of what was conjured and where, signed off with a parting flourish.
+   */
+  complete(summary: CompletionSummary): void {
+    const lines = [
+      `LICENSE    conjured as ${summary.licenseId}${
+        summary.customized
+          ? " with your customized copyright"
+          : " from the official text"
+      }`,
+    ];
+
+    if (summary.manifests.length > 0) {
+      lines.push(`Manifests  inscribed in ${summary.manifests.join(", ")}`);
+    }
+
+    lines.push(
+      summary.savedTo === ""
+        ? "Spellbook  left unsaved this time"
+        : `Spellbook  saved to ${summary.savedTo}`,
+    );
+
+    clack.note(lines.join("\n"), `${SPARK} The spell is cast`);
+    clack.outro(
+      `${summary.licenseId} is ready — may your code be ever free. ${SPARK}`,
+    );
   }
 
   /**

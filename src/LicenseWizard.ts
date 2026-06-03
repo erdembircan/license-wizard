@@ -2,6 +2,7 @@ import type { Answer } from "@cli/Answer.js";
 import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { CliReporter } from "@cli/CliReporter.js";
 import { FlagParser } from "@cli/FlagParser.js";
+import type { IRenderer } from "@cli/interfaces/IRenderer.js";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
 import type {
@@ -658,10 +659,36 @@ export class LicenseWizard {
         await this.#preview(selection);
       } else {
         await this.#installer.install(selection);
+        await this.#reportInteractiveCompletion(renderer, selection);
       }
     }
 
     return answers;
+  }
+
+  /**
+   * Hands the renderer a summary of the interactive install so it can show the
+   * closing confirmation: which license was conjured (and whether its copyright
+   * was customized), the present manifests it was recorded in, and where the
+   * configuration was saved.
+   *
+   * @param renderer - The interactive renderer to surface the summary through.
+   * @param selection - The resolved license, copyright tokens, and save instruction.
+   */
+  async #reportInteractiveCompletion(
+    renderer: IRenderer,
+    selection: LicenseSelection,
+  ): Promise<void> {
+    const manifests = (await this.#manifests.declaredLicenses()).map(
+      (manifest) => manifest.name,
+    );
+
+    renderer.complete({
+      licenseId: selection.licenseId,
+      customized: Object.keys(selection.tokens).length > 0,
+      savedTo: selection.save.action === "save" ? selection.save.target : "",
+      manifests,
+    });
   }
 
   /**

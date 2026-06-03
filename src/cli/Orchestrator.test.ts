@@ -21,6 +21,7 @@ const makeRenderer = (answerValue = "some-answer"): IRenderer => ({
     }),
   ),
   onCancel: vi.fn(() => "Operation cancelled."),
+  complete: vi.fn(),
 });
 
 describe("Orchestrator", () => {
@@ -60,6 +61,7 @@ describe("Orchestrator", () => {
           }),
         ),
         onCancel: vi.fn(() => ""),
+        complete: vi.fn(),
       };
 
       const orchestrator = new Orchestrator(repo, renderer);
@@ -115,6 +117,7 @@ describe("Orchestrator", () => {
           }),
         ),
         onCancel: vi.fn(() => ""),
+        complete: vi.fn(),
       };
 
       const orchestrator = new Orchestrator(repo, renderer);
@@ -148,6 +151,7 @@ describe("Orchestrator", () => {
           return { questionId: question.id, value: "v" };
         }),
         onCancel: vi.fn(() => ""),
+        complete: vi.fn(),
       };
 
       const orchestrator = new Orchestrator(repo, renderer);
@@ -192,6 +196,7 @@ describe("Orchestrator", () => {
           }),
         ),
         onCancel: vi.fn(() => ""),
+        complete: vi.fn(),
       };
 
       const orchestrator = new Orchestrator(repo, renderer);
@@ -229,6 +234,7 @@ describe("Orchestrator", () => {
           }),
         ),
         onCancel: vi.fn(() => ""),
+        complete: vi.fn(),
       };
 
       const orchestrator = new Orchestrator(repo, renderer);
