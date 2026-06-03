@@ -1,0 +1,38 @@
+{
+  "name": "license-wizard-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Landing page for license-wizard, served via GitHub Pages.",
+  "packageManager": "pnpm@11.2.2",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "author": "Erdem Bircan",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.1.8",
+    "@types/node": "^25.9.1",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.8.3",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.3",
+    "vite": "^7.0.0",
+    "vitest": "^4.1.6"
+  }
+}

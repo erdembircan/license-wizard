@@ -1,0 +1,307 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------------
+   Design tokens — a light "paper" theme drawn from the logo: navy ink, a single
+   bright-blue accent, and a deep-navy terminal for high-contrast moments.
+---------------------------------------------------------------------------- */
+@theme {
+  --font-display: "Bricolage Grotesque", "IBM Plex Sans", ui-sans-serif,
+    system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-ink: #16223d;
+  --color-ink-soft: #45526e;
+  --color-ink-faint: #6b7891;
+
+  --color-brand: #2f6fe0;
+  --color-brand-strong: #1f53c4;
+  --color-brand-soft: #e8f0ff;
+  --color-brand-glow: #9cc2ff;
+
+  --color-paper: #f6f8fc;
+  --color-paper-raised: #ffffff;
+  --color-line: #e3e8f2;
+  --color-line-strong: #d2dae8;
+
+  /* terminal (deliberately dark, drawn from the brand navy) */
+  --color-term-bg: #0e1830;
+  --color-term-bar: #18233f;
+  --color-term-line: #26324e;
+  --color-term-text: #d7e0f2;
+  --color-term-dim: #8090b0;
+  --color-term-accent: #6ea8ff;
+  --color-term-green: #56d6a0;
+  --color-term-amber: #f4c06b;
+  --color-term-red: #ff8585;
+}
+
+/* ----------------------------------------------------------------------------
+   Base
+---------------------------------------------------------------------------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Atmosphere — dotted grid + soft brand light, layered behind the page.
+---------------------------------------------------------------------------- */
+.page-canvas {
+  position: relative;
+  isolation: isolate;
+}
+
+.page-canvas::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(22, 34, 61, 0.06) 1px, transparent 0);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(
+    ellipse 90% 60% at 50% 0%,
+    #000 35%,
+    transparent 75%
+  );
+}
+
+.page-canvas::after {
+  content: "";
+  position: fixed;
+  top: -18rem;
+  left: 50%;
+  width: 60rem;
+  height: 40rem;
+  transform: translateX(-50%);
+  z-index: -2;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(47, 111, 224, 0.16),
+    transparent 65%
+  );
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------------------------
+   Sparkles — tiny twinkling stars echoing the logo's wand.
+---------------------------------------------------------------------------- */
+.sparkle {
+  position: absolute;
+  color: var(--color-brand-glow);
+  opacity: 0;
+  animation: twinkle 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6) rotate(0deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1) rotate(20deg);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Components
+---------------------------------------------------------------------------- */
+@layer components {
+  .nav-link {
+    @apply text-sm font-medium text-ink-soft transition-colors hover:text-ink;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white transition-all duration-200;
+    background: linear-gradient(180deg, var(--color-brand), var(--color-brand-strong));
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
+      0 10px 22px -10px rgba(31, 83, 196, 0.7);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
+      0 16px 28px -12px rgba(31, 83, 196, 0.75);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line-strong bg-paper-raised px-5 py-3 text-sm font-semibold text-ink transition-all duration-200;
+    box-shadow: 0 1px 2px rgba(22, 34, 61, 0.04);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--color-brand);
+    color: var(--color-brand-strong);
+    transform: translateY(-1px);
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-line-strong bg-paper-raised px-3.5 py-1.5 text-xs font-semibold tracking-wide text-ink-soft uppercase;
+  }
+
+  .card {
+    @apply relative rounded-2xl border border-line bg-paper-raised p-6 transition-all duration-300;
+    box-shadow: 0 1px 2px rgba(22, 34, 61, 0.03);
+  }
+
+  .card:hover {
+    border-color: var(--color-line-strong);
+    transform: translateY(-3px);
+    box-shadow: 0 22px 40px -26px rgba(22, 34, 61, 0.4);
+  }
+
+  .card-icon {
+    @apply mb-5 inline-flex size-11 items-center justify-center rounded-xl text-brand;
+    background: var(--color-brand-soft);
+    border: 1px solid #d4e2ff;
+  }
+
+  /* terminal -------------------------------------------------------------- */
+  .terminal {
+    @apply overflow-hidden rounded-2xl;
+    background: var(--color-term-bg);
+    border: 1px solid var(--color-term-line);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+      0 40px 80px -40px rgba(14, 24, 48, 0.6),
+      0 18px 40px -28px rgba(31, 83, 196, 0.45);
+  }
+
+  .terminal-bar {
+    @apply flex items-center gap-2 border-b px-4 py-3;
+    background: var(--color-term-bar);
+    border-color: var(--color-term-line);
+  }
+
+  .term-dot {
+    @apply size-3 rounded-full;
+  }
+
+  .term-tab {
+    @apply cursor-pointer rounded-md px-3 py-1 font-mono text-xs text-term-dim transition-colors;
+  }
+
+  .term-tab[aria-selected="true"] {
+    color: var(--color-term-text);
+    background: rgba(110, 168, 255, 0.14);
+  }
+
+  .terminal-body {
+    @apply px-5 py-4 font-mono leading-relaxed;
+    font-size: 13px;
+    min-height: 21rem;
+    color: var(--color-term-text);
+  }
+
+  .copy-field {
+    @apply flex items-center justify-between gap-3 rounded-xl border border-line-strong bg-paper-raised px-4 py-3 font-mono text-sm;
+    box-shadow: 0 1px 2px rgba(22, 34, 61, 0.04);
+  }
+
+  .flag-code {
+    @apply rounded-md px-1.5 py-0.5 font-mono text-[13px] text-brand-strong;
+    background: var(--color-brand-soft);
+  }
+}
+
+/* terminal output token tones */
+.t-dim {
+  color: var(--color-term-dim);
+}
+.t-accent {
+  color: var(--color-term-accent);
+}
+.t-green {
+  color: var(--color-term-green);
+}
+.t-amber {
+  color: var(--color-term-amber);
+}
+.t-red {
+  color: var(--color-term-red);
+}
+
+/* blinking caret while typing */
+.caret::after {
+  content: "▋";
+  margin-left: 1px;
+  color: var(--color-term-accent);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Reveal-on-scroll
+---------------------------------------------------------------------------- */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* staggered hero entrance */
+.hero-rise {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}
