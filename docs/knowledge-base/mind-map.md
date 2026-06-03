@@ -31,6 +31,7 @@ mindmap
     Package Managers
       License Field Formats
       Caching and Retrieval
+    Rendering Test
 ```
 
 ## Topics
