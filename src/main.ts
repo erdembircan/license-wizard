@@ -2,7 +2,7 @@ import "./style.css";
 import { scenes, type TerminalScene, type TerminalLine } from "./data/scenes";
 import { runTypewriter } from "./lib/typewriter";
 import { copyToClipboard } from "./lib/clipboard";
-import { classifyTreeLine } from "./lib/terminalLine";
+import { classifyTreeLine, lineMarker } from "./lib/terminalLine";
 
 const toneClass: Record<NonNullable<TerminalLine["tone"]>, string> = {
   default: "",
@@ -60,7 +60,20 @@ function initTerminal(): void {
       const el = document.createElement("div");
       el.className = `term-line ${toneCls}`.trim();
       el.style.whiteSpace = "pre-wrap";
-      el.textContent = line.text;
+
+      // Tint a leading agent bullet (⏺) or success tick (✓), keep the rest.
+      const marker = lineMarker(line.text);
+      if (marker) {
+        const mark = document.createElement("span");
+        mark.className = marker === "bullet" ? "term-bullet" : "term-check";
+        mark.textContent = line.text.charAt(0);
+        const rest = document.createElement("span");
+        rest.textContent = line.text.slice(1);
+        el.append(mark, rest);
+      } else {
+        el.textContent = line.text;
+      }
+
       appendChild(el);
       return;
     }
@@ -90,10 +103,12 @@ function initTerminal(): void {
   function play(scene: TerminalScene, token: number): void {
     bodyEl!.innerHTML = "";
     bodyEl!.scrollTop = 0;
+    const sigil = scene.kind === "agent" ? ">" : "$";
     const prompt = document.createElement("div");
     prompt.className = "term-line caret";
+    if (scene.kind === "agent") prompt.classList.add("term-prompt-agent");
     prompt.style.whiteSpace = "pre-wrap";
-    prompt.textContent = "$ ";
+    prompt.textContent = `${sigil} `;
     appendChild(prompt);
 
     const firstTreeIndex = scene.output.findIndex(
@@ -104,7 +119,7 @@ function initTerminal(): void {
       charMs: 38,
       onFrame: (frame) => {
         if (token !== runToken) return;
-        prompt.textContent = `$ ${frame}`;
+        prompt.textContent = `${sigil} ${frame}`;
       },
       onDone: () => {
         if (token !== runToken) return;

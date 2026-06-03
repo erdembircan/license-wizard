@@ -34,6 +34,7 @@
   --color-term-green: #56d6a0;
   --color-term-amber: #f4c06b;
   --color-term-red: #ff8585;
+  --color-term-orange: #e8915b; /* agent bullet, Claude Code style */
 }
 
 /* ----------------------------------------------------------------------------
@@ -206,7 +207,7 @@
   }
 
   .term-tab {
-    @apply cursor-pointer rounded-md px-3 py-1 font-mono text-xs text-term-dim transition-colors;
+    @apply cursor-pointer whitespace-nowrap rounded-md px-2.5 py-1 font-mono text-xs text-term-dim transition-colors;
   }
 
   .term-tab[aria-selected="true"] {
@@ -333,6 +334,16 @@
 }
 .t-red {
   color: var(--color-term-red);
+}
+
+/* agent (Claude Code) markers */
+.term-bullet {
+  color: var(--color-term-orange);
+  font-weight: 600;
+}
+.term-check {
+  color: var(--color-term-green);
+  font-weight: 600;
 }
 
 /* blinking caret while typing */

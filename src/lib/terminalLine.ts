@@ -33,3 +33,18 @@ export function classifyTreeLine(text: string): ClassifiedLine {
   }
   return { glyph, content: text.slice(1).replace(/^ {1,2}/, "") };
 }
+
+export type LineMarker =
+  | "bullet" // ⏺ — an agent action (Claude Code style), tinted orange
+  | "check" //  ✓ — a success line, tinted green
+  | null;
+
+/**
+ * Detects a leading status marker (an agent's ⏺ bullet or a ✓ success tick) so
+ * just that glyph can be colored while the rest of the line keeps its own tone.
+ */
+export function lineMarker(text: string): LineMarker {
+  if (text.startsWith("⏺")) return "bullet";
+  if (text.startsWith("✓")) return "check";
+  return null;
+}

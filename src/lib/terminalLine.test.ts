@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { classifyTreeLine } from "./terminalLine";
+import { classifyTreeLine, lineMarker } from "./terminalLine";
 
 describe("classifyTreeLine", () => {
   it("recognizes each tree glyph", () => {
@@ -40,9 +40,27 @@ describe("classifyTreeLine", () => {
     expect(classifyTreeLine("│")).toEqual({ glyph: "connector", content: "" });
   });
 
+  it("does not treat agent markers (⏺ ✓) as tree glyphs", () => {
+    expect(classifyTreeLine("⏺ Bash(...)").glyph).toBeNull();
+    expect(classifyTreeLine("✓ Wrote LICENSE").glyph).toBeNull();
+  });
+
   it("leaves plain-line content untouched", () => {
     expect(classifyTreeLine("    pick a license").content).toBe(
       "    pick a license",
     );
+  });
+});
+
+describe("lineMarker", () => {
+  it("detects the agent bullet and success tick", () => {
+    expect(lineMarker("⏺ Bash(npx license-wizard)")).toBe("bullet");
+    expect(lineMarker("✓ Wrote LICENSE (MIT)")).toBe("check");
+  });
+
+  it("returns null for ordinary lines and indented continuations", () => {
+    expect(lineMarker("  copyright details.")).toBeNull();
+    expect(lineMarker("  ⎿ MIT accepts the following field(s):")).toBeNull();
+    expect(lineMarker("")).toBeNull();
   });
 });
