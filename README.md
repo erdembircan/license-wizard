@@ -149,16 +149,20 @@ License Wizard can remember your license choice so subsequent runs start from a 
 
 1. **`.licensewizardrc.json`** in the project root:
 
-   ```json
-   { "licenseId": "MIT" }
+   ```jsonc
+   {
+     // contents of config
+   }
    ```
 
 2. The **`"license-wizard"`** field in `package.json` (fallback when no rc file is present):
 
-   ```json
+   ```jsonc
    {
      "name": "my-project",
-     "license-wizard": { "licenseId": "MIT" }
+     "license-wizard": {
+       // contents of config
+     }
    }
    ```
 
