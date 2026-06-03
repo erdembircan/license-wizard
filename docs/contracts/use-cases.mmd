@@ -77,3 +77,4 @@ flowchart TD
     R -->|No| AG{--strict given?}
     AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests] --> H
     AG -->|Yes| FAIL([Fail: exit non-zero,<br/>report every drifted surface])
+    TST([rendering test])
