@@ -3,6 +3,11 @@ import { scenes, type TerminalScene, type TerminalLine } from "./data/scenes";
 import { runTypewriter } from "./lib/typewriter";
 import { copyToClipboard } from "./lib/clipboard";
 import { classifyTreeLine, lineMarker } from "./lib/terminalLine";
+import {
+  THINKING_PHRASES,
+  THINKING_FRAMES,
+  thinkingMeta,
+} from "./lib/thinking";
 
 const toneClass: Record<NonNullable<TerminalLine["tone"]>, string> = {
   default: "",
@@ -23,13 +28,17 @@ function initTerminal(): void {
   let runToken = 0;
   let autoAdvance = true;
   const pending: ReturnType<typeof setTimeout>[] = [];
+  const intervals: ReturnType<typeof setInterval>[] = [];
 
   const clearPending = (): void => {
     while (pending.length) clearTimeout(pending.pop());
+    while (intervals.length) clearInterval(intervals.pop());
   };
   const later = (fn: () => void, ms: number): void => {
     pending.push(setTimeout(fn, ms));
   };
+  const sleep = (ms: number): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
   const tabButtons = scenes.map((scene, i) => {
     const btn = document.createElement("button");
@@ -100,23 +109,21 @@ function initTerminal(): void {
     appendChild(row);
   }
 
-  function play(scene: TerminalScene, token: number): void {
-    bodyEl!.innerHTML = "";
-    bodyEl!.scrollTop = 0;
+  // Types the leading prompt ($ command or > agent prompt), then runs `after`.
+  function typePrompt(
+    scene: TerminalScene,
+    token: number,
+    after: () => void,
+  ): void {
     const sigil = scene.kind === "agent" ? ">" : "$";
     const prompt = document.createElement("div");
     prompt.className = "term-line caret";
-    if (scene.kind === "agent") prompt.classList.add("term-prompt-agent");
     prompt.style.whiteSpace = "pre-wrap";
     prompt.textContent = `${sigil} `;
     appendChild(prompt);
 
-    const firstTreeIndex = scene.output.findIndex(
-      (l) => classifyTreeLine(l.text).glyph !== null,
-    );
-
     runTypewriter(scene.command, {
-      charMs: 38,
+      charMs: scene.kind === "agent" ? 30 : 38,
       onFrame: (frame) => {
         if (token !== runToken) return;
         prompt.textContent = `${sigil} ${frame}`;
@@ -124,25 +131,115 @@ function initTerminal(): void {
       onDone: () => {
         if (token !== runToken) return;
         prompt.classList.remove("caret");
-        scene.output.forEach((line, i) => {
-          later(
-            () => {
-              if (token !== runToken) return;
-              renderLine(line, i === firstTreeIndex);
-            },
-            90 * (i + 1),
-          );
-        });
-
-        if (autoAdvance) {
-          const total = 90 * (scene.output.length + 1) + 3200;
-          later(() => {
-            if (token !== runToken) return;
-            select((activeIndex + 1) % scenes.length);
-          }, total);
-        }
+        after();
       },
     });
+  }
+
+  function advanceAfter(token: number, ms: number): void {
+    if (!autoAdvance) return;
+    later(() => {
+      if (token !== runToken) return;
+      select((activeIndex + 1) % scenes.length);
+    }, ms);
+  }
+
+  // Plain shell scenes: type the command, then reveal each output line on a timer.
+  function playShell(scene: TerminalScene, token: number): void {
+    typePrompt(scene, token, () => {
+      const firstTreeIndex = scene.output.findIndex(
+        (l) => classifyTreeLine(l.text).glyph !== null,
+      );
+      scene.output.forEach((line, i) => {
+        later(
+          () => {
+            if (token !== runToken) return;
+            renderLine(line, i === firstTreeIndex);
+          },
+          90 * (i + 1),
+        );
+      });
+      advanceAfter(token, 90 * (scene.output.length + 1) + 3200);
+    });
+  }
+
+  // Splits agent output into blocks, each beginning at an ⏺ action line, so a
+  // "thinking" animation can play before each one.
+  function agentBlocks(output: TerminalLine[]): TerminalLine[][] {
+    const blocks: TerminalLine[][] = [];
+    let current: TerminalLine[] | null = null;
+    for (const line of output) {
+      if (line.text.startsWith("⏺")) {
+        current = [line];
+        blocks.push(current);
+      } else if (current) {
+        current.push(line);
+      }
+    }
+    return blocks;
+  }
+
+  // Shows Claude Code's animated thinking status, then removes it. Resolves when
+  // the think duration elapses (post-await callers re-check the run token).
+  function think(): Promise<void> {
+    const line = document.createElement("div");
+    line.className = "term-line term-think";
+    const head = document.createElement("span");
+    const meta = document.createElement("span");
+    meta.className = "t-dim";
+    line.append(head, meta);
+    appendChild(line);
+
+    const phrase =
+      THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
+    const started = Date.now();
+    let frame = 0;
+    let tokens = 60 + Math.floor(Math.random() * 90);
+
+    const tick = (): void => {
+      const glyph = THINKING_FRAMES[frame % THINKING_FRAMES.length]!;
+      frame += 1;
+      tokens += 6 + Math.floor(Math.random() * 12);
+      const seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
+      head.textContent = `${glyph} ${phrase}… `;
+      meta.textContent = thinkingMeta(seconds, tokens);
+    };
+    tick();
+    intervals.push(setInterval(tick, 110));
+
+    const duration = 1800 + Math.floor(Math.random() * 1400);
+    return sleep(duration).then(() => {
+      line.remove();
+    });
+  }
+
+  // Agent scenes: type the prompt, then for each action block play a thinking
+  // animation, remove it, and reveal the block's lines (Claude Code style).
+  async function playAgent(scene: TerminalScene, token: number): Promise<void> {
+    const blocks = agentBlocks(scene.output);
+    for (const block of blocks) {
+      if (token !== runToken) return;
+      await think();
+      if (token !== runToken) return;
+      for (const line of block) {
+        const isResult = /^\s*⎿/.test(line.text);
+        await sleep(isResult ? 480 : 180);
+        if (token !== runToken) return;
+        renderLine(line, false);
+      }
+    }
+    if (token !== runToken) return;
+    advanceAfter(token, 4200);
+  }
+
+  function play(scene: TerminalScene, token: number): void {
+    bodyEl!.innerHTML = "";
+    bodyEl!.scrollTop = 0;
+    if (scene.kind === "agent") {
+      typePrompt(scene, token, () => void playAgent(scene, token));
+    } else {
+      playShell(scene, token);
+    }
   }
 
   function select(index: number): void {

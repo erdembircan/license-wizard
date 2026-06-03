@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { scenes, getScene, sceneToPlainText } from "./scenes";
 
 describe("terminal scenes", () => {
-  it("exposes the four modes with the agent scene second", () => {
+  it("exposes the four modes with the agent scene first", () => {
     expect(scenes.map((s) => s.id)).toEqual([
-      "interactive",
       "agent",
+      "interactive",
       "oneshot",
       "verify",
     ]);
