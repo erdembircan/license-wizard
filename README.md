@@ -283,3 +283,5 @@ When you opt in to saving during a run, License Wizard writes to `.licensewizard
 ## License
 
 [Apache-2.0](LICENSE) © Erdem Bircan
+
+<!-- dummy change for testing another project (2026-06-03) -->
