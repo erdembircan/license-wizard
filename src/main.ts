@@ -54,14 +54,26 @@ function initTerminal(): void {
     return btn;
   });
 
+  // Where new lines are appended — the body for shell scenes, or the scrollable
+  // transcript for the agent scene (whose input box stays pinned below it).
+  let renderTarget: HTMLElement = bodyEl;
+
+  const scrollTargetToEnd = (): void => {
+    renderTarget.scrollTop = renderTarget.scrollHeight;
+  };
+
   function appendChild(el: HTMLElement): void {
-    bodyEl!.appendChild(el);
-    bodyEl!.scrollTop = bodyEl!.scrollHeight;
+    renderTarget.appendChild(el);
+    scrollTargetToEnd();
   }
 
-  // Renders one output line. Tree lines (◇ ◆ │ └) get a CSS-drawn gutter so the
-  // connectors form one continuous vertical line; everything else is plain text.
-  function renderLine(line: TerminalLine, isFirstTreeRow: boolean): void {
+  // Builds one output line. Tree lines (◇ ◆ │ └) get a CSS-drawn gutter so the
+  // connectors form one continuous vertical line; other lines are plain text
+  // with an optional tinted leading marker (⏺ agent action / ✓ success).
+  function buildLineEl(
+    line: TerminalLine,
+    isFirstTreeRow: boolean,
+  ): HTMLElement {
     const { glyph, content } = classifyTreeLine(line.text);
     const toneCls = toneClass[line.tone ?? "default"];
 
@@ -70,7 +82,6 @@ function initTerminal(): void {
       el.className = `term-line ${toneCls}`.trim();
       el.style.whiteSpace = "pre-wrap";
 
-      // Tint a leading agent bullet (⏺) or success tick (✓), keep the rest.
       const marker = lineMarker(line.text);
       if (marker) {
         const mark = document.createElement("span");
@@ -82,9 +93,7 @@ function initTerminal(): void {
       } else {
         el.textContent = line.text;
       }
-
-      appendChild(el);
-      return;
+      return el;
     }
 
     const row = document.createElement("div");
@@ -106,7 +115,11 @@ function initTerminal(): void {
     body.textContent = content;
 
     row.append(gutter, body);
-    appendChild(row);
+    return row;
+  }
+
+  function renderLine(line: TerminalLine, isFirstTreeRow: boolean): void {
+    appendChild(buildLineEl(line, isFirstTreeRow));
   }
 
   // Types the leading prompt ($ command or > agent prompt), then runs `after`.
@@ -163,80 +176,131 @@ function initTerminal(): void {
     });
   }
 
-  // Splits agent output into blocks, each beginning at an ⏺ action line, so a
-  // "thinking" animation can play before each one.
-  function agentBlocks(output: TerminalLine[]): TerminalLine[][] {
-    const blocks: TerminalLine[][] = [];
-    let current: TerminalLine[] | null = null;
-    for (const line of output) {
-      if (line.text.startsWith("⏺")) {
-        current = [line];
-        blocks.push(current);
-      } else if (current) {
-        current.push(line);
-      }
-    }
-    return blocks;
+  // Builds the Claude Code layout: a scrollable transcript on top with a pinned
+  // input box and status line below it. Returns the transcript + input pieces.
+  function buildAgentChrome(): {
+    transcript: HTMLElement;
+    inputText: HTMLElement;
+  } {
+    const wrap = document.createElement("div");
+    wrap.className = "term-agent";
+
+    const transcript = document.createElement("div");
+    transcript.className = "term-transcript";
+
+    const input = document.createElement("div");
+    input.className = "term-inputbox";
+    const chevron = document.createElement("span");
+    chevron.className = "term-input-prompt";
+    chevron.textContent = "› ";
+    const inputText = document.createElement("span");
+    const cursor = document.createElement("span");
+    cursor.className = "term-cursor";
+    input.append(chevron, inputText, cursor);
+
+    const status = document.createElement("div");
+    status.className = "term-status";
+    const accent = document.createElement("span");
+    accent.className = "term-status-accent";
+    accent.textContent = "⏵⏵ auto-accept edits on ";
+    const hint = document.createElement("span");
+    hint.className = "t-dim";
+    hint.textContent = "(shift+tab to cycle)";
+    status.append(accent, hint);
+
+    wrap.append(transcript, input, status);
+    bodyEl!.appendChild(wrap);
+    return { transcript, inputText };
   }
 
-  // Shows Claude Code's animated thinking status, then removes it. Resolves when
-  // the think duration elapses (post-await callers re-check the run token).
-  function think(): Promise<void> {
-    const line = document.createElement("div");
-    line.className = "term-line term-think";
+  // Streams an agent turn Claude-Code style: one persistent thinking spinner
+  // pinned to the bottom of the transcript — a single running timer + token
+  // counter for the whole turn — with the agent's lines appearing above it.
+  async function streamAgentTurn(
+    scene: TerminalScene,
+    token: number,
+    transcript: HTMLElement,
+  ): Promise<void> {
+    const spinner = document.createElement("div");
+    spinner.className = "term-line term-think";
     const head = document.createElement("span");
     const meta = document.createElement("span");
     meta.className = "t-dim";
-    line.append(head, meta);
-    appendChild(line);
+    spinner.append(head, meta);
+    transcript.appendChild(spinner);
+    scrollTargetToEnd();
 
-    const phrase =
-      THINKING_PHRASES[Math.floor(Math.random() * THINKING_PHRASES.length)];
     const started = Date.now();
+    let tokens = 0;
     let frame = 0;
-    let tokens = 60 + Math.floor(Math.random() * 90);
-
+    let phraseIdx = Math.floor(Math.random() * THINKING_PHRASES.length);
     const tick = (): void => {
       const glyph = THINKING_FRAMES[frame % THINKING_FRAMES.length]!;
       frame += 1;
-      tokens += 6 + Math.floor(Math.random() * 12);
+      tokens += 5 + Math.floor(Math.random() * 11);
+      if (frame % 22 === 0) {
+        phraseIdx = (phraseIdx + 1) % THINKING_PHRASES.length;
+      }
       const seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
-      head.textContent = `${glyph} ${phrase}… `;
+      head.textContent = `${glyph} ${THINKING_PHRASES[phraseIdx]}… `;
       meta.textContent = thinkingMeta(seconds, tokens);
     };
     tick();
-    intervals.push(setInterval(tick, 110));
+    const iv = setInterval(tick, 110);
+    intervals.push(iv);
 
-    const duration = 1800 + Math.floor(Math.random() * 1400);
-    return sleep(duration).then(() => {
-      line.remove();
-    });
+    for (const line of scene.output) {
+      const isResult = /^\s*⎿/.test(line.text);
+      const isAction = line.text.startsWith("⏺");
+      await sleep(isResult ? 620 : isAction ? 900 : 240);
+      if (token !== runToken) {
+        clearInterval(iv);
+        return;
+      }
+      transcript.insertBefore(buildLineEl(line, false), spinner);
+      scrollTargetToEnd();
+    }
+
+    await sleep(900);
+    clearInterval(iv);
+    if (token !== runToken) return;
+    spinner.remove();
+    advanceAfter(token, 3200);
   }
 
-  // Agent scenes: type the prompt, then for each action block play a thinking
-  // animation, remove it, and reveal the block's lines (Claude Code style).
-  async function playAgent(scene: TerminalScene, token: number): Promise<void> {
-    const blocks = agentBlocks(scene.output);
-    for (const block of blocks) {
-      if (token !== runToken) return;
-      await think();
-      if (token !== runToken) return;
-      for (const line of block) {
-        const isResult = /^\s*⎿/.test(line.text);
-        await sleep(isResult ? 480 : 180);
+  // Agent scene: type the prompt into the bottom input box, "submit" it into the
+  // transcript, then stream the turn above the pinned input.
+  function playAgent(scene: TerminalScene, token: number): void {
+    const { transcript, inputText } = buildAgentChrome();
+    renderTarget = transcript;
+
+    runTypewriter(scene.command, {
+      charMs: 30,
+      onFrame: (frame) => {
         if (token !== runToken) return;
-        renderLine(line, false);
-      }
-    }
-    if (token !== runToken) return;
-    advanceAfter(token, 4200);
+        inputText.textContent = frame;
+      },
+      onDone: () => {
+        if (token !== runToken) return;
+        const userMsg = document.createElement("div");
+        userMsg.className = "term-line term-user";
+        userMsg.textContent = `> ${scene.command}`;
+        transcript.appendChild(userMsg);
+        inputText.textContent = "";
+        scrollTargetToEnd();
+        void streamAgentTurn(scene, token, transcript);
+      },
+    });
   }
 
   function play(scene: TerminalScene, token: number): void {
     bodyEl!.innerHTML = "";
     bodyEl!.scrollTop = 0;
-    if (scene.kind === "agent") {
-      typePrompt(scene, token, () => void playAgent(scene, token));
+    const isAgent = scene.kind === "agent";
+    bodyEl!.classList.toggle("is-agent", isAgent);
+    renderTarget = bodyEl!;
+    if (isAgent) {
+      playAgent(scene, token);
     } else {
       playShell(scene, token);
     }

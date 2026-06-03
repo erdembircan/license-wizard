@@ -17,10 +17,15 @@ export const THINKING_PHRASES = [
 // Spinner frames for the animated star/asterisk that twinkles while thinking.
 export const THINKING_FRAMES = ["✶", "✸", "✺", "✦", "✳"];
 
+/** Formats a token count the way Claude Code does — compact `k` past 1000. */
+export function formatTokens(tokens: number): string {
+  return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens);
+}
+
 /**
  * Formats the parenthetical status Claude Code shows beside the thinking
  * spinner, e.g. `(7s · ↓ 109 tokens · thinking with high effort)`.
  */
 export function thinkingMeta(seconds: number, tokens: number): string {
-  return `(${seconds}s · ↓ ${tokens} tokens · thinking with high effort)`;
+  return `(${seconds}s · ↓ ${formatTokens(tokens)} tokens · thinking with high effort)`;
 }
