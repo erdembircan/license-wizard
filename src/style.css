@@ -215,7 +215,10 @@
   }
 
   .terminal-body {
-    @apply px-5 py-4 font-mono leading-relaxed;
+    @apply px-5 py-4 font-mono;
+    /* Tight line-height so Clack's box-drawing connectors (│ ◆ └) tile into a
+       continuous vertical line instead of breaking into dashes. */
+    line-height: 1.3;
     font-size: 13px;
     /* Fixed height + internal scroll so switching tabs never resizes the
        window — the longer interactive scene scrolls inside instead. */
@@ -234,6 +237,74 @@
   }
   .terminal-body::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* Clack tree: a continuous CSS-drawn connector column with diamond nodes and
+     a closing corner — so the vertical line never breaks between rows. */
+  .term-line {
+    white-space: pre-wrap;
+  }
+
+  .term-row {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .term-gutter {
+    position: relative;
+    flex: 0 0 1.7ch;
+  }
+
+  /* the vertical connector line, full row height so adjacent rows join up */
+  .term-gutter::before {
+    content: "";
+    position: absolute;
+    left: 0.5ch;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(128, 144, 176, 0.5);
+  }
+  /* first tree row: line only from the node downward */
+  .term-gutter.start::before {
+    top: 50%;
+  }
+  /* closing corner row: line down to the turn, then a short horizontal arm */
+  .term-gutter.end::before {
+    bottom: 50%;
+  }
+  .term-gutter.end::after {
+    content: "";
+    position: absolute;
+    left: 0.5ch;
+    top: 50%;
+    width: 0.85ch;
+    height: 1px;
+    background: rgba(128, 144, 176, 0.5);
+  }
+
+  /* diamond node centred on the line */
+  .term-node {
+    position: absolute;
+    left: 0.5ch;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  .term-node.hollow {
+    border: 1.5px solid var(--color-term-accent);
+    background: var(--color-term-bg);
+  }
+  .term-node.filled {
+    background: var(--color-term-green);
+    box-shadow: 0 0 0 2px var(--color-term-bg);
+  }
+
+  .term-content {
+    padding-left: 0.5ch;
+    white-space: pre-wrap;
   }
 
   .copy-field {

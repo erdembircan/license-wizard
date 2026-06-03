@@ -2,6 +2,7 @@ import "./style.css";
 import { scenes, type TerminalScene, type TerminalLine } from "./data/scenes";
 import { runTypewriter } from "./lib/typewriter";
 import { copyToClipboard } from "./lib/clipboard";
+import { classifyTreeLine } from "./lib/terminalLine";
 
 const toneClass: Record<NonNullable<TerminalLine["tone"]>, string> = {
   default: "",
@@ -44,22 +45,60 @@ function initTerminal(): void {
     return btn;
   });
 
-  function addLine(text: string, cls = ""): HTMLElement {
-    const line = document.createElement("div");
-    line.className = cls;
-    line.style.whiteSpace = "pre-wrap";
-    line.textContent = text;
-    bodyEl!.appendChild(line);
+  function appendChild(el: HTMLElement): void {
+    bodyEl!.appendChild(el);
     bodyEl!.scrollTop = bodyEl!.scrollHeight;
-    return line;
+  }
+
+  // Renders one output line. Tree lines (◇ ◆ │ └) get a CSS-drawn gutter so the
+  // connectors form one continuous vertical line; everything else is plain text.
+  function renderLine(line: TerminalLine, isFirstTreeRow: boolean): void {
+    const { glyph, content } = classifyTreeLine(line.text);
+    const toneCls = toneClass[line.tone ?? "default"];
+
+    if (!glyph) {
+      const el = document.createElement("div");
+      el.className = `term-line ${toneCls}`.trim();
+      el.style.whiteSpace = "pre-wrap";
+      el.textContent = line.text;
+      appendChild(el);
+      return;
+    }
+
+    const row = document.createElement("div");
+    row.className = "term-row";
+
+    const gutter = document.createElement("span");
+    gutter.className = "term-gutter";
+    if (isFirstTreeRow) gutter.classList.add("start");
+    if (glyph === "end") gutter.classList.add("end");
+    if (glyph === "node-hollow" || glyph === "node-filled") {
+      const node = document.createElement("span");
+      node.className =
+        glyph === "node-hollow" ? "term-node hollow" : "term-node filled";
+      gutter.appendChild(node);
+    }
+
+    const body = document.createElement("span");
+    body.className = `term-content ${toneCls}`.trim();
+    body.textContent = content;
+
+    row.append(gutter, body);
+    appendChild(row);
   }
 
   function play(scene: TerminalScene, token: number): void {
     bodyEl!.innerHTML = "";
     bodyEl!.scrollTop = 0;
-    const prompt = addLine("");
-    prompt.classList.add("caret");
+    const prompt = document.createElement("div");
+    prompt.className = "term-line caret";
+    prompt.style.whiteSpace = "pre-wrap";
     prompt.textContent = "$ ";
+    appendChild(prompt);
+
+    const firstTreeIndex = scene.output.findIndex(
+      (l) => classifyTreeLine(l.text).glyph !== null,
+    );
 
     runTypewriter(scene.command, {
       charMs: 38,
@@ -74,7 +113,7 @@ function initTerminal(): void {
           later(
             () => {
               if (token !== runToken) return;
-              addLine(line.text, toneClass[line.tone ?? "default"]);
+              renderLine(line, i === firstTreeIndex);
             },
             90 * (i + 1),
           );
