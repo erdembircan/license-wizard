@@ -66,14 +66,14 @@ describe("CliReporter", () => {
     new CliReporter("license-wizard").generated("MIT", "");
 
     expect(stdout).toBe(
-      "Wrote LICENSE (MIT) and recorded it in the project manifests.\n",
+      "Conjured your LICENSE (MIT) and inscribed it across the project manifests.\n",
     );
   });
 
   it("notes the save location when the selection was persisted", () => {
     new CliReporter("license-wizard").generated("MIT", ".licensewizardrc.json");
 
-    expect(stdout).toContain("Saved config to .licensewizardrc.json.");
+    expect(stdout).toContain("Spellbook saved to .licensewizardrc.json.");
   });
 
   it("prints the rendered license and the skipped writes for a dry run", () => {
@@ -84,13 +84,15 @@ describe("CliReporter", () => {
       manifests: ["package.json", "composer.json"],
     });
 
-    expect(stdout).toContain("Dry run — no files were written.");
-    expect(stdout).toContain("Would write LICENSE (MIT):");
+    expect(stdout).toContain(
+      "Dry run — the spell was only rehearsed; no files were written.",
+    );
+    expect(stdout).toContain("Would conjure LICENSE (MIT):");
     expect(stdout).toContain("RENDERED LICENSE TEXT");
     expect(stdout).toContain(
-      "Record MIT in manifests: package.json, composer.json",
+      "Inscribe MIT in manifests: package.json, composer.json",
     );
-    expect(stdout).toContain("Save config to .licensewizardrc.json");
+    expect(stdout).toContain("Save your spellbook to .licensewizardrc.json");
     expect(stderr).toBe("");
   });
 
@@ -102,8 +104,8 @@ describe("CliReporter", () => {
       manifests: [],
     });
 
-    expect(stdout).toContain("Record MIT in manifests: none present");
-    expect(stdout).toContain("Clear saved config from every location");
+    expect(stdout).toContain("Inscribe MIT in manifests: none present");
+    expect(stdout).toContain("Banish the spellbook from every location");
   });
 
   it("omits any config line in a dry run when nothing would be saved", () => {
@@ -114,8 +116,8 @@ describe("CliReporter", () => {
       manifests: ["package.json"],
     });
 
-    expect(stdout).not.toContain("Save config");
-    expect(stdout).not.toContain("Clear saved config");
+    expect(stdout).not.toContain("Save your spellbook");
+    expect(stdout).not.toContain("Banish the spellbook");
   });
 
   it("writes the missing-fields error to stderr", () => {
@@ -176,7 +178,7 @@ describe("CliReporter", () => {
       ],
     });
 
-    expect(stdout).toContain("Reconciled the project");
+    expect(stdout).toContain("Realigned the project");
     expect(stdout).toContain("LICENSE regenerated");
     expect(stdout).toContain(
       "composer.json license updated to MIT (was Apache-2.0)",
@@ -196,7 +198,7 @@ describe("CliReporter", () => {
       ],
     });
 
-    expect(stderr).toContain("out of sync with the saved MIT configuration");
+    expect(stderr).toContain("out of sync with your saved MIT enchantment");
     expect(stderr).toContain("LICENSE does not match");
     expect(stderr).toContain(
       "composer.json license declares Apache-2.0 (expected MIT)",
@@ -273,7 +275,7 @@ describe("CliReporter color handling", () => {
 
     expect(stream.text).not.toContain(ESC);
     expect(stream.text).toBe(
-      "Wrote LICENSE (MIT) and recorded it in the project manifests.\n",
+      "Conjured your LICENSE (MIT) and inscribed it across the project manifests.\n",
     );
   });
 
@@ -289,7 +291,7 @@ describe("CliReporter color handling", () => {
 
     expect(stream.text).toContain(ESC);
     // The underlying message text is still present alongside the codes.
-    expect(stream.text).toContain("Wrote LICENSE");
+    expect(stream.text).toContain("Conjured your LICENSE");
     expect(stream.text).toContain(".licensewizardrc.json");
   });
 

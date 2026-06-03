@@ -1,6 +1,13 @@
 import type { Answer } from "@cli/Answer.js";
 import type { Question } from "@cli/Question.js";
 
+export type CompletionSummary = {
+  licenseId: string;
+  customized: boolean;
+  savedTo: string;
+  manifests: string[];
+};
+
 /**
  * Contract for rendering questions and collecting user answers.
  */
@@ -16,4 +23,13 @@ export interface IRenderer {
    * Returns the message displayed when the user cancels the prompt session.
    */
   onCancel(): string;
+
+  /**
+   * Renders the closing confirmation shown once the wizard has finished writing
+   * the license, summarizing what was conjured and where it was recorded.
+   *
+   * @param summary - The generated license, whether its copyright was
+   *   customized, the manifests it was recorded in, and the config save location.
+   */
+  complete(summary: CompletionSummary): void;
 }

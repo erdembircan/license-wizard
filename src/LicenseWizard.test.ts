@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Answer } from "@cli/Answer.js";
+import type { CompletionSummary } from "@cli/interfaces/IRenderer.js";
 import type { Question } from "@cli/Question.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
@@ -49,6 +50,9 @@ const state = vi.hoisted(() => {
     manifestWrites: [] as { name: string; licenseId: string }[],
     // Maps a question to the answer the stub renderer returns.
     answer: defaultAnswer,
+    // The summary passed to the renderer's closing `complete()` confirmation, or
+    // null when it was never shown (non-interactive paths, dry runs, cancels).
+    completion: null as CompletionSummary | null,
     reset() {
       self.rendered = [];
       self.config = null;
@@ -67,6 +71,7 @@ const state = vi.hoisted(() => {
       self.declaredLicenses = [];
       self.manifestWrites = [];
       self.answer = defaultAnswer;
+      self.completion = null;
     },
   };
 
@@ -78,12 +83,16 @@ vi.mock("@cli/ClackRenderer.js", () => ({
   ClackRenderer: vi.fn(function (this: {
     render: (q: Question) => Promise<Answer>;
     onCancel: () => string;
+    complete: (summary: CompletionSummary) => void;
   }) {
     this.render = async (question: Question): Promise<Answer> => {
       state.rendered.push(question);
       return { questionId: question.id, value: state.answer(question) };
     };
     this.onCancel = () => "";
+    this.complete = (summary: CompletionSummary) => {
+      state.completion = summary;
+    };
   }),
 }));
 
@@ -397,6 +406,24 @@ describe("LicenseWizard project manifest license write-back", () => {
 
     expect(state.writtenProjectLicense).toBe("MIT");
   });
+
+  it("shows the closing completion summary after an interactive install", async () => {
+    state.declaredLicenses = [{ name: "package.json", licenseId: "MIT" }];
+    state.answer = (q: Question): string | boolean => {
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "select") return "standard";
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.completion).toEqual({
+      licenseId: "MIT",
+      customized: false,
+      savedTo: "",
+      manifests: ["package.json"],
+    });
+  });
 });
 
 describe("LicenseWizard config save", () => {
@@ -495,7 +522,7 @@ describe("LicenseWizard non-interactive mode", () => {
     expect(state.rendered).toEqual([]);
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
     expect(state.writtenProjectLicense).toBe("MIT");
-    expect(stdout).toContain("Wrote LICENSE (MIT)");
+    expect(stdout).toContain("Conjured your LICENSE (MIT)");
   });
 
   it("uses the flag's license directly, ignoring manifest and saved config", async () => {
@@ -668,7 +695,7 @@ describe("LicenseWizard non-interactive mode", () => {
     expect(state.saveTarget).toBe(".licensewizardrc.json");
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
-    expect(stdout).toContain("Saved config to .licensewizardrc.json");
+    expect(stdout).toContain("Spellbook saved to .licensewizardrc.json");
   });
 
   it("persists collected tokens when saving a customized license", async () => {
@@ -815,7 +842,7 @@ describe("LicenseWizard verify mode", () => {
 
     await new LicenseWizard(["--verify"]).run();
 
-    expect(stdout).toContain("Reconciled the project");
+    expect(stdout).toContain("Realigned the project");
     expect(stdout).toContain("LICENSE regenerated");
     expect(state.generateCalls).toEqual([
       { licenseId: "MIT", slotValues: { "<year>": "2026" } },
@@ -970,10 +997,12 @@ describe("LicenseWizard dry-run mode", () => {
 
     await new LicenseWizard(["--license", "MIT", "--dry-run"]).run();
 
-    expect(stdout).toContain("Dry run — no files were written.");
-    expect(stdout).toContain("Would write LICENSE (MIT):");
+    expect(stdout).toContain(
+      "Dry run — the spell was only rehearsed; no files were written.",
+    );
+    expect(stdout).toContain("Would conjure LICENSE (MIT):");
     expect(stdout).toContain("RENDERED LICENSE");
-    expect(stdout).toContain("Record MIT in manifests: package.json");
+    expect(stdout).toContain("Inscribe MIT in manifests: package.json");
     // No write of any kind happened.
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
@@ -1012,7 +1041,7 @@ describe("LicenseWizard dry-run mode", () => {
       "--dry-run",
     ]).run();
 
-    expect(stdout).toContain("Save config to .licensewizardrc.json");
+    expect(stdout).toContain("Save your spellbook to .licensewizardrc.json");
     expect(state.writtenConfig).toBeNull();
     expect(state.saveTarget).toBeNull();
     expect(state.generateCalls).toEqual([]);
@@ -1045,7 +1074,9 @@ describe("LicenseWizard dry-run mode", () => {
 
     // The prompt flow still ran.
     expect(state.rendered.some((q) => q.id === "license")).toBe(true);
-    expect(stdout).toContain("Dry run — no files were written.");
+    expect(stdout).toContain(
+      "Dry run — the spell was only rehearsed; no files were written.",
+    );
     expect(stdout).toContain("RENDERED LICENSE");
     // Nothing was written or cleared.
     expect(state.generateCalls).toEqual([]);

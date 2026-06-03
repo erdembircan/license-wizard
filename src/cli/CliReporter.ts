@@ -16,6 +16,13 @@ type OutputStream = {
 // the codes are always emitted here.
 const FORCE = { validateStream: false } as const;
 
+// The wizard signs its output with a spark instead of a plain checkbox: a bright
+// spark when a spell lands, a faint glimmer when one is only rehearsed (dry run),
+// and a fizzle when an incantation fails.
+const SPARK = "✦";
+const GLIMMER = "✧";
+const FIZZLE = "✗";
+
 /**
  * Renders non-interactive CLI output to the terminal, writing informational
  * output to stdout and errors to stderr. Output is colorized with the Node.js
@@ -91,14 +98,14 @@ export class CliReporter implements IReporter {
    * location when the selection was persisted.
    */
   generated(licenseId: string, savedTo: string): void {
-    const mark = this.#mark(this.#out, "✓", "green");
+    const mark = this.#mark(this.#out, SPARK, "green");
     const id = this.#paint(this.#out, "bold", licenseId);
     const savedNote =
       savedTo === ""
         ? ""
-        : ` Saved config to ${this.#paint(this.#out, "cyan", savedTo)}.`;
+        : ` Spellbook saved to ${this.#paint(this.#out, "cyan", savedTo)}.`;
     this.#out.write(
-      `${mark}Wrote LICENSE (${id}) and recorded it in the project manifests.${savedNote}\n`,
+      `${mark}Conjured your LICENSE (${id}) and inscribed it across the project manifests.${savedNote}\n`,
     );
   }
 
@@ -108,18 +115,18 @@ export class CliReporter implements IReporter {
    * files are touched on this path.
    */
   dryRun(report: DryRunReport): void {
-    const mark = this.#mark(this.#out, "✓", "yellow");
+    const mark = this.#mark(this.#out, GLIMMER, "yellow");
     const heading = this.#paint(
       this.#out,
       ["bold", "yellow"],
-      "Dry run — no files were written.",
+      "Dry run — the spell was only rehearsed; no files were written.",
     );
     const id = this.#paint(this.#out, "bold", report.licenseId);
     const plan = this.#dryRunPlan(report);
 
     this.#out.write(
       `${mark}${heading}\n\n` +
-        `Would write LICENSE (${id}):\n\n${report.content}\n\n` +
+        `Would conjure LICENSE (${id}):\n\n${report.content}\n\n` +
         `${plan}\n`,
     );
   }
@@ -138,17 +145,17 @@ export class CliReporter implements IReporter {
             .map((name) => this.#paint(this.#out, "cyan", name))
             .join(", ")
         : "none present";
-    lines.push(`  Record ${report.licenseId} in manifests: ${manifests}`);
+    lines.push(`  Inscribe ${report.licenseId} in manifests: ${manifests}`);
 
     if (report.save.action === "save") {
       lines.push(
-        `  Save config to ${this.#paint(this.#out, "cyan", report.save.target)}`,
+        `  Save your spellbook to ${this.#paint(this.#out, "cyan", report.save.target)}`,
       );
     } else if (report.save.action === "clear") {
-      lines.push("  Clear saved config from every location");
+      lines.push("  Banish the spellbook from every location");
     }
 
-    const label = this.#paint(this.#out, "dim", "Would also:");
+    const label = this.#paint(this.#out, "dim", "The spell would also:");
     return `${label}\n${lines.join("\n")}`;
   }
 
@@ -159,7 +166,7 @@ export class CliReporter implements IReporter {
     const heading = this.#paint(
       this.#err,
       ["bold", "red"],
-      `Cannot generate a customized ${licenseId} license: missing required field(s):`,
+      `Cannot conjure a customized ${licenseId} license — missing required field(s):`,
     );
     const list = missing
       .map((slot) => `  ${this.#paint(this.#err, "yellow", slot.label)}`)
@@ -167,7 +174,7 @@ export class CliReporter implements IReporter {
     const example = this.#paint(this.#err, "dim", this.#setExample(missing));
 
     this.#err.write(
-      `${this.#mark(this.#err, "✗", "red")}${heading}\n\n${list}\n\n` +
+      `${this.#mark(this.#err, FIZZLE, "red")}${heading}\n\n${list}\n\n` +
         `Supply every field (e.g. ${example}), or run with --get-tokens to list them all.\n`,
     );
   }
@@ -196,7 +203,7 @@ export class CliReporter implements IReporter {
             .join(", ")}.`;
 
     this.#err.write(
-      `${this.#mark(this.#err, "✗", "red")}${heading} ${unknownList}.\n` +
+      `${this.#mark(this.#err, FIZZLE, "red")}${heading} ${unknownList}.\n` +
         `${accepted}\nRun with --get-tokens to list them.\n`,
     );
   }
@@ -212,7 +219,7 @@ export class CliReporter implements IReporter {
       ["bold", "red"],
       `No license matches "${licenseId}".`,
     );
-    const mark = this.#mark(this.#err, "✗", "red");
+    const mark = this.#mark(this.#err, FIZZLE, "red");
 
     if (suggestions.length === 0) {
       this.#err.write(
@@ -251,14 +258,14 @@ export class CliReporter implements IReporter {
    * manifests were checked too when any are present.
    */
   verifyMatch(report: VerifyReport): void {
-    const mark = this.#mark(this.#out, "✓", "green");
+    const mark = this.#mark(this.#out, SPARK, "green");
     const id = this.#paint(this.#out, "bold", report.licenseId);
     const surfaces =
       report.manifests.length > 0
         ? "LICENSE and project manifests are"
         : "LICENSE is";
     this.#out.write(
-      `${mark}${surfaces} up to date with the saved ${id} configuration.\n`,
+      `${mark}${surfaces} up to date, in harmony with your saved ${id} enchantment.\n`,
     );
   }
 
@@ -267,11 +274,11 @@ export class CliReporter implements IReporter {
    * surface that was brought back in sync.
    */
   verifyFixed(report: VerifyReport): void {
-    const mark = this.#mark(this.#out, "✓", "green");
+    const mark = this.#mark(this.#out, SPARK, "green");
     const id = this.#paint(this.#out, "bold", report.licenseId);
     const list = this.#driftList(this.#out, report, "fixed");
     this.#out.write(
-      `${mark}Reconciled the project with the saved ${id} configuration:\n${list}\n`,
+      `${mark}Realigned the project with your saved ${id} enchantment:\n${list}\n`,
     );
   }
 
@@ -280,11 +287,11 @@ export class CliReporter implements IReporter {
    * drifted and how to reconcile it.
    */
   verifyMismatch(report: VerifyReport): void {
-    const mark = this.#mark(this.#err, "✗", "red");
+    const mark = this.#mark(this.#err, FIZZLE, "red");
     const heading = this.#paint(
       this.#err,
       ["bold", "red"],
-      `Project is out of sync with the saved ${report.licenseId} configuration:`,
+      `Project is out of sync with your saved ${report.licenseId} enchantment:`,
     );
     const list = this.#driftList(this.#err, report, "mismatch");
     const fix = this.#paint(this.#err, "dim", `${this.#programName} --verify`);
@@ -350,7 +357,7 @@ export class CliReporter implements IReporter {
    * Renders a plain error message to stderr.
    */
   error(message: string): void {
-    this.#err.write(`${this.#mark(this.#err, "✗", "red")}${message}\n`);
+    this.#err.write(`${this.#mark(this.#err, FIZZLE, "red")}${message}\n`);
   }
 
   /**

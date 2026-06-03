@@ -10,6 +10,8 @@ vi.mock("@clack/prompts", () => ({
   spinner: vi.fn(),
   cancel: vi.fn(),
   isCancel: vi.fn(),
+  note: vi.fn(),
+  outro: vi.fn(),
   unicode: true,
 }));
 
@@ -702,6 +704,44 @@ describe("ClackRenderer", () => {
         const call = vi.mocked(clack.autocomplete).mock.calls[0][0];
         expect(call.initialUserInput).toBeUndefined();
       });
+    });
+  });
+
+  describe("complete", () => {
+    it("shows a closing note summarizing the conjured license and an outro", () => {
+      const renderer = new ClackRenderer(META);
+
+      renderer.complete({
+        licenseId: "MIT",
+        customized: true,
+        savedTo: ".licensewizardrc.json",
+        manifests: ["package.json", "composer.json"],
+      });
+
+      const noteBody = String(vi.mocked(clack.note).mock.calls[0][0]);
+      expect(noteBody).toContain("MIT");
+      expect(noteBody).toContain("customized copyright");
+      expect(noteBody).toContain("package.json, composer.json");
+      expect(noteBody).toContain(".licensewizardrc.json");
+      expect(clack.outro).toHaveBeenCalledWith(
+        expect.stringContaining("MIT is ready"),
+      );
+    });
+
+    it("notes the standard text and an unsaved spellbook, omitting manifests when none are present", () => {
+      const renderer = new ClackRenderer(META);
+
+      renderer.complete({
+        licenseId: "Apache-2.0",
+        customized: false,
+        savedTo: "",
+        manifests: [],
+      });
+
+      const noteBody = String(vi.mocked(clack.note).mock.calls[0][0]);
+      expect(noteBody).toContain("official text");
+      expect(noteBody).toContain("left unsaved");
+      expect(noteBody).not.toContain("Manifests");
     });
   });
 });

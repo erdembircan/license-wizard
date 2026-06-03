@@ -66,6 +66,14 @@ classDiagram
       <<interface>>
       +render(question: Question) Promise~Answer~
       +onCancel() string
+      +complete(summary: CompletionSummary) void
+    }
+
+    class CompletionSummary {
+      +licenseId: string
+      +customized: boolean
+      +savedTo: string
+      +manifests: string[]
     }
 
     class ClackRenderer {
@@ -360,6 +368,8 @@ classDiagram
   ClackRenderer ..|> IRenderer : implements
   ClackRenderer ..> Spinner : uses
   ClackRenderer ..> Banner : renders
+  IRenderer ..> CompletionSummary : renders
+  ClackRenderer ..> CompletionSummary : renders
   CliReporter ..|> IReporter : implements
   CliReporter ..> TemplateSlot : renders
   CliReporter ..> VerifyReport : renders
@@ -369,6 +379,7 @@ classDiagram
   LicenseWizard ..> QuestionRepository : creates
   LicenseWizard ..> ClackRenderer : creates
   LicenseWizard ..> CliReporter : creates
+  LicenseWizard ..> IRenderer : reports completion through
   LicenseWizard ..> IReporter : reports through
   LicenseWizard ..> Orchestrator : creates
   LicenseWizard ..> SpdxLicenseSource : creates
