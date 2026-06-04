@@ -53,7 +53,7 @@ export default function Hero() {
             <br />
             Generate a perfect{" "}
             <span className="relative whitespace-nowrap text-brand">
-              LICENSE
+              LICENSE{" "}
               <svg
                 className="absolute -bottom-2 left-0 w-full"
                 height="10"
