@@ -28,7 +28,11 @@ export default function FinalCta() {
         >
           <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
         </svg>
-        <img src="/logo.png" alt="" className="mx-auto h-28 w-auto md:h-40" />
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt=""
+          className="mx-auto h-28 w-auto md:h-40"
+        />
         <h2 className="mx-auto mt-7 max-w-2xl font-display text-4xl font-bold tracking-tight text-ink md:text-5xl">
           License your project in seconds
         </h2>

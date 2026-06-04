@@ -127,7 +127,7 @@ export default function Features() {
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
             Reads the license declared in your{" "}
-            <code className="font-mono text-[0.85em]">package.json</code> or
+            <code className="font-mono text-[0.85em]">package.json</code> or{" "}
             <code className="font-mono text-[0.85em]">composer.json</code> and
             writes your choice back to every one it finds.
           </p>

@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-5 py-10 md:flex-row">
         <div className="flex items-center gap-3">
           <img
-            src="/logo-mark.png"
+            src={`${import.meta.env.BASE_URL}logo-mark.png`}
             alt="License Wizard"
             className="h-8 w-auto"
           />

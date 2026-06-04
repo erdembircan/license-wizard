@@ -70,7 +70,7 @@ export default function Hero() {
                   opacity="0.45"
                 />
               </svg>
-            </span>
+            </span>{" "}
             file.
           </h1>
 

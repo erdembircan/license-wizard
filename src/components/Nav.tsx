@@ -14,7 +14,11 @@ export default function Nav() {
           className="flex items-center gap-2.5"
           aria-label="License Wizard home"
         >
-          <img src="/logo-mark.png" alt="" className="h-9 w-auto" />
+          <img
+            src={`${import.meta.env.BASE_URL}logo-mark.png`}
+            alt=""
+            className="h-9 w-auto"
+          />
           <span className="font-display text-lg font-bold tracking-tight text-ink">
             license <span className="text-brand">wizard</span>
           </span>
