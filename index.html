@@ -50,7 +50,8 @@
         <nav class="hidden items-center gap-8 md:flex">
           <a href="#features" class="nav-link">Features</a>
           <a href="#usage" class="nav-link">Usage</a>
-          <a href="#agents" class="nav-link">Scripts &amp; agents</a>
+          <a href="#agents" class="nav-link">Agents</a>
+          <a href="#ci" class="nav-link">CI</a>
           <a href="#flags" class="nav-link">Flags</a>
         </nav>
 
@@ -364,44 +365,116 @@
 
       <!-- ===================== AGENTS / NON-INTERACTIVE ===================== -->
       <section id="agents" class="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
-        <div class="relative overflow-hidden rounded-3xl border border-line bg-ink p-10 md:p-14" data-reveal>
-          <div class="pointer-events-none absolute -right-20 -top-24 size-80 rounded-full" style="background: radial-gradient(circle, rgba(47,111,224,0.45), transparent 65%)"></div>
+        <div class="relative overflow-hidden rounded-3xl border border-line bg-paper-raised p-10 md:p-14" data-reveal>
+          <div class="pointer-events-none absolute -right-24 -top-28 size-80 rounded-full" style="background: radial-gradient(circle, rgba(47,111,224,0.14), transparent 65%)"></div>
+          <svg class="sparkle left-[12%] bottom-[16%] size-4" style="animation-delay:0.7s" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z"/></svg>
           <div class="relative grid items-center gap-10 lg:grid-cols-2">
             <div>
-              <p class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-brand-glow">
-                <span class="size-1.5 rounded-full bg-brand-glow"></span>
-                Scripts · CI · AI agents
-              </p>
-              <h2 class="mt-6 font-display text-4xl font-bold leading-tight tracking-tight text-white">
-                The same flow,<br />without the prompts
+              <p class="eyebrow"><span class="size-1.5 rounded-full bg-brand"></span>Built for AI agents</p>
+              <h2 class="mt-6 font-display text-4xl font-bold leading-tight tracking-tight text-ink">
+                Second nature<br />for your agent
               </h2>
-              <p class="mt-5 max-w-md text-lg leading-relaxed text-[#aebdd8]">
-                Pass <code class="font-mono text-[0.9em] text-brand-glow">--license</code>, <code class="font-mono text-[0.9em] text-brand-glow">--set</code>, or
-                <code class="font-mono text-[0.9em] text-brand-glow">--get-tokens</code> and License Wizard runs as a single
-                command. Miss a required field and it writes nothing, lists what's
-                missing, and exits non-zero — so a calling agent knows exactly
-                what to fix.
+              <p class="mt-5 max-w-md text-lg leading-relaxed text-ink-soft">
+                License Wizard talks to agents the way agents talk back. Ask
+                <code class="flag-code">--get-tokens</code> and it lists exactly which
+                copyright fields a license needs — your agent discovers the task
+                instead of guessing at it.
               </p>
-              <a href="https://github.com/erdembircan/license-wizard#non-interactive-mode-scripting--agents" target="_blank" rel="noopener" class="mt-7 inline-flex items-center gap-2 font-semibold text-brand-glow transition-colors hover:text-white">
-                Non-interactive docs
+              <p class="mt-4 max-w-md text-lg leading-relaxed text-ink-soft">
+                Every run leaves a breadcrumb: a one-line note of what it wrote,
+                or — when a field is missing — the precise fix and a non-zero
+                exit, never a half-written file. Piped output stays plain text,
+                results on stdout and errors on stderr, so reading the result is
+                second nature for any agent.
+              </p>
+              <a href="https://github.com/erdembircan/license-wizard#non-interactive-mode-scripting--agents" target="_blank" rel="noopener" class="mt-7 inline-flex items-center gap-2 font-semibold text-brand-strong transition-colors hover:text-brand">
+                How agents drive it
                 <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               </a>
             </div>
 
             <div class="font-mono text-[13px] leading-relaxed">
-              <div class="rounded-2xl border border-white/10 bg-black/30 p-5">
-                <p class="text-term-dim"># one-shot, fully scripted</p>
-                <p class="mt-2 text-term-text">
-                  <span class="text-term-accent">$</span> npx license-wizard \
-                </p>
-                <p class="pl-4 text-term-text">--license MIT \</p>
-                <p class="pl-4 text-term-text">--set <span class="text-term-amber">"year=2026"</span> \</p>
-                <p class="pl-4 text-term-text">--save-rc</p>
-                <p class="mt-3 text-term-green">✦ Conjured your LICENSE (MIT) and inscribed it across the project manifests. Spellbook saved to .licensewizardrc.json.</p>
-                <p class="mt-3 text-term-dim"># keep it honest in CI</p>
-                <p class="text-term-text"><span class="text-term-accent">$</span> npx license-wizard --verify --strict</p>
-                <p class="mt-1 text-term-green">✦ LICENSE and project manifests are up to date, in harmony with your saved MIT enchantment.</p>
+              <div class="terminal">
+                <div class="terminal-bar">
+                  <span class="term-dot bg-term-red"></span>
+                  <span class="term-dot bg-term-amber"></span>
+                  <span class="term-dot bg-term-green"></span>
+                  <span class="ml-2 font-mono text-xs text-term-dim">agent · license-wizard</span>
+                </div>
+                <div class="px-5 py-4 text-term-text">
+                  <p class="text-term-dim"># 1. the agent asks what the license needs</p>
+                  <p class="mt-2 text-term-text"><span class="text-term-accent">$</span> npx license-wizard --license MIT --get-tokens</p>
+                  <p class="mt-2 text-term-text">MIT accepts the following copyright field(s):</p>
+                  <p class="pl-4 text-term-accent">year</p>
+                  <p class="pl-4 text-term-accent">copyright holders</p>
+                  <p class="mt-3 text-term-dim"># 2. it fills them in and generates</p>
+                  <p class="mt-1 text-term-text">
+                    <span class="text-term-accent">$</span> npx license-wizard --license MIT \
+                  </p>
+                  <p class="pl-4 text-term-text">--set <span class="text-term-amber">"year=2026"</span> \</p>
+                  <p class="pl-4 text-term-text">--set <span class="text-term-amber">"copyright holders=Erdem Bircan"</span></p>
+                  <p class="mt-3 text-term-green">✦ Conjured your LICENSE (MIT) and inscribed it across the project manifests.</p>
+                  <p class="mt-3 text-term-dim"># miss a field? it writes nothing and says what's wrong</p>
+                  <p class="mt-1 text-term-red">✗ Cannot conjure a customized MIT license — missing required field(s): year</p>
+                  <p class="text-term-dim">exit 1 — the agent knows exactly what to fix</p>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== CI ===================== -->
+      <section id="ci" class="mx-auto max-w-6xl scroll-mt-24 px-5 py-20">
+        <div class="relative overflow-hidden rounded-3xl border border-line bg-paper-raised p-10 md:p-14" data-reveal>
+          <div class="pointer-events-none absolute -bottom-28 -left-24 size-80 rounded-full" style="background: radial-gradient(circle, rgba(47,111,224,0.14), transparent 65%)"></div>
+          <svg class="sparkle right-[10%] top-[18%] size-4" style="animation-delay:1.1s" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z"/></svg>
+          <div class="relative grid items-center gap-10 lg:grid-cols-2">
+            <div class="order-2 font-mono text-[13px] leading-relaxed lg:order-1">
+              <div class="terminal">
+                <div class="terminal-bar">
+                  <span class="term-dot bg-term-red"></span>
+                  <span class="term-dot bg-term-amber"></span>
+                  <span class="term-dot bg-term-green"></span>
+                  <span class="ml-2 font-mono text-xs text-term-dim">license-check · GitHub Actions</span>
+                </div>
+                <div class="px-5 py-4 text-term-text">
+                  <p class="text-term-dim"># .github/workflows/ci.yml</p>
+                  <p class="mt-1 text-term-text">- <span class="text-term-accent">name</span>: Check the license is in sync</p>
+                  <p class="pl-2 text-term-text"><span class="text-term-accent">run</span>: npx license-wizard --verify --strict</p>
+                  <p class="mt-4 text-term-green">✦ LICENSE and project manifests are up to date, in harmony with your saved MIT enchantment.</p>
+                  <p class="text-term-dim">exit 0 — the build moves on</p>
+                  <p class="mt-4 text-term-dim"># someone hand-edits LICENSE …</p>
+                  <p class="mt-1 text-term-red">✗ Project is out of sync with your saved MIT enchantment:</p>
+                  <p class="pl-4 text-term-amber">LICENSE does not match</p>
+                  <p class="pl-4 text-term-text">package.json license declares <span class="text-term-amber">Apache-2.0</span> (expected MIT)</p>
+                  <p class="mt-1 text-term-red">exit 1 — the build stops</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="order-1 lg:order-2">
+              <p class="eyebrow"><span class="size-1.5 rounded-full bg-brand"></span>Continuous integration</p>
+              <h2 class="mt-6 font-display text-4xl font-bold leading-tight tracking-tight text-ink">
+                Keep it honest<br />in your pipeline
+              </h2>
+              <p class="mt-5 max-w-md text-lg leading-relaxed text-ink-soft">
+                Drop <code class="flag-code">--verify --strict</code> into any workflow.
+                It re-renders the <code class="font-mono text-[0.9em]">LICENSE</code> from your saved
+                config and checks every manifest's license field against it. Nothing
+                drifted? It exits zero and the build moves on. Anything out of sync — an
+                edited copyright line, a stale file, a hand-changed manifest — and it lists
+                each one and exits non-zero, so the pipeline stops before bad metadata ships.
+              </p>
+              <p class="mt-4 max-w-md text-lg leading-relaxed text-ink-soft">
+                We trust it because we run it on ourselves: License Wizard's own build
+                workflow gates every push to <code class="font-mono text-[0.9em]">master</code> with
+                <code class="flag-code">pnpm verify</code> — the very same check.
+              </p>
+              <a href="https://github.com/erdembircan/license-wizard#verifying-an-existing-license" target="_blank" rel="noopener" class="mt-7 inline-flex items-center gap-2 font-semibold text-brand-strong transition-colors hover:text-brand">
+                Verify &amp; strict mode docs
+                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
             </div>
           </div>
         </div>
@@ -453,6 +526,9 @@
           <p class="mx-auto mt-4 max-w-md text-lg text-ink-soft">
             No install required. Just run it and answer a few prompts.
           </p>
+          <p class="mx-auto mt-2 max-w-md text-lg text-ink-soft">
+            Better yet, just tell your agent to use it — License Wizard works with any AI agent.
+          </p>
           <div class="mx-auto mt-9 flex max-w-md flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <div class="copy-field w-full sm:w-auto">
               <span><span style="color: var(--color-brand)">$</span> npx license-wizard</span>
@@ -477,7 +553,6 @@
           <a href="https://github.com/erdembircan/license-wizard" target="_blank" rel="noopener" class="nav-link">GitHub</a>
           <a href="https://www.npmjs.com/package/license-wizard" target="_blank" rel="noopener" class="nav-link">npm</a>
           <a href="https://github.com/erdembircan/license-wizard/issues" target="_blank" rel="noopener" class="nav-link">Issues</a>
-          <a href="https://spdx.org/licenses/" target="_blank" rel="noopener" class="nav-link">SPDX List</a>
         </nav>
       </div>
     </footer>
