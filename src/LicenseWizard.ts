@@ -23,6 +23,8 @@ import { Config } from "@configuration/Config.js";
 import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
+import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { RcConfigStore } from "@configuration/RcConfigStore.js";
@@ -74,9 +76,13 @@ export class LicenseWizard {
   readonly #generator: LicenseGenerator;
   readonly #installer: LicenseInstaller;
   readonly #verifier: LicenseVerifier;
-  readonly #scanner: SourceFileScanner;
-  readonly #headerInstaller: HeaderInstaller;
-  readonly #headerVerifier: HeaderVerifier;
+  readonly #reader: IFileSystemReader;
+  readonly #writer: IFileSystemWriter;
+  // The header collaborators are built lazily (see the getters below) so a run
+  // that never touches headers — the common case — never pays to assemble them.
+  #scannerInstance: SourceFileScanner | null = null;
+  #headerInstallerInstance: HeaderInstaller | null = null;
+  #headerVerifierInstance: HeaderVerifier | null = null;
   readonly #reporter: IReporter;
   readonly #flags;
   // Maps each save flag to the target id of the config store it writes to,
@@ -97,6 +103,8 @@ export class LicenseWizard {
 
     const reader = new NodeFileSystemReader();
     const writer = new NodeFileSystemWriter();
+    this.#reader = reader;
+    this.#writer = writer;
     const rcConfigStore = new RcConfigStore();
     const npmConfigStore = new ManifestConfigStore(PACKAGE_JSON);
     const composerConfigStore = new ManifestConfigStore(COMPOSER_JSON);
@@ -130,15 +138,42 @@ export class LicenseWizard {
       this.#generator,
       reader,
     );
-    this.#scanner = new SourceFileScanner(new NodeFileTreeWalker(), reader);
-    this.#headerInstaller = new HeaderInstaller(reader, writer);
-    this.#headerVerifier = new HeaderVerifier(
-      this.#scanner,
-      reader,
-      writer,
-      this.#licenseRepository,
-    );
     this.#reporter = new CliReporter(pkg.name);
+  }
+
+  /**
+   * Lazily builds and memoizes the source-file scanner, so it is assembled only
+   * when a run actually scans for headers.
+   */
+  get #scanner(): SourceFileScanner {
+    return (this.#scannerInstance ??= new SourceFileScanner(
+      new NodeFileTreeWalker(),
+      this.#reader,
+    ));
+  }
+
+  /**
+   * Lazily builds and memoizes the header installer, so it is assembled only
+   * when a run actually writes headers.
+   */
+  get #headerInstaller(): HeaderInstaller {
+    return (this.#headerInstallerInstance ??= new HeaderInstaller(
+      this.#reader,
+      this.#writer,
+    ));
+  }
+
+  /**
+   * Lazily builds and memoizes the header verifier, so it is assembled only when
+   * a `--verify` run reaches the header surface.
+   */
+  get #headerVerifier(): HeaderVerifier {
+    return (this.#headerVerifierInstance ??= new HeaderVerifier(
+      this.#scanner,
+      this.#reader,
+      this.#writer,
+      this.#licenseRepository,
+    ));
   }
 
   /**
