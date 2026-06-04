@@ -36,15 +36,15 @@ export function classifyTreeLine(text: string): ClassifiedLine {
 
 export type LineMarker =
   | "bullet" // ⏺ — an agent action (Claude Code style), tinted orange
-  | "check" //  ✓ — a success line, tinted green
+  | "check" //  ✦ — a success spark, tinted green
   | null;
 
 /**
- * Detects a leading status marker (an agent's ⏺ bullet or a ✓ success tick) so
+ * Detects a leading status marker (an agent's ⏺ bullet or a ✦ success spark) so
  * just that glyph can be colored while the rest of the line keeps its own tone.
  */
 export function lineMarker(text: string): LineMarker {
   if (text.startsWith("⏺")) return "bullet";
-  if (text.startsWith("✓")) return "check";
+  if (text.startsWith("✦")) return "check";
   return null;
 }

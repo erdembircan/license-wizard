@@ -40,9 +40,9 @@ describe("classifyTreeLine", () => {
     expect(classifyTreeLine("│")).toEqual({ glyph: "connector", content: "" });
   });
 
-  it("does not treat agent markers (⏺ ✓) as tree glyphs", () => {
+  it("does not treat agent markers (⏺ ✦) as tree glyphs", () => {
     expect(classifyTreeLine("⏺ Bash(...)").glyph).toBeNull();
-    expect(classifyTreeLine("✓ Wrote LICENSE").glyph).toBeNull();
+    expect(classifyTreeLine("✦ Conjured your LICENSE").glyph).toBeNull();
   });
 
   it("leaves plain-line content untouched", () => {
@@ -53,9 +53,9 @@ describe("classifyTreeLine", () => {
 });
 
 describe("lineMarker", () => {
-  it("detects the agent bullet and success tick", () => {
+  it("detects the agent bullet and success spark", () => {
     expect(lineMarker("⏺ Bash(npx license-wizard)")).toBe("bullet");
-    expect(lineMarker("✓ Wrote LICENSE (MIT)")).toBe("check");
+    expect(lineMarker("✦ Conjured your LICENSE (MIT)")).toBe("check");
   });
 
   it("returns null for ordinary lines and indented continuations", () => {

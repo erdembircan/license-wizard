@@ -48,9 +48,9 @@ export const scenes: TerminalScene[] = [
       { text: '        --set "year=2026" \\' },
       { text: '        --set "copyright holders=Erdem Bircan" \\' },
       { text: "        --save-rc)" },
-      { text: "  ⎿ Wrote LICENSE (MIT) and recorded it in the", tone: "dim" },
-      { text: "    project manifests. Saved config to", tone: "dim" },
-      { text: "    .licensewizardrc.json.", tone: "dim" },
+      { text: "  ⎿ Conjured your LICENSE (MIT) and inscribed", tone: "dim" },
+      { text: "    it across the project manifests.", tone: "dim" },
+      { text: "    Spellbook saved to .licensewizardrc.json.", tone: "dim" },
       { text: "" },
       { text: "⏺ Done — MIT LICENSE created for Erdem Bircan" },
       { text: "  (2026) and recorded in package.json." },
@@ -83,6 +83,17 @@ export const scenes: TerminalScene[] = [
       { text: "│" },
       { text: "◇  Where do you want to save the wizard config?" },
       { text: "│  .licensewizardrc.json", tone: "dim" },
+      { text: "│" },
+      { text: "◇  ✦ The spell is cast", tone: "accent" },
+      { text: "│  LICENSE    conjured as MIT with your", tone: "dim" },
+      { text: "│             customized copyright", tone: "dim" },
+      { text: "│  Manifests  inscribed in package.json", tone: "dim" },
+      { text: "│  Spellbook  saved to .licensewizardrc.json", tone: "dim" },
+      { text: "│" },
+      {
+        text: "└  MIT is ready — may your code be ever free. ✦",
+        tone: "green",
+      },
     ],
   },
   {
@@ -93,7 +104,7 @@ export const scenes: TerminalScene[] = [
     output: [
       { text: "" },
       {
-        text: "✓ Wrote LICENSE (MIT) and recorded it in the project manifests. Saved config to .licensewizardrc.json.",
+        text: "✦ Conjured your LICENSE (MIT) and inscribed it across the project manifests. Spellbook saved to .licensewizardrc.json.",
         tone: "green",
       },
     ],
@@ -105,7 +116,7 @@ export const scenes: TerminalScene[] = [
     output: [
       { text: "" },
       {
-        text: "✓ LICENSE and project manifests are up to date with the saved MIT configuration.",
+        text: "✦ LICENSE and project manifests are up to date, in harmony with your saved MIT enchantment.",
         tone: "green",
       },
     ],
