@@ -6,6 +6,7 @@ The project's landing page lives on the **`gh-pages`** branch, which is an **orp
 
 Because of this, any work on the landing page must target `gh-pages`, **not** `master`:
 
+- **Sync first.** Before branching, fetch and update your local `gh-pages` so it matches `origin/gh-pages` — the local copy may be stale, and branching off a stale base silently drops or regresses recently-merged landing-page work.
 - Branch **off** `gh-pages` (not `master`) when starting landing-page work.
 - Open the resulting PR **against** `gh-pages` as the base branch.
 - Never mix landing-page changes into a `master` PR, and never bring `master` source into `gh-pages` — the two trees are intentionally separate.
