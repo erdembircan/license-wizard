@@ -1,5 +1,19 @@
 # CLAUDE.md
 
+## Landing Page
+
+The project's landing page lives on the **`gh-pages`** branch, which is an **orphan branch** — it shares no history with `master` and has its own independent tree (a standalone Vite app: `index.html`, `src/`, `public/`, its own `package.json`, etc.). It is **not** part of the main codebase on `master`.
+
+Because of this, any work on the landing page must target `gh-pages`, **not** `master`:
+
+- **Never check out `gh-pages` in the root working copy.** The root checkout always stays on `master`. Do landing-page work in a **separate git worktree** — even for a quick change. Create the worktree on `gh-pages`, sync it, then branch from there.
+- **Sync first.** Inside that worktree, fetch and update `gh-pages` so it matches `origin/gh-pages` — the local copy may be stale, and branching off a stale base silently drops or regresses recently-merged landing-page work.
+- Branch **off** `gh-pages` (not `master`) when starting landing-page work.
+- Open the resulting PR **against** `gh-pages` as the base branch.
+- Never mix landing-page changes into a `master` PR, and never bring `master` source into `gh-pages` — the two trees are intentionally separate.
+
+If a task involves the landing page in any way, confirm you are based on `gh-pages` before making changes.
+
 ## Knowledge Base
 
 `docs/knowledge-base/` contains reference material used to inform the design and implementation of license-wizard. Covers open source licensing concepts, SPDX standards, license file conventions, and data sources the tool relies on. This is background research — agents and contributors should consult it when making decisions about how the tool should behave.
