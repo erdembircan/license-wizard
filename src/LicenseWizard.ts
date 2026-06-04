@@ -2,11 +2,16 @@ import type { Answer } from "@cli/Answer.js";
 import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { CliReporter } from "@cli/CliReporter.js";
 import { FlagParser } from "@cli/FlagParser.js";
-import type { IRenderer } from "@cli/interfaces/IRenderer.js";
+import type {
+  CompletionHeaders,
+  IRenderer,
+} from "@cli/interfaces/IRenderer.js";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
 import { Orchestrator } from "@cli/Orchestrator.js";
+import { ProgressBar } from "@cli/ProgressBar.js";
 import type {
   AutocompleteQuestion,
+  ConfirmQuestion,
   Question,
   QuestionLifecycle,
   SelectQuestion,
@@ -21,6 +26,15 @@ import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { RcConfigStore } from "@configuration/RcConfigStore.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
+import { HeaderComposer } from "@headers/HeaderComposer.js";
+import { HeaderInstaller } from "@headers/HeaderInstaller.js";
+import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
+import { HeaderRenderer } from "@headers/HeaderRenderer.js";
+import { HeaderVerifier } from "@headers/HeaderVerifier.js";
+import { NodeFileTreeWalker } from "@headers/NodeFileTreeWalker.js";
+import { extensionOf } from "@headers/SourceFile.js";
+import { SourceFileScanner } from "@headers/SourceFileScanner.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -35,10 +49,20 @@ import pkg from "../package.json" with { type: "json" };
 
 const GENERATION_MODE_ID = "generationMode";
 const SAVE_CONFIG_ID = "saveConfig";
+const HEADERS_ENABLE_ID = "addHeaders";
+const HEADERS_STYLE_ID = "headerStyle";
 const SKIP_SAVE = "skip";
 const PACKAGE_JSON = "package.json";
 const COMPOSER_JSON = "composer.json";
 const SUGGESTION_LIMIT = 5;
+
+export type HeaderApplyReport = {
+  licenseId: string;
+  style: HeaderStyle;
+  total: number;
+  written: number;
+  unchanged: number;
+};
 
 /**
  * Entry point for the license-wizard CLI application.
@@ -50,11 +74,18 @@ export class LicenseWizard {
   readonly #generator: LicenseGenerator;
   readonly #installer: LicenseInstaller;
   readonly #verifier: LicenseVerifier;
+  readonly #scanner: SourceFileScanner;
+  readonly #headerInstaller: HeaderInstaller;
+  readonly #headerVerifier: HeaderVerifier;
   readonly #reporter: IReporter;
   readonly #flags;
   // Maps each save flag to the target id of the config store it writes to,
   // read back from the store instances so the ids are not duplicated here.
   readonly #saveTargetByFlag: Record<string, string>;
+  // The detail of the license chosen in the interactive flow, captured when the
+  // license is answered so the later header questions can decide whether the
+  // `full` style is available without fetching it again.
+  #interactiveHeaderDetail: LicenseDetail | null = null;
 
   /**
    * Creates a new LicenseWizard instance and parses the provided CLI arguments.
@@ -98,6 +129,14 @@ export class LicenseWizard {
       this.#manifests,
       this.#generator,
       reader,
+    );
+    this.#scanner = new SourceFileScanner(new NodeFileTreeWalker(), reader);
+    this.#headerInstaller = new HeaderInstaller(reader, writer);
+    this.#headerVerifier = new HeaderVerifier(
+      this.#scanner,
+      reader,
+      writer,
+      this.#licenseRepository,
     );
     this.#reporter = new CliReporter(pkg.name);
   }
@@ -167,6 +206,20 @@ export class LicenseWizard {
         default: false,
         description: "List the license's copyright fields and exit.",
       },
+      headers: {
+        type: "string",
+        default: "",
+        description:
+          'Also write SPDX license headers into source files: "short" (SPDX tags) or "full" (the license notice).',
+        placeholder: "<short|full>",
+      },
+      "headers-ignore": {
+        type: "list",
+        default: [],
+        description:
+          "Extra gitignore-style pattern to skip when writing headers (repeatable).",
+        placeholder: "<glob>",
+      },
       "dry-run": {
         type: "boolean",
         default: false,
@@ -201,9 +254,61 @@ export class LicenseWizard {
         this.#offerCustomization(answer, lifecycle, config?.tokens),
     };
 
+    const headersQuestion = this.#buildHeadersQuestion();
     const saveConfigQuestion = await this.#buildSaveConfigQuestion();
 
-    return [licenseQuestion, saveConfigQuestion];
+    return [licenseQuestion, headersQuestion, saveConfigQuestion];
+  }
+
+  /**
+   * Builds the top-level "add headers?" prompt. Answering yes injects a
+   * short/full style choice, but only when the chosen license publishes a
+   * standard header — otherwise only the `short` style applies and no further
+   * question is needed. The license's support is read from the detail captured
+   * when the license was answered, which runs before this question.
+   */
+  #buildHeadersQuestion(): ConfirmQuestion {
+    return {
+      id: HEADERS_ENABLE_ID,
+      text: "Add SPDX license headers to your source files?",
+      type: "confirm",
+      defaultValue: false,
+      onAnswer: (answer, lifecycle) => {
+        const supportsFull =
+          this.#interactiveHeaderDetail !== null &&
+          HeaderRenderer.supportsFull(this.#interactiveHeaderDetail);
+        if (answer.value === true && supportsFull) {
+          lifecycle.inject([this.#buildHeaderStyleQuestion()]);
+        }
+      },
+    };
+  }
+
+  /**
+   * Builds the short/full header-style choice, offered only for licenses that
+   * publish a standard header (so `full` is a real option). The copyright fields
+   * are not asked again here — the header reuses whatever was chosen for the
+   * license text.
+   */
+  #buildHeaderStyleQuestion(): SelectQuestion {
+    return {
+      id: HEADERS_STYLE_ID,
+      text: "Which header style do you want in each file?",
+      type: "select",
+      defaultValue: "short",
+      options: [
+        {
+          value: "short",
+          label: "Short",
+          hint: "SPDX-License-Identifier tag lines",
+        },
+        {
+          value: "full",
+          label: "Full",
+          hint: "the complete license notice",
+        },
+      ],
+    };
   }
 
   /**
@@ -251,10 +356,14 @@ export class LicenseWizard {
     savedTokens?: Record<string, string>,
   ): Promise<void> {
     if (typeof answer.value !== "string" || answer.value === "") {
+      this.#interactiveHeaderDetail = null;
       return;
     }
 
     const detail = await this.#licenseRepository.getLicense(answer.value);
+    // Remember the detail so the later header-style question can tell whether
+    // this license supports a `full` header without fetching it again.
+    this.#interactiveHeaderDetail = detail;
     const slots = new LicenseTemplate(
       detail.standardLicenseTemplate ?? "",
     ).slots();
@@ -318,6 +427,7 @@ export class LicenseWizard {
     return (
       this.#flags.license !== "" ||
       this.#flags.set.length > 0 ||
+      this.#flags.headers !== "" ||
       this.#flags["get-tokens"] ||
       this.#flags["save-rc"] ||
       this.#flags["save-npm"] ||
@@ -339,7 +449,7 @@ export class LicenseWizard {
 
     if (licenseId === "") {
       this.#fail(
-        "The --license <spdx-id> flag is required when using --set, --get-tokens, or a --save-* flag.",
+        "The --license <spdx-id> flag is required when using --set, --headers, --get-tokens, or a --save-* flag.",
       );
       return;
     }
@@ -363,6 +473,12 @@ export class LicenseWizard {
       return;
     }
 
+    // Validate the header request up front too, for the same reason.
+    const headerStyle = this.#resolveHeaderStyle(detail);
+    if (headerStyle === null) {
+      return;
+    }
+
     const setEntries = this.#parseSetEntries(this.#flags.set);
     if (setEntries === null) {
       return;
@@ -370,7 +486,12 @@ export class LicenseWizard {
 
     // No --set values: generate the official text unchanged.
     if (setEntries.size === 0) {
-      await this.#generateNonInteractive(licenseId, {}, saveTarget);
+      await this.#generateNonInteractive(
+        licenseId,
+        {},
+        saveTarget,
+        headerStyle,
+      );
       return;
     }
 
@@ -390,7 +511,12 @@ export class LicenseWizard {
       return;
     }
 
-    await this.#generateNonInteractive(licenseId, values, saveTarget);
+    await this.#generateNonInteractive(
+      licenseId,
+      values,
+      saveTarget,
+      headerStyle,
+    );
   }
 
   /**
@@ -466,11 +592,14 @@ export class LicenseWizard {
    * @param slotValues - Resolved copyright slot values keyed by token.
    * @param saveTarget - The config store id to persist to, or the empty string
    *   to save nowhere.
+   * @param headerStyle - The header style to also write into source files, or
+   *   the empty string to write no headers.
    */
   async #generateNonInteractive(
     licenseId: string,
     slotValues: Record<string, string>,
     saveTarget: string,
+    headerStyle: "" | HeaderStyle,
   ): Promise<void> {
     const selection: LicenseSelection = {
       licenseId,
@@ -479,15 +608,133 @@ export class LicenseWizard {
         saveTarget === ""
           ? { action: "none" }
           : { action: "save", target: saveTarget },
+      headers: headerStyle === "" ? undefined : { style: headerStyle },
     };
 
     if (this.#flags["dry-run"]) {
       await this.#preview(selection);
+      if (headerStyle !== "") {
+        await this.#previewHeaders(licenseId, headerStyle, slotValues);
+      }
       return;
     }
 
     await this.#installer.install(selection);
     this.#reporter.generated(licenseId, saveTarget);
+
+    if (headerStyle !== "") {
+      const report = await this.#applyHeaders(
+        licenseId,
+        headerStyle,
+        slotValues,
+      );
+      if (report.total === 0) {
+        this.#reporter.headersNoFiles(licenseId);
+      } else {
+        this.#reporter.headersGenerated(report);
+      }
+    }
+  }
+
+  /**
+   * Validates the `--headers` flag against the chosen license and returns the
+   * requested style: the empty string when no header was requested, the style
+   * when valid, or null after reporting an error when the value is unrecognized
+   * or `full` was asked for a license that publishes no standard header.
+   *
+   * @param detail - The resolved detail of the license being generated.
+   */
+  #resolveHeaderStyle(detail: LicenseDetail): "" | HeaderStyle | null {
+    const raw = this.#flags.headers.trim().toLowerCase();
+
+    if (raw === "") {
+      return "";
+    }
+    if (raw !== "short" && raw !== "full") {
+      this.#fail(
+        `Invalid --headers value "${this.#flags.headers}". Use "short" or "full".`,
+      );
+      return null;
+    }
+    if (raw === "full" && !HeaderRenderer.supportsFull(detail)) {
+      this.#fail(
+        `${detail.licenseId} publishes no standard header; only --headers short is available for it.`,
+      );
+      return null;
+    }
+    return raw;
+  }
+
+  /**
+   * Scans the project for eligible source files and writes the header described
+   * by the selection into each, showing a progress bar across the run, and
+   * returns a tally of how many files were written versus already current.
+   *
+   * @param licenseId - The SPDX identifier whose header is written.
+   * @param style - The header style (`short` or `full`).
+   * @param tokens - Copyright tokens inherited from the license customization.
+   */
+  async #applyHeaders(
+    licenseId: string,
+    style: HeaderStyle,
+    tokens: Record<string, string>,
+  ): Promise<HeaderApplyReport> {
+    const detail = await this.#licenseRepository.getLicense(licenseId);
+    const files = await this.#scanner.scan({
+      extraIgnores: this.#flags["headers-ignore"],
+    });
+
+    if (files.length === 0) {
+      return { licenseId, style, total: 0, written: 0, unchanged: 0 };
+    }
+
+    const plan: HeaderPlan = { detail, style, tokens };
+    const bar = new ProgressBar("  Inscribing headers");
+    bar.start(files.length);
+    const summary = await this.#headerInstaller.install(files, plan, (p) =>
+      bar.update(p.done),
+    );
+    bar.stop();
+
+    return {
+      licenseId,
+      style,
+      total: files.length,
+      written: summary.written.length,
+      unchanged: summary.unchanged.length,
+    };
+  }
+
+  /**
+   * Previews the header that would be written and the files it would touch,
+   * writing nothing. Shared by the interactive and non-interactive `--dry-run`
+   * paths.
+   *
+   * @param licenseId - The SPDX identifier whose header would be written.
+   * @param style - The header style (`short` or `full`).
+   * @param tokens - Copyright tokens inherited from the license customization.
+   */
+  async #previewHeaders(
+    licenseId: string,
+    style: HeaderStyle,
+    tokens: Record<string, string>,
+  ): Promise<void> {
+    const detail = await this.#licenseRepository.getLicense(licenseId);
+    const files = await this.#scanner.scan({
+      extraIgnores: this.#flags["headers-ignore"],
+    });
+
+    if (files.length === 0) {
+      this.#reporter.headersNoFiles(licenseId);
+      return;
+    }
+
+    // Render the sample block in the comment style of the first target file, so
+    // the preview matches what that file would actually receive.
+    const sample = new HeaderComposer({ detail, style, tokens }).block(
+      extensionOf(files[0]),
+    );
+    this.#reporter.headersDryRun({ licenseId, style, files, sample });
   }
 
   /**
@@ -555,9 +802,8 @@ export class LicenseWizard {
    * without throwing.
    */
   async #runVerify(): Promise<void> {
-    const outcome = await this.#verifier.verify({
-      fix: !this.#flags.strict,
-    });
+    const fix = !this.#flags.strict;
+    const outcome = await this.#verifier.verify({ fix });
 
     switch (outcome.kind) {
       case "missing-license":
@@ -572,12 +818,47 @@ export class LicenseWizard {
         return;
       case "match":
         this.#reporter.verifyMatch(outcome);
-        return;
+        break;
       case "fixed":
         this.#reporter.verifyFixed(outcome);
-        return;
+        break;
       case "mismatch":
         this.#reporter.verifyMismatch(outcome);
+        this.#exitWithError();
+        break;
+    }
+
+    // When the configuration opts into source-file headers, verify that surface
+    // too, in the same mode. The config is present here (a missing one returned
+    // above), so re-reading it cannot fail.
+    const config = await this.#config.read();
+    if (config !== null) {
+      await this.#runHeaderVerify(config, fix);
+    }
+  }
+
+  /**
+   * Verifies the source-file headers against the saved configuration, reporting
+   * the result and — in strict mode — setting a non-zero exit code on drift.
+   * Does nothing when the configuration does not opt into headers.
+   *
+   * @param config - The saved configuration to verify against.
+   * @param fix - Whether to reconcile drift or only report it.
+   */
+  async #runHeaderVerify(config: WizardConfig, fix: boolean): Promise<void> {
+    const outcome = await this.#headerVerifier.verify(config, { fix });
+
+    switch (outcome.kind) {
+      case "disabled":
+        return;
+      case "match":
+        this.#reporter.headersVerifyMatch(outcome);
+        return;
+      case "fixed":
+        this.#reporter.headersVerifyFixed(outcome);
+        return;
+      case "mismatch":
+        this.#reporter.headersVerifyMismatch(outcome);
         this.#exitWithError();
         return;
     }
@@ -646,20 +927,40 @@ export class LicenseWizard {
     const answers = await orchestrator.run();
 
     const licenseAnswer = answers.find((a) => a.questionId === "license");
-    const saveConfigAnswer = answers.find((a) => a.questionId === "saveConfig");
+    const saveConfigAnswer = answers.find(
+      (a) => a.questionId === SAVE_CONFIG_ID,
+    );
+    const headersAnswer = answers.find(
+      (a) => a.questionId === HEADERS_ENABLE_ID,
+    );
 
     if (typeof licenseAnswer?.value === "string") {
+      const tokens = this.#slotValuesFrom(licenseAnswer.fields);
+      const headerStyle = this.#interactiveHeaderStyle(headersAnswer);
       const selection: LicenseSelection = {
         licenseId: licenseAnswer.value,
-        tokens: this.#slotValuesFrom(licenseAnswer.fields),
+        tokens,
         save: this.#interactiveSave(saveConfigAnswer),
+        headers: headerStyle ? { style: headerStyle } : undefined,
       };
 
       if (this.#flags["dry-run"]) {
         await this.#preview(selection);
+        if (headerStyle) {
+          await this.#previewHeaders(selection.licenseId, headerStyle, tokens);
+        }
       } else {
         await this.#installer.install(selection);
-        await this.#reportInteractiveCompletion(renderer, selection);
+        const headers = headerStyle
+          ? this.#toCompletionHeaders(
+              await this.#applyHeaders(
+                selection.licenseId,
+                headerStyle,
+                tokens,
+              ),
+            )
+          : undefined;
+        await this.#reportInteractiveCompletion(renderer, selection, headers);
       }
     }
 
@@ -667,17 +968,47 @@ export class LicenseWizard {
   }
 
   /**
+   * Resolves the chosen header style from the interactive answers: undefined
+   * when headers were declined, otherwise the selected style — defaulting to
+   * `short` when no style sub-question was asked (the license had no `full`
+   * option).
+   */
+  #interactiveHeaderStyle(
+    headersAnswer: Answer | undefined,
+  ): HeaderStyle | undefined {
+    if (headersAnswer?.value !== true) {
+      return undefined;
+    }
+    const style = headersAnswer.fields?.[HEADERS_STYLE_ID];
+    return style === "full" ? "full" : "short";
+  }
+
+  /**
+   * Adapts a header apply report into the completion-summary shape, or undefined
+   * when no report is available.
+   */
+  #toCompletionHeaders(report: HeaderApplyReport): CompletionHeaders {
+    return {
+      style: report.style,
+      written: report.written,
+      total: report.total,
+    };
+  }
+
+  /**
    * Hands the renderer a summary of the interactive install so it can show the
    * closing confirmation: which license was conjured (and whether its copyright
-   * was customized), the present manifests it was recorded in, and where the
-   * configuration was saved.
+   * was customized), the present manifests it was recorded in, how its header was
+   * applied, and where the configuration was saved.
    *
    * @param renderer - The interactive renderer to surface the summary through.
    * @param selection - The resolved license, copyright tokens, and save instruction.
+   * @param headers - The header outcome, when headers were written.
    */
   async #reportInteractiveCompletion(
     renderer: IRenderer,
     selection: LicenseSelection,
+    headers: CompletionHeaders | undefined,
   ): Promise<void> {
     const manifests = (await this.#manifests.declaredLicenses()).map(
       (manifest) => manifest.name,
@@ -688,6 +1019,7 @@ export class LicenseWizard {
       customized: Object.keys(selection.tokens).length > 0,
       savedTo: selection.save.action === "save" ? selection.save.target : "",
       manifests,
+      headers,
     });
   }
 

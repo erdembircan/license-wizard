@@ -16,5 +16,6 @@ await esbuild.build({
     "@cli": path.join(srcDir, "cli"),
     "@licensing": path.join(srcDir, "licensing"),
     "@configuration": path.join(srcDir, "configuration"),
+    "@headers": path.join(srcDir, "headers"),
   },
 });

@@ -48,6 +48,10 @@ const state = vi.hoisted(() => {
     declaredLicenses: [] as { name: string; licenseId: string | null }[],
     // Targeted manifest writes captured during a verify fix.
     manifestWrites: [] as { name: string; licenseId: string }[],
+    // The source files the stubbed tree walker discovers, and their contents as
+    // served by the stub reader; writes are captured into `headerWrites`.
+    sourceFiles: {} as Record<string, string>,
+    headerWrites: [] as { path: string; content: string }[],
     // Maps a question to the answer the stub renderer returns.
     answer: defaultAnswer,
     // The summary passed to the renderer's closing `complete()` confirmation, or
@@ -70,6 +74,8 @@ const state = vi.hoisted(() => {
       self.licenseFile = null;
       self.declaredLicenses = [];
       self.manifestWrites = [];
+      self.sourceFiles = {};
+      self.headerWrites = [];
       self.answer = defaultAnswer;
       self.completion = null;
     },
@@ -187,13 +193,41 @@ vi.mock("@configuration/NodeFileSystemReader.js", () => ({
     read: (path: string) => Promise<string>;
   }) {
     this.exists = async (path: string) =>
-      path === "LICENSE" ? state.licenseFile !== null : false;
+      path === "LICENSE"
+        ? state.licenseFile !== null
+        : path in state.sourceFiles;
     this.read = async (path: string) => {
       if (path === "LICENSE" && state.licenseFile !== null) {
         return state.licenseFile;
       }
+      if (path in state.sourceFiles) {
+        return state.sourceFiles[path];
+      }
       throw new Error(`no such file: ${path}`);
     };
+  }),
+}));
+
+// Stub the file-system writer so header writes are captured instead of touching
+// the real working directory. (Config, manifests, and the generator are stubbed
+// at a higher level, so only the header installer reaches this writer.)
+vi.mock("@configuration/NodeFileSystemWriter.js", () => ({
+  NodeFileSystemWriter: vi.fn(function (this: {
+    write: (path: string, content: string) => Promise<void>;
+    delete: (path: string) => Promise<void>;
+  }) {
+    this.write = async (path: string, content: string) => {
+      state.headerWrites.push({ path, content });
+    };
+    this.delete = async () => {};
+  }),
+}));
+
+// Stub the tree walker so the source-file scan returns a controlled list instead
+// of walking the real working directory.
+vi.mock("@headers/NodeFileTreeWalker.js", () => ({
+  NodeFileTreeWalker: vi.fn(function (this: { walk: () => Promise<string[]> }) {
+    this.walk = async () => Object.keys(state.sourceFiles);
   }),
 }));
 
@@ -475,6 +509,84 @@ describe("LicenseWizard config save", () => {
     expect(state.saveTarget).toBeNull();
     expect(state.writtenConfig).toBeNull();
     expect(state.configCleared).toBe(true);
+  });
+});
+
+describe("LicenseWizard interactive header flow", () => {
+  const APACHE = {
+    licenseId: "Apache-2.0",
+    name: "Apache License 2.0",
+    licenseText: "PLAIN LICENSE TEXT",
+    standardLicenseTemplate: "",
+    standardLicenseHeader:
+      'Copyright [yyyy] [name of copyright owner]\n\nLicensed under the Apache License, Version 2.0 (the "License").\n\n',
+  };
+
+  beforeEach(() => {
+    state.reset();
+  });
+
+  it("asks whether to add headers and, when declined, writes none", async () => {
+    state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
+    state.answer = (q: Question) => {
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "confirm") return false; // decline addHeaders
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.rendered.some((q) => q.id === "addHeaders")).toBe(true);
+    expect(state.rendered.some((q) => q.id === "headerStyle")).toBe(false);
+    expect(state.headerWrites).toEqual([]);
+    expect(state.completion?.headers).toBeUndefined();
+  });
+
+  it("writes the short header without asking a style for a license with no standard header", async () => {
+    state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
+    state.answer = (q: Question) => {
+      if (q.id === "addHeaders") return true;
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "confirm") return false;
+      return "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    // MIT publishes no standard header, so the short/full choice is skipped.
+    expect(state.rendered.some((q) => q.id === "headerStyle")).toBe(false);
+    expect(state.headerWrites).toHaveLength(1);
+    expect(state.headerWrites[0].path).toBe("src/a.ts");
+    expect(state.headerWrites[0].content).toContain(
+      "SPDX-License-Identifier: MIT",
+    );
+    expect(state.headerWrites[0].content).toContain("license-wizard");
+    expect(state.completion?.headers).toEqual({
+      style: "short",
+      written: 1,
+      total: 1,
+    });
+  });
+
+  it("offers the style choice and writes the full notice for a license that has one", async () => {
+    state.detail = APACHE;
+    state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
+    state.answer = (q: Question) => {
+      if (q.id === "addHeaders") return true;
+      if (q.id === "headerStyle") return "full";
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "confirm") return false;
+      return "Apache-2.0";
+    };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.rendered.some((q) => q.id === "headerStyle")).toBe(true);
+    expect(state.headerWrites).toHaveLength(1);
+    expect(state.headerWrites[0].content).toContain(
+      "Licensed under the Apache License",
+    );
+    expect(state.completion?.headers?.style).toBe("full");
   });
 });
 

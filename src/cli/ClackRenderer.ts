@@ -103,6 +103,13 @@ export class ClackRenderer implements IRenderer {
       lines.push(`Manifests  inscribed in ${summary.manifests.join(", ")}`);
     }
 
+    if (summary.headers) {
+      lines.push(
+        `Headers    ${summary.headers.style} mark inscribed in ` +
+          `${summary.headers.written} of ${summary.headers.total} source file(s)`,
+      );
+    }
+
     lines.push(
       summary.savedTo === ""
         ? "Spellbook  left unsaved this time"

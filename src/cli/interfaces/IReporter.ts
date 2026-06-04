@@ -1,3 +1,5 @@
+import type { HeaderStyle } from "@headers/HeaderPlan.js";
+import type { HeaderVerifyReport } from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ConfigSave } from "../../LicenseInstaller.js";
@@ -8,6 +10,21 @@ export type DryRunReport = {
   content: string;
   save: ConfigSave;
   manifests: string[];
+};
+
+export type HeaderGenerateReport = {
+  licenseId: string;
+  style: HeaderStyle;
+  total: number;
+  written: number;
+  unchanged: number;
+};
+
+export type HeaderDryRunReport = {
+  licenseId: string;
+  style: HeaderStyle;
+  files: string[];
+  sample: string;
 };
 
 /**
@@ -108,6 +125,56 @@ export interface IReporter {
    * @param report - The verification result; lists what drifted.
    */
   verifyMismatch(report: VerifyReport): void;
+
+  /**
+   * Renders the notice shown when header writing was requested but the scan
+   * found no eligible source files to write into.
+   *
+   * @param licenseId - The SPDX identifier whose header was requested.
+   */
+  headersNoFiles(licenseId: string): void;
+
+  /**
+   * Renders the confirmation printed after headers are written, summarizing how
+   * many of the scanned files received a header and how many were already up to
+   * date.
+   *
+   * @param report - The header style and per-file write tally.
+   */
+  headersGenerated(report: HeaderGenerateReport): void;
+
+  /**
+   * Renders the header dry-run preview: an example of the block that would be
+   * written and the list of files it would be written into, with nothing
+   * touched.
+   *
+   * @param report - The header style, sample block, and target file list.
+   */
+  headersDryRun(report: HeaderDryRunReport): void;
+
+  /**
+   * Renders the confirmation shown when `--verify` finds every in-scope source
+   * file already carries the configured header.
+   *
+   * @param report - The header verification result; everything is in sync.
+   */
+  headersVerifyMatch(report: HeaderVerifyReport): void;
+
+  /**
+   * Renders the notice shown when `--verify` found source files missing or
+   * carrying a drifted header and rewrote them to match the configuration.
+   *
+   * @param report - The header verification result; lists what was reconciled.
+   */
+  headersVerifyFixed(report: HeaderVerifyReport): void;
+
+  /**
+   * Renders the error shown when `--verify --strict` found source files missing
+   * or carrying a drifted header and left them untouched.
+   *
+   * @param report - The header verification result; lists what drifted.
+   */
+  headersVerifyMismatch(report: HeaderVerifyReport): void;
 
   /**
    * Renders a plain error message.

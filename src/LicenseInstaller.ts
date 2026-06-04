@@ -1,4 +1,5 @@
 import type { Config } from "@configuration/Config.js";
+import type { HeaderConfig } from "@configuration/WizardConfig.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
@@ -12,6 +13,13 @@ export type LicenseSelection = {
   licenseId: string;
   tokens: Record<string, string>;
   save: ConfigSave;
+  /**
+   * The source-file header preference to persist alongside the license, when the
+   * selection opted into headers. Writing the header files themselves is a
+   * separate, progress-reported step; only the preference is persisted here so
+   * verification later knows to check the header surface.
+   */
+  headers?: HeaderConfig;
 };
 
 /**
@@ -70,6 +78,9 @@ export class LicenseInstaller {
       const config: WizardConfig = { licenseId: selection.licenseId };
       if (Object.keys(selection.tokens).length > 0) {
         config.tokens = selection.tokens;
+      }
+      if (selection.headers) {
+        config.headers = selection.headers;
       }
       await this.#config.write(config, save.target);
     } else if (save.action === "clear") {

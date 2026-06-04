@@ -10,6 +10,7 @@ export default defineConfig({
       "@cli": path.resolve(__dirname, "src/cli"),
       "@licensing": path.resolve(__dirname, "src/licensing"),
       "@configuration": path.resolve(__dirname, "src/configuration"),
+      "@headers": path.resolve(__dirname, "src/headers"),
     },
   },
 });
