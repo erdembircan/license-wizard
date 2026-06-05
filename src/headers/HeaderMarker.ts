@@ -40,6 +40,21 @@ export function hasMarker(text: string): boolean {
 }
 
 /**
+ * Reports whether a single line is a managed marker line as the wizard writes
+ * it: a comment-body line carrying a fully-formed marker. This is deliberately
+ * stricter than {@link hasMarker} — it ignores the token merely appearing in
+ * source (this very module defines it as a string, and other files may name or
+ * sample it), matching only a line that both sits inside a comment and parses as
+ * a complete marker. Block detection must use this, never a bare substring, so a
+ * header is never confused with code that happens to mention the token.
+ *
+ * @param line - A single line of file content.
+ */
+export function isMarkerLine(line: string): boolean {
+  return line.trimStart().startsWith("*") && parseMarker(line) !== null;
+}
+
+/**
  * Returns the short, stable digest of a header body used to fingerprint it in
  * the marker line. The body is hashed before it is wrapped in comments, so the
  * same notice fingerprints identically across every language.

@@ -1,6 +1,10 @@
 import type { HeaderPlan } from "@headers/HeaderPlan.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import { buildMarker, digestBody, hasMarker } from "@headers/HeaderMarker.js";
+import {
+  buildMarker,
+  digestBody,
+  isMarkerLine,
+} from "@headers/HeaderMarker.js";
 import {
   commentStyleFor,
   extensionOf,
@@ -74,13 +78,14 @@ export class HeaderComposer {
 
   /**
    * Reports whether the given file content already carries a wizard-written
-   * header, identified by its marker. A hand-written notice that lacks the
-   * marker is not considered managed.
+   * header, identified by a fully-formed marker line. A hand-written notice that
+   * lacks the marker — or source that merely names the marker token in its code —
+   * is not considered managed.
    *
    * @param content - The file content to test.
    */
   hasManaged(content: string): boolean {
-    return hasMarker(content);
+    return content.split("\n").some((line) => isMarkerLine(line));
   }
 
   /**
@@ -180,7 +185,7 @@ export class HeaderComposer {
    * enclosing comment delimiters.
    */
   #findManagedBlock(lines: string[]): [number, number] | null {
-    const markerLine = lines.findIndex((line) => hasMarker(line));
+    const markerLine = lines.findIndex((line) => isMarkerLine(line));
     if (markerLine === -1) {
       return null;
     }

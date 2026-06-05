@@ -99,6 +99,28 @@ describe("HeaderComposer", () => {
       expect(result).toBe(`${block}\n\nexport const x = 1;\n`);
     });
 
+    it("does not mistake source that merely names the marker token for a header", () => {
+      // A file whose own code references the token string and even embeds a
+      // sample marker inside a string — like this project's own HeaderMarker
+      // module and its tests. None of it is a real header block.
+      const source = [
+        `const TOKEN = "${markerToken()}";`,
+        `const SAMPLE = "${markerToken()} v1 MIT short abc123def456";`,
+        "export const x = 1;",
+        "",
+      ].join("\n");
+
+      const result = composer().apply(source, "a.ts");
+
+      // The header is added on top; none of the original code is excised.
+      expect(result.startsWith(composer().block(".ts"))).toBe(true);
+      expect(result).toContain(`const TOKEN = "${markerToken()}";`);
+      expect(result).toContain("const SAMPLE =");
+      expect(result).toContain("export const x = 1;");
+      // Re-applying stays a no-op — the token-naming code is never excised.
+      expect(composer().apply(result, "a.ts")).toBe(result);
+    });
+
     it("leaves a hand-written comment that lacks the marker untouched", () => {
       const handwritten = "/* my own notice */\nexport const x = 1;\n";
       const result = composer().apply(handwritten, "a.ts");
