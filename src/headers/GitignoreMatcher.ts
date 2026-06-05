@@ -42,21 +42,6 @@ export class GitignoreMatcher {
   }
 
   /**
-   * Builds a matcher from the text of a `.gitignore` file, prepended with extra
-   * patterns (the wizard's always-ignored directories) that the file's own rules
-   * can still override via negation.
-   *
-   * @param content - The `.gitignore` file content (may be empty).
-   * @param extra - Extra patterns applied before the file's own, lowest precedence.
-   */
-  static fromContent(
-    content: string,
-    extra: readonly string[] = [],
-  ): GitignoreMatcher {
-    return new GitignoreMatcher([...extra, ...content.split("\n")]);
-  }
-
-  /**
    * Reports whether the given repository-relative, POSIX-style path is ignored.
    * Directory-only patterns match only when `isDirectory` is true, so the
    * scanner can ask about a directory before deciding whether to descend.

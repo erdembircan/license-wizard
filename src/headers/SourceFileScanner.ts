@@ -3,6 +3,7 @@ import {
   DEFAULT_IGNORES,
   GitignoreMatcher,
 } from "@headers/GitignoreMatcher.js";
+import { GitignoreMatcherFactory } from "@headers/GitignoreMatcherFactory.js";
 import type { IFileTreeWalker } from "@headers/interfaces/IFileTreeWalker.js";
 import {
   DEFAULT_SOURCE_EXTENSIONS,
@@ -41,16 +42,23 @@ export type ScanOptions = {
 export class SourceFileScanner {
   readonly #walker: IFileTreeWalker;
   readonly #reader: IFileSystemReader;
+  readonly #matchers: GitignoreMatcherFactory;
 
   /**
    * Creates a new SourceFileScanner.
    *
    * @param walker - Walks the directory tree.
    * @param reader - Reads the project's `.gitignore`, when present.
+   * @param matchers - Builds the ignore matcher from collected patterns.
    */
-  constructor(walker: IFileTreeWalker, reader: IFileSystemReader) {
+  constructor(
+    walker: IFileTreeWalker,
+    reader: IFileSystemReader,
+    matchers: GitignoreMatcherFactory = new GitignoreMatcherFactory(),
+  ) {
     this.#walker = walker;
     this.#reader = reader;
+    this.#matchers = matchers;
   }
 
   /**
@@ -84,7 +92,7 @@ export class SourceFileScanner {
     const content = (await this.#reader.exists(GITIGNORE_FILE))
       ? await this.#reader.read(GITIGNORE_FILE)
       : "";
-    return GitignoreMatcher.fromContent(content, [
+    return this.#matchers.fromContent(content, [
       ...DEFAULT_IGNORES,
       ...extraIgnores,
     ]);

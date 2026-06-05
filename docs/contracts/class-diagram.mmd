@@ -262,11 +262,16 @@ classDiagram
       +standardLicenseHeaderTemplate?: string
     }
 
-    class LicenseTemplate {
-      +LicenseTemplate(template: string)
+    class SpdxTemplate {
+      <<abstract>>
+      +SpdxTemplate(template: string)
       +slots() TemplateSlot[]
       +resolveSlots(entries: Map~string, string~) SlotResolution
       +render(values: Record~string, string~) string
+    }
+
+    class LicenseTemplate {
+      +LicenseTemplate(template: string)
     }
 
     class TemplateSlot {
@@ -327,7 +332,7 @@ classDiagram
     }
 
     class HeaderConfig {
-      +style: "short" | "full"
+      +style: HeaderStyle
     }
 
     class ConfigTarget {
@@ -418,6 +423,10 @@ classDiagram
       +body() string
     }
 
+    class HeaderTemplate {
+      +HeaderTemplate(template: string)
+    }
+
     class HeaderComposer {
       +HeaderComposer(plan: HeaderPlan)
       +block(extension: string) string
@@ -426,7 +435,7 @@ classDiagram
     }
 
     class SourceFileScanner {
-      +SourceFileScanner(walker: IFileTreeWalker, reader: IFileSystemReader)
+      +SourceFileScanner(walker: IFileTreeWalker, reader: IFileSystemReader, matchers?: GitignoreMatcherFactory)
       +scan(options?: ScanOptions) Promise~string[]~
     }
 
@@ -438,8 +447,11 @@ classDiagram
 
     class GitignoreMatcher {
       +GitignoreMatcher(patterns: string[])
-      +fromContent(content: string, extra?: string[])$ GitignoreMatcher
       +ignores(path: string, isDirectory: boolean) boolean
+    }
+
+    class GitignoreMatcherFactory {
+      +fromContent(content: string, extra?: string[]) GitignoreMatcher
     }
 
     class IFileTreeWalker {
@@ -557,8 +569,10 @@ classDiagram
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
-  LicenseTemplate ..> TemplateSlot : produces
-  LicenseTemplate ..> SlotResolution : produces
+  LicenseTemplate --|> SpdxTemplate : extends
+  HeaderTemplate --|> SpdxTemplate : extends
+  SpdxTemplate ..> TemplateSlot : produces
+  SpdxTemplate ..> SlotResolution : produces
   LicenseWizard ..> LicenseTemplate : creates
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
@@ -617,7 +631,7 @@ classDiagram
   HeaderPlan ..> LicenseDetail : carries
   HeaderPlan ..> HeaderStyle : styled by
   HeaderRenderer ..> HeaderPlan : renders
-  HeaderRenderer ..> LicenseTemplate : substitutes header template with
+  HeaderRenderer ..> HeaderTemplate : substitutes header template with
   HeaderComposer ..> HeaderPlan : composes
   HeaderComposer ..> HeaderRenderer : renders body with
   HeaderInstaller ..> HeaderComposer : applies header with
@@ -636,8 +650,10 @@ classDiagram
   HeaderVerifyOutcome ..> HeaderVerifyReport : carries
   SourceFileScanner ..> IFileTreeWalker : walks with
   SourceFileScanner ..> IFileSystemReader : reads .gitignore through
+  SourceFileScanner ..> GitignoreMatcherFactory : builds matchers with
   SourceFileScanner ..> GitignoreMatcher : filters with
   SourceFileScanner ..> ScanOptions : configured by
+  GitignoreMatcherFactory ..> GitignoreMatcher : creates
   NodeFileTreeWalker ..|> IFileTreeWalker : implements
   ClackRenderer ..> CompletionHeaders : renders
   CompletionSummary ..> CompletionHeaders : carries

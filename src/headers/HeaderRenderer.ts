@@ -1,5 +1,5 @@
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
-import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
+import { HeaderTemplate } from "@headers/HeaderTemplate.js";
 import type { HeaderPlan } from "@headers/HeaderPlan.js";
 
 /**
@@ -72,7 +72,7 @@ export class HeaderRenderer {
     const { detail, tokens } = this.#plan;
     const source =
       Object.keys(tokens).length > 0 && detail.standardLicenseHeaderTemplate
-        ? new LicenseTemplate(detail.standardLicenseHeaderTemplate).render(
+        ? new HeaderTemplate(detail.standardLicenseHeaderTemplate).render(
             tokens,
           )
         : (detail.standardLicenseHeader ?? "");
