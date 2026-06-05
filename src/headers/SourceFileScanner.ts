@@ -5,10 +5,7 @@ import {
 } from "@headers/GitignoreMatcher.js";
 import { GitignoreMatcherFactory } from "@headers/GitignoreMatcherFactory.js";
 import type { IFileTreeWalker } from "@headers/interfaces/IFileTreeWalker.js";
-import {
-  DEFAULT_SOURCE_EXTENSIONS,
-  isSupportedSource,
-} from "@headers/SourceFile.js";
+import { SourceFile } from "@headers/SourceFile.js";
 
 const GITIGNORE_FILE = ".gitignore";
 
@@ -69,7 +66,7 @@ export class SourceFileScanner {
    */
   async scan(options: ScanOptions = {}): Promise<string[]> {
     const root = options.root ?? ".";
-    const extensions = options.extensions ?? DEFAULT_SOURCE_EXTENSIONS;
+    const extensions = options.extensions ?? SourceFile.supportedExtensions();
     const matcher = await this.#buildMatcher(options.extraIgnores ?? []);
 
     const files = await this.#walker.walk(root, (relativePath) =>
@@ -78,7 +75,8 @@ export class SourceFileScanner {
 
     return files.filter(
       (file) =>
-        isSupportedSource(file, extensions) && !matcher.ignores(file, false),
+        SourceFile.isSupported(file, extensions) &&
+        !matcher.ignores(file, false),
     );
   }
 

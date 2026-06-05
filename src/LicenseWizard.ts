@@ -32,12 +32,11 @@ import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import { HeaderInstaller } from "@headers/HeaderInstaller.js";
 import { HeaderRemover } from "@headers/HeaderRemover.js";
-import { HeaderStripper } from "@headers/HeaderStripper.js";
 import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import { HeaderVerifier } from "@headers/HeaderVerifier.js";
 import { NodeFileTreeWalker } from "@headers/NodeFileTreeWalker.js";
-import { extensionOf } from "@headers/SourceFile.js";
+import { SourceFile } from "@headers/SourceFile.js";
 import { SourceFileScanner } from "@headers/SourceFileScanner.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import { LicenseGenerator } from "@licensing/LicenseGenerator.js";
@@ -831,7 +830,7 @@ export class LicenseWizard {
     // Render the sample block in the comment style of the first target file, so
     // the preview matches what that file would actually receive.
     const sample = new HeaderComposer({ detail, style, tokens }).block(
-      extensionOf(files[0]),
+      SourceFile.extensionOf(files[0]),
     );
     this.#reporter.headersDryRun({ licenseId, style, files, sample });
   }
@@ -977,11 +976,10 @@ export class LicenseWizard {
     });
 
     if (this.#flags["dry-run"]) {
-      const stripper = new HeaderStripper();
       const removed: string[] = [];
       for (const file of files) {
         const content = await this.#reader.read(file);
-        if (stripper.strip(content, file).removed) {
+        if (new SourceFile(content, file).hasManagedHeader()) {
           removed.push(file);
         }
       }

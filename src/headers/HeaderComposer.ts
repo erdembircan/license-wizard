@@ -1,20 +1,7 @@
 import type { HeaderPlan } from "@headers/HeaderPlan.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import {
-  buildMarker,
-  digestBody,
-  isMarkerLine,
-} from "@headers/HeaderMarker.js";
-import {
-  dropLeadingBlanks,
-  splitToLines,
-  stripManagedBlocks,
-} from "@headers/ManagedBlock.js";
-import {
-  commentStyleFor,
-  extensionOf,
-  preambleLength,
-} from "@headers/SourceFile.js";
+import { buildMarker, digestBody } from "@headers/HeaderMarker.js";
+import { SourceFile } from "@headers/SourceFile.js";
 
 /**
  * Composes a license header into source files: it wraps a rendered header body
@@ -66,7 +53,7 @@ export class HeaderComposer {
    * @param extension - The file extension (e.g. `.ts`), selecting the comment style.
    */
   block(extension: string): string {
-    const style = commentStyleFor(extension);
+    const style = SourceFile.commentStyleFor(extension);
     const lines = [style.blockStart];
 
     for (const line of this.#body.split("\n")) {
@@ -90,7 +77,7 @@ export class HeaderComposer {
    * @param content - The file content to test.
    */
   hasManaged(content: string): boolean {
-    return content.split("\n").some((line) => isMarkerLine(line));
+    return new SourceFile(content, "").hasManagedHeader();
   }
 
   /**
@@ -110,23 +97,9 @@ export class HeaderComposer {
    *   a PHP preamble.
    */
   apply(content: string, filePath: string): string {
-    const extension = extensionOf(filePath);
-    const lines = splitToLines(content);
-
-    const preamble = preambleLength(lines, extension);
-    const head = lines.slice(0, preamble);
-    const body = dropLeadingBlanks(stripManagedBlocks(lines.slice(preamble)));
-
-    const out: string[] = [...head];
-    if (head.length > 0) {
-      out.push("");
-    }
-    out.push(...this.block(extension).split("\n"));
-    if (body.length > 0) {
-      out.push("");
-      out.push(...body);
-    }
-
-    return `${out.join("\n")}\n`;
+    const block = this.block(SourceFile.extensionOf(filePath));
+    return new SourceFile(content, filePath)
+      .withManagedHeader(block)
+      .toString();
   }
 }

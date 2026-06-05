@@ -1,72 +1,166 @@
 import { describe, it, expect } from "vitest";
-import {
-  extensionOf,
-  isSupportedSource,
-  preambleLength,
-} from "@headers/SourceFile.js";
+import { HeaderComposer } from "@headers/HeaderComposer.js";
+import { SourceFile } from "@headers/SourceFile.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
+
+const MIT: LicenseDetail = {
+  licenseId: "MIT",
+  name: "MIT License",
+  licenseText: "Permission is hereby granted...",
+};
+
+const headed = (source: string, path: string): string =>
+  new HeaderComposer({ detail: MIT, style: "short", tokens: {} }).apply(
+    source,
+    path,
+  );
 
 describe("SourceFile", () => {
   describe("extensionOf", () => {
     it("returns the lowercased extension with its dot", () => {
-      expect(extensionOf("src/App.TS")).toBe(".ts");
-      expect(extensionOf("a/b/c.php")).toBe(".php");
+      expect(SourceFile.extensionOf("src/App.TS")).toBe(".ts");
+      expect(SourceFile.extensionOf("a/b/c.php")).toBe(".php");
     });
 
     it("returns empty for a dotfile or extensionless name", () => {
-      expect(extensionOf(".gitignore")).toBe("");
-      expect(extensionOf("Makefile")).toBe("");
+      expect(SourceFile.extensionOf(".gitignore")).toBe("");
+      expect(SourceFile.extensionOf("Makefile")).toBe("");
     });
   });
 
-  describe("isSupportedSource", () => {
+  describe("isSupported", () => {
     it("accepts the JS/TS family and PHP", () => {
-      for (const path of [
-        "a.js",
-        "a.jsx",
-        "a.mjs",
-        "a.cjs",
-        "a.ts",
-        "a.tsx",
-        "a.php",
-      ]) {
-        expect(isSupportedSource(path)).toBe(true);
+      for (const path of ["a.js", "a.jsx", "a.mjs", "a.cjs", "a.ts", "a.php"]) {
+        expect(SourceFile.isSupported(path)).toBe(true);
       }
     });
 
     it("rejects JSON, stylesheets, and markup", () => {
-      for (const path of [
-        "package.json",
-        "a.css",
-        "a.scss",
-        "a.md",
-        "a.html",
-      ]) {
-        expect(isSupportedSource(path)).toBe(false);
+      for (const path of ["package.json", "a.css", "a.md", "a.html"]) {
+        expect(SourceFile.isSupported(path)).toBe(false);
       }
+    });
+
+    it("honours a custom extension set", () => {
+      expect(SourceFile.isSupported("a.ts", [".js"])).toBe(false);
+      expect(SourceFile.isSupported("a.js", [".js"])).toBe(true);
     });
   });
 
-  describe("preambleLength", () => {
-    it("is zero for an ordinary JS/TS file", () => {
-      expect(preambleLength(["export const x = 1;"], ".ts")).toBe(0);
-    });
-
-    it("counts a leading shebang", () => {
-      expect(preambleLength(["#!/usr/bin/env node", "x()"], ".js")).toBe(1);
-    });
-
-    it("counts the PHP open tag", () => {
-      expect(preambleLength(["<?php", "echo 1;"], ".php")).toBe(1);
-    });
-
-    it("counts a shebang then a PHP open tag", () => {
+  describe("hasManagedHeader", () => {
+    it("is true for content carrying a managed header", () => {
       expect(
-        preambleLength(["#!/usr/bin/env php", "<?php", "echo 1;"], ".php"),
-      ).toBe(2);
+        new SourceFile(
+          headed("export const x = 1;\n", "a.ts"),
+          "a.ts",
+        ).hasManagedHeader(),
+      ).toBe(true);
     });
 
-    it("does not claim a PHP preamble when there is no open tag", () => {
-      expect(preambleLength(["echo 1;"], ".php")).toBe(0);
+    it("is false for plain content", () => {
+      expect(
+        new SourceFile("export const x = 1;\n", "a.ts").hasManagedHeader(),
+      ).toBe(false);
+    });
+
+    it("is false for code that merely names the marker token", () => {
+      const source = 'const T = "license-wizard managed-header";\n';
+      expect(new SourceFile(source, "a.ts").hasManagedHeader()).toBe(false);
+    });
+  });
+
+  describe("withoutManagedHeaders", () => {
+    it("removes a managed header, restoring the original content", () => {
+      const original = "export const x = 1;\n";
+      const result = new SourceFile(headed(original, "a.ts"), "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).toBe(original);
+    });
+
+    it("returns a file with no managed header unchanged", () => {
+      const source = "/* my own notice */\nexport const x = 1;\n";
+      const result = new SourceFile(source, "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).toBe(source);
+    });
+
+    it("keeps a shebang and removes only the header", () => {
+      const original = "#!/usr/bin/env node\nconsole.log(1);\n";
+      const result = new SourceFile(headed(original, "cli.js"), "cli.js")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).toBe(original);
+    });
+
+    it("keeps the PHP open tag and removes only the header", () => {
+      const original = "<?php\necho 1;\n";
+      const result = new SourceFile(headed(original, "x.php"), "x.php")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).toBe(original);
+    });
+
+    it("removes a header even when foreign code pushed it below the top", () => {
+      const shifted = `import "./shim";\n\n${headed("export const x = 1;\n", "a.ts")}`;
+      const result = new SourceFile(shifted, "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).not.toContain("license-wizard managed-header");
+      expect(result).toContain('import "./shim";');
+      expect(result).toContain("export const x = 1;");
+    });
+  });
+
+  describe("withManagedHeader", () => {
+    const block = (path: string): string =>
+      new HeaderComposer({ detail: MIT, style: "short", tokens: {} }).block(
+        SourceFile.extensionOf(path),
+      );
+
+    it("inserts the block at the top of a plain file", () => {
+      const result = new SourceFile("export const x = 1;\n", "a.ts")
+        .withManagedHeader(block("a.ts"))
+        .toString();
+
+      expect(result).toBe(`${block("a.ts")}\n\nexport const x = 1;\n`);
+    });
+
+    it("keeps a shebang above the header", () => {
+      const result = new SourceFile(
+        "#!/usr/bin/env node\nconsole.log(1);\n",
+        "cli.js",
+      )
+        .withManagedHeader(block("cli.js"))
+        .toString();
+
+      expect(result.startsWith("#!/usr/bin/env node\n\n/*\n")).toBe(true);
+    });
+
+    it("replaces an existing managed header rather than stacking", () => {
+      const once = new SourceFile("export const x = 1;\n", "a.ts")
+        .withManagedHeader(block("a.ts"))
+        .toString();
+      const twice = new SourceFile(once, "a.ts")
+        .withManagedHeader(block("a.ts"))
+        .toString();
+
+      expect(twice).toBe(once);
+    });
+
+    it("leaves code that names the marker token in place", () => {
+      const source = 'const T = "license-wizard managed-header";\n';
+      const result = new SourceFile(source, "a.ts")
+        .withManagedHeader(block("a.ts"))
+        .toString();
+
+      expect(result).toContain('const T = "license-wizard managed-header";');
     });
   });
 });

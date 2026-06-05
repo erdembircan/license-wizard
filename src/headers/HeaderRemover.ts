@@ -1,7 +1,7 @@
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { HeaderProgress } from "@headers/HeaderInstaller.js";
-import { HeaderStripper } from "@headers/HeaderStripper.js";
+import { SourceFile } from "@headers/SourceFile.js";
 
 export type HeaderRemoveSummary = {
   /** Files a managed header was stripped from. */
@@ -24,7 +24,6 @@ export type HeaderRemoveSummary = {
 export class HeaderRemover {
   readonly #reader: IFileSystemReader;
   readonly #writer: IFileSystemWriter;
-  readonly #stripper = new HeaderStripper();
 
   /**
    * Creates a new HeaderRemover.
@@ -54,14 +53,14 @@ export class HeaderRemover {
     let done = 0;
     for (const file of files) {
       const existing = await this.#reader.read(file);
-      const { content, removed: didRemove } = this.#stripper.strip(
-        existing,
-        file,
-      );
+      const source = new SourceFile(existing, file);
 
-      if (didRemove && content !== existing) {
-        await this.#writer.write(file, content);
-        removed.push(file);
+      if (source.hasManagedHeader()) {
+        const stripped = source.withoutManagedHeaders().toString();
+        if (stripped !== existing) {
+          await this.#writer.write(file, stripped);
+          removed.push(file);
+        }
       }
 
       done += 1;
