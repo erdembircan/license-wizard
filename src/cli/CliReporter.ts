@@ -428,7 +428,7 @@ export class CliReporter implements IReporter {
     const mark = this.#mark(this.#out, SPARK, "green");
     const count = this.#paint(this.#out, "bold", String(report.removed.length));
     this.#out.write(
-      `${mark}Stripped the license header from ${count} of ${report.total} source file(s).\n`,
+      `${mark}Stripped the license header from ${count} source file(s).\n`,
     );
   }
 
@@ -457,7 +457,7 @@ export class CliReporter implements IReporter {
       .join("\n");
     this.#out.write(
       `${mark}${heading}\n\n` +
-        `Would strip the license header from ${report.removed.length} of ${report.total} file(s):\n\n` +
+        `Would strip the license header from ${report.removed.length} source file(s):\n\n` +
         `${list}\n`,
     );
   }

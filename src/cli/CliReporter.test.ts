@@ -242,13 +242,18 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 
-  it("writes the header-removal tally to stdout", () => {
+  it("writes the header-removal tally to stdout — the count of files that had one", () => {
     new CliReporter("license-wizard").headersRemoved({
       removed: ["a.ts", "b.ts"],
       total: 5,
     });
 
-    expect(stdout).toContain("Stripped the license header from 2 of 5");
+    // The tally is the files that carried a header, not every scanned file, so
+    // it never reads as if a headed file was missed.
+    expect(stdout).toContain(
+      "Stripped the license header from 2 source file(s)",
+    );
+    expect(stdout).not.toContain("of 5");
     expect(stderr).toBe("");
   });
 
@@ -266,7 +271,10 @@ describe("CliReporter", () => {
     });
 
     expect(stdout).toContain("Dry run — no source file was touched.");
-    expect(stdout).toContain("Would strip the license header from 1 of 3");
+    expect(stdout).toContain(
+      "Would strip the license header from 1 source file(s)",
+    );
+    expect(stdout).not.toContain("of 3");
     expect(stdout).toContain("a.ts");
     expect(stderr).toBe("");
   });
