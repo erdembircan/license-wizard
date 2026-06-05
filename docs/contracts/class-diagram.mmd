@@ -485,8 +485,6 @@ classDiagram
     class SourceFile {
       +SourceFile(content: string, path: string)
       +extensionOf(path: string)$ string
-      +supportedExtensions()$ string[]
-      +isSupported(path: string, extensions?: string[])$ boolean
       +commentStyleFor(extension: string)$ CommentStyle
       +hasManagedHeader() boolean
       +withoutManagedHeaders() SourceFile
@@ -697,7 +695,7 @@ classDiagram
   HeaderRemover ..> HeaderRemoveSummary : produces
   HeaderComposer ..> SourceFile : places header through
   SourceFile ..> CommentStyle : wraps with
-  SourceFileScanner ..> SourceFile : classifies paths with
+  SourceFileScanner ..> SourceFile : derives extension with
   HeaderVerifier ..> SourceFileScanner : rediscovers files through
   HeaderVerifier ..> HeaderComposer : compares against
   HeaderVerifier ..> LicenseRepository : fetches header detail through

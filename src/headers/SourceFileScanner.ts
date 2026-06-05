@@ -9,6 +9,24 @@ import { SourceFile } from "@headers/SourceFile.js";
 
 const GITIGNORE_FILE = ".gitignore";
 
+// The source file extensions the wizard writes headers into, and therefore the
+// ones a scan keeps by default. JSON has no comment syntax and stylesheet/markup
+// files are not source code, so neither is included; the set is the
+// JavaScript/TypeScript family plus PHP, matching the manifest ecosystems the
+// wizard already understands. Deciding which files are in scope is the scanner's
+// concern, so the policy lives here.
+const SUPPORTED_EXTENSIONS: readonly string[] = [
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".tsx",
+  ".cts",
+  ".mts",
+  ".php",
+];
+
 export type ScanOptions = {
   /**
    * The directory to scan, relative to the working directory. Defaults to the
@@ -66,7 +84,7 @@ export class SourceFileScanner {
    */
   async scan(options: ScanOptions = {}): Promise<string[]> {
     const root = options.root ?? ".";
-    const extensions = options.extensions ?? SourceFile.supportedExtensions();
+    const extensions = options.extensions ?? SUPPORTED_EXTENSIONS;
     const matcher = await this.#buildMatcher(options.extraIgnores ?? []);
 
     const files = await this.#walker.walk(root, (relativePath) =>
@@ -75,7 +93,7 @@ export class SourceFileScanner {
 
     return files.filter(
       (file) =>
-        SourceFile.isSupported(file, extensions) &&
+        extensions.includes(SourceFile.extensionOf(file)) &&
         !matcher.ignores(file, false),
     );
   }

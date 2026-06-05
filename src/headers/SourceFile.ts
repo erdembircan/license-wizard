@@ -14,36 +14,16 @@ const C_BLOCK: CommentStyle = {
   blockEnd: " */",
 };
 
-// The source file extensions a header is written into. JSON has no comment
-// syntax and stylesheet/markup files are not source code, so neither is
-// included; the set is the JavaScript/TypeScript family plus PHP, matching the
-// manifest ecosystems the wizard already understands.
-const SUPPORTED_EXTENSIONS: readonly string[] = [
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-  ".ts",
-  ".tsx",
-  ".cts",
-  ".mts",
-  ".php",
-];
-
-// Maps each supported extension to its comment style. They all share the
-// C-family block style today, but routing through a map keeps the door open for
-// a language that needs its own.
+// Per-language comment styles. Empty today — every language the wizard supports
+// uses the C-family block style (the fallback below) — but routing a lookup
+// through a map keeps the door open for a language that needs its own.
 const STYLE_BY_EXTENSION: Record<string, CommentStyle> = {};
-for (const extension of SUPPORTED_EXTENSIONS) {
-  STYLE_BY_EXTENSION[extension] = C_BLOCK;
-}
 
 /**
- * A source file as the wizard sees it: its content paired with its path. This is
- * the single boundary for working with one file — classifying a path as source
- * (the static surface) and reading or rewriting how a managed header lives in
- * the content (the instance surface). The line, preamble, and comment-block
- * mechanics are its private internals, so no caller manipulates raw lines.
+ * A source file as the wizard sees it: its content paired with its path, and the
+ * boundary for reading or rewriting how a managed header lives in that content.
+ * The line, preamble, and comment-block mechanics are its private internals, so
+ * no caller manipulates raw lines.
  *
  * Instances are immutable: every transform returns a new SourceFile, so a header
  * is added or removed by composing values rather than mutating shared state.
@@ -73,27 +53,6 @@ export class SourceFile {
     const base = path.slice(path.lastIndexOf("/") + 1);
     const dot = base.lastIndexOf(".");
     return dot <= 0 ? "" : base.slice(dot).toLowerCase();
-  }
-
-  /**
-   * The extensions the wizard writes headers into, in canonical order.
-   */
-  static supportedExtensions(): readonly string[] {
-    return SUPPORTED_EXTENSIONS;
-  }
-
-  /**
-   * Reports whether the given path is a source file the wizard writes headers
-   * into, judged solely by its extension.
-   *
-   * @param path - The path to test.
-   * @param extensions - The supported extensions; defaults to the standard set.
-   */
-  static isSupported(
-    path: string,
-    extensions: readonly string[] = SUPPORTED_EXTENSIONS,
-  ): boolean {
-    return extensions.includes(SourceFile.extensionOf(path));
   }
 
   /**

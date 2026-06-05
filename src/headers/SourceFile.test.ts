@@ -28,25 +28,6 @@ describe("SourceFile", () => {
     });
   });
 
-  describe("isSupported", () => {
-    it("accepts the JS/TS family and PHP", () => {
-      for (const path of ["a.js", "a.jsx", "a.mjs", "a.cjs", "a.ts", "a.php"]) {
-        expect(SourceFile.isSupported(path)).toBe(true);
-      }
-    });
-
-    it("rejects JSON, stylesheets, and markup", () => {
-      for (const path of ["package.json", "a.css", "a.md", "a.html"]) {
-        expect(SourceFile.isSupported(path)).toBe(false);
-      }
-    });
-
-    it("honours a custom extension set", () => {
-      expect(SourceFile.isSupported("a.ts", [".js"])).toBe(false);
-      expect(SourceFile.isSupported("a.js", [".js"])).toBe(true);
-    });
-  });
-
   describe("hasManagedHeader", () => {
     it("is true for content carrying a managed header", () => {
       expect(
