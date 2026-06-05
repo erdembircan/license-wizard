@@ -76,6 +76,29 @@ describe("HeaderComposer", () => {
       expect(reheaded.split(markerToken()).length - 1).toBe(1);
     });
 
+    it("relocates a managed header that foreign code pushed below the top", () => {
+      const headed = composer().apply("export const x = 1;\n", "a.ts");
+      // A tool prepended an import above our header, shifting it down.
+      const shifted = `import "./shim";\n\n${headed}`;
+
+      const result = composer().apply(shifted, "a.ts");
+
+      // The header is back on top, the import follows it, and only one remains.
+      expect(result.startsWith(composer().block(".ts"))).toBe(true);
+      expect(result).toContain('import "./shim";');
+      expect(result.split(markerToken()).length - 1).toBe(1);
+    });
+
+    it("collapses duplicate managed blocks left by an earlier run into one", () => {
+      const block = composer().block(".ts");
+      const doubled = `${block}\n\n${block}\n\nexport const x = 1;\n`;
+
+      const result = composer().apply(doubled, "a.ts");
+
+      expect(result.split(markerToken()).length - 1).toBe(1);
+      expect(result).toBe(`${block}\n\nexport const x = 1;\n`);
+    });
+
     it("leaves a hand-written comment that lacks the marker untouched", () => {
       const handwritten = "/* my own notice */\nexport const x = 1;\n";
       const result = composer().apply(handwritten, "a.ts");

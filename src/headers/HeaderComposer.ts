@@ -106,7 +106,7 @@ export class HeaderComposer {
     const preamble = preambleLength(lines, extension);
     const head = lines.slice(0, preamble);
     const body = this.#dropLeadingBlanks(
-      this.#stripManagedBlock(this.#dropLeadingBlanks(lines.slice(preamble))),
+      this.#stripManagedBlocks(lines.slice(preamble)),
     );
 
     const out: string[] = [...head];
@@ -144,28 +144,57 @@ export class HeaderComposer {
   }
 
   /**
-   * Removes a wizard-managed block from the front of the given lines when one is
-   * present, returning the lines that follow it. A leading comment block that
-   * does not carry the marker — a hand-written notice — is left untouched, as is
-   * anything that is not a block comment.
+   * Removes every wizard-managed block from the given lines, wherever it sits —
+   * not only at the front. Foreign content inserted above a managed header (a
+   * prepended import, a generated banner) would otherwise strand the block where
+   * the front-only check can't see it, so a re-applied header lands on top as a
+   * duplicate. By locating each block through its marker and excising it — along
+   * with the single blank line it was inserted with — the header can be rewritten
+   * cleanly at the top, and any duplicates a past run left behind collapse to
+   * one. Comment blocks without the marker — hand-written notices — are left
+   * untouched.
    */
-  #stripManagedBlock(lines: string[]): string[] {
-    if (lines.length === 0 || !lines[0].trimStart().startsWith("/*")) {
-      return lines;
+  #stripManagedBlocks(lines: string[]): string[] {
+    let result = lines;
+    for (
+      let bounds = this.#findManagedBlock(result);
+      bounds !== null;
+      bounds = this.#findManagedBlock(result)
+    ) {
+      const [start, end] = bounds;
+      // Also drop the blank separator the block was written with, so removing it
+      // does not leave a doubled gap behind.
+      const after =
+        end + 1 < result.length && result[end + 1].trim() === ""
+          ? end + 2
+          : end + 1;
+      result = [...result.slice(0, start), ...result.slice(after)];
+    }
+    return result;
+  }
+
+  /**
+   * Returns the inclusive `[start, end]` line range of the first wizard-managed
+   * block — the block comment carrying the marker — or null when none is present.
+   * The marker line locates the block; the bounds are found by walking out to the
+   * enclosing comment delimiters.
+   */
+  #findManagedBlock(lines: string[]): [number, number] | null {
+    const markerLine = lines.findIndex((line) => hasMarker(line));
+    if (markerLine === -1) {
+      return null;
     }
 
-    let end = -1;
-    for (let index = 0; index < lines.length; index += 1) {
-      if (lines[index].includes("*/")) {
-        end = index;
-        break;
-      }
+    let start = markerLine;
+    while (start > 0 && !lines[start].trimStart().startsWith("/*")) {
+      start -= 1;
     }
 
-    if (end === -1 || !hasMarker(lines.slice(0, end + 1).join("\n"))) {
-      return lines;
+    let end = markerLine;
+    while (end < lines.length - 1 && !lines[end].includes("*/")) {
+      end += 1;
     }
 
-    return lines.slice(end + 1);
+    return [start, end];
   }
 }

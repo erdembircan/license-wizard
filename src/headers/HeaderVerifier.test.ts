@@ -178,6 +178,21 @@ describe("HeaderVerifier", () => {
     }
   });
 
+  it("relocates a header that foreign code pushed below the top when fixing", async () => {
+    const headed = headedFile("export const x = 1;\n", "a.ts");
+    const shifted = `import "./shim";\n\n${headed}`;
+    const { fs, verifier } = setup({ "a.ts": shifted });
+
+    const outcome = await verifier.verify(headedConfig, { fix: true });
+
+    expect(outcome.kind).toBe("fixed");
+    const result = fs.files.get("a.ts") ?? "";
+    // One header, back on top, with the foreign import preserved below it.
+    expect(result.split("SPDX-License-Identifier").length - 1).toBe(1);
+    expect(result.startsWith("/*")).toBe(true);
+    expect(result).toContain('import "./shim";');
+  });
+
   it("labels a hand-edited managed header as edited", async () => {
     // Tamper the body but leave the marker line — its hash still claims the
     // current MIT/short selection, so the drift can only be a manual edit.
