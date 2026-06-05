@@ -3,8 +3,30 @@ import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWri
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
+import { parseMarker } from "@headers/HeaderMarker.js";
 import type { SourceFileScanner } from "@headers/SourceFileScanner.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
+
+/**
+ * Why a managed header no longer matches the configuration:
+ *
+ * - `outdated` — the block faithfully describes an earlier selection (a
+ *   different license, style, or copyright). Its marker still matches its own
+ *   body; only the configuration moved on.
+ * - `edited` — the block's marker claims the current selection, yet the file
+ *   does not match what that selection would write, so the block was altered by
+ *   hand after the wizard wrote it.
+ * - `unknown` — the block carries the wizard's marker token but the marker line
+ *   could not be parsed, so its declared selection is unavailable.
+ */
+export type HeaderDriftReason = "outdated" | "edited" | "unknown";
+
+export type HeaderDrift = {
+  file: string;
+  /** What the stale block's marker declares, or null when it could not be parsed. */
+  declares: { licenseId: string; style: string } | null;
+  reason: HeaderDriftReason;
+};
 
 export type HeaderVerifyOptions = {
   /**
@@ -26,7 +48,7 @@ export type HeaderVerifyReport = {
   /** Files carrying no wizard header. */
   missing: string[];
   /** Files carrying a wizard header that no longer matches the configuration. */
-  drifted: string[];
+  drifted: HeaderDrift[];
   /** Files rewritten during a fixing run (the reconciled `missing` + `drifted`). */
   fixed: string[];
 };
@@ -139,13 +161,47 @@ export class HeaderVerifier {
       report.matched.push(file);
       return;
     } else {
-      report.drifted.push(file);
+      report.drifted.push(
+        this.#describeDrift(file, existing, composer, report),
+      );
     }
 
     if (fix) {
       await this.#writer.write(file, composer.apply(existing, file));
       report.fixed.push(file);
     }
+  }
+
+  /**
+   * Describes a drifted file for the report. The byte-for-byte comparison has
+   * already established that the block does not match the expected output; this
+   * reads the stale block's own marker to record what it declares and to explain
+   * the drift — a block faithfully describing an earlier selection is `outdated`,
+   * while one whose marker still claims the current selection was `edited` by
+   * hand. The marker is parsed straight from the file content, which yields the
+   * first (and only) managed block's fields.
+   */
+  #describeDrift(
+    file: string,
+    existing: string,
+    composer: HeaderComposer,
+    report: HeaderVerifyReport,
+  ): HeaderDrift {
+    const declared = parseMarker(existing);
+    if (declared === null) {
+      return { file, declares: null, reason: "unknown" };
+    }
+
+    const declaresCurrent =
+      declared.licenseId === report.licenseId &&
+      declared.style === report.style &&
+      declared.hash === composer.fingerprint();
+
+    return {
+      file,
+      declares: { licenseId: declared.licenseId, style: declared.style },
+      reason: declaresCurrent ? "edited" : "outdated",
+    };
   }
 
   /**

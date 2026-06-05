@@ -429,6 +429,7 @@ classDiagram
 
     class HeaderComposer {
       +HeaderComposer(plan: HeaderPlan)
+      +fingerprint() string
       +block(extension: string) string
       +hasManaged(content: string) boolean
       +apply(content: string, filePath: string) string
@@ -492,8 +493,18 @@ classDiagram
       +total: number
       +matched: string[]
       +missing: string[]
-      +drifted: string[]
+      +drifted: HeaderDrift[]
       +fixed: string[]
+    }
+
+    class HeaderDrift {
+      +file: string
+      +declares: object | null
+      +reason: HeaderDriftReason
+    }
+
+    class HeaderDriftReason {
+      <<union>>
     }
   }
 
@@ -627,6 +638,7 @@ classDiagram
   CliReporter ..> HeaderGenerateReport : renders
   CliReporter ..> HeaderDryRunReport : renders
   CliReporter ..> HeaderVerifyReport : renders
+  CliReporter ..> HeaderDrift : describes drift from
   HeaderConfig ..> HeaderStyle : style by
   HeaderPlan ..> LicenseDetail : carries
   HeaderPlan ..> HeaderStyle : styled by
@@ -648,6 +660,9 @@ classDiagram
   HeaderVerifier ..> HeaderVerifyOptions : configured by
   HeaderVerifier ..> HeaderVerifyOutcome : returns
   HeaderVerifyOutcome ..> HeaderVerifyReport : carries
+  HeaderVerifyReport ..> HeaderDrift : details drift by
+  HeaderDrift ..> HeaderDriftReason : explained by
+  HeaderVerifier ..> HeaderDrift : classifies drift into
   SourceFileScanner ..> IFileTreeWalker : walks with
   SourceFileScanner ..> IFileSystemReader : reads .gitignore through
   SourceFileScanner ..> GitignoreMatcherFactory : builds matchers with

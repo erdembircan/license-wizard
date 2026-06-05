@@ -144,9 +144,60 @@ describe("HeaderVerifier", () => {
 
     expect(outcome.kind).toBe("fixed");
     if (outcome.kind === "fixed") {
-      expect(outcome.drifted).toEqual(["a.ts"]);
+      expect(outcome.drifted).toEqual([
+        {
+          file: "a.ts",
+          declares: { licenseId: "Apache-2.0", style: "short" },
+          reason: "outdated",
+        },
+      ]);
     }
     expect(fs.files.get("a.ts")).toContain("SPDX-License-Identifier: MIT");
     expect(fs.files.get("a.ts")).not.toContain("Apache-2.0");
+  });
+
+  it("labels drift from a previous selection as outdated, recording what it declares", async () => {
+    const previous = new HeaderComposer({
+      detail: { ...MIT, licenseId: "Apache-2.0" },
+      style: "short",
+      tokens: {},
+    }).apply("export const x = 1;\n", "a.ts");
+    const { verifier } = setup({ "a.ts": previous });
+
+    const outcome = await verifier.verify(headedConfig, { fix: false });
+
+    expect(outcome.kind).toBe("mismatch");
+    if (outcome.kind === "mismatch") {
+      expect(outcome.drifted).toEqual([
+        {
+          file: "a.ts",
+          declares: { licenseId: "Apache-2.0", style: "short" },
+          reason: "outdated",
+        },
+      ]);
+    }
+  });
+
+  it("labels a hand-edited managed header as edited", async () => {
+    // Tamper the body but leave the marker line — its hash still claims the
+    // current MIT/short selection, so the drift can only be a manual edit.
+    const tampered = headedFile("export const x = 1;\n", "a.ts").replace(
+      "SPDX-License-Identifier: MIT",
+      "SPDX-License-Identifier: MIT-tampered",
+    );
+    const { verifier } = setup({ "a.ts": tampered });
+
+    const outcome = await verifier.verify(headedConfig, { fix: false });
+
+    expect(outcome.kind).toBe("mismatch");
+    if (outcome.kind === "mismatch") {
+      expect(outcome.drifted).toEqual([
+        {
+          file: "a.ts",
+          declares: { licenseId: "MIT", style: "short" },
+          reason: "edited",
+        },
+      ]);
+    }
   });
 });

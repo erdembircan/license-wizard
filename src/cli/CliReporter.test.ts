@@ -210,6 +210,38 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 
+  it("writes the header verify mismatch error, explaining each file's drift", () => {
+    new CliReporter("license-wizard").headersVerifyMismatch({
+      licenseId: "MIT",
+      style: "short",
+      total: 3,
+      matched: [],
+      missing: ["a.ts"],
+      drifted: [
+        {
+          file: "b.ts",
+          declares: { licenseId: "Apache-2.0", style: "short" },
+          reason: "outdated",
+        },
+        {
+          file: "c.ts",
+          declares: { licenseId: "MIT", style: "short" },
+          reason: "edited",
+        },
+      ],
+      fixed: [],
+    });
+
+    expect(stderr).toContain("out of sync with your saved MIT short header");
+    expect(stderr).toContain("a.ts is missing the header");
+    expect(stderr).toContain(
+      "b.ts header has drifted (declares Apache-2.0 short)",
+    );
+    expect(stderr).toContain("c.ts header was edited by hand");
+    expect(stderr).toContain("license-wizard --verify");
+    expect(stdout).toBe("");
+  });
+
   it("lists the suggested licenses with a --license hint on an unknown id", () => {
     new CliReporter("license-wizard").licenseNotFound("apache-2-0", [
       { licenseId: "Apache-2.0", name: "Apache License 2.0" },

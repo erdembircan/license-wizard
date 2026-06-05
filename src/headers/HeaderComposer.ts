@@ -22,6 +22,7 @@ import {
 export class HeaderComposer {
   readonly #body: string;
   readonly #marker: string;
+  readonly #fingerprint: string;
 
   /**
    * Creates a new HeaderComposer for the given selection.
@@ -30,11 +31,22 @@ export class HeaderComposer {
    */
   constructor(plan: HeaderPlan) {
     this.#body = new HeaderRenderer(plan).body();
+    this.#fingerprint = digestBody(this.#body);
     this.#marker = buildMarker(
       plan.detail.licenseId,
       plan.style,
-      digestBody(this.#body),
+      this.#fingerprint,
     );
+  }
+
+  /**
+   * Returns the digest of this selection's header body — the same value stamped
+   * into a freshly written marker. A managed block whose marker carries this
+   * fingerprint describes the current selection's exact content; one carrying a
+   * different fingerprint was written for an earlier configuration.
+   */
+  fingerprint(): string {
+    return this.#fingerprint;
   }
 
   /**

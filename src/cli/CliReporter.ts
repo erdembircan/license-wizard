@@ -5,7 +5,10 @@ import type {
   HeaderGenerateReport,
   IReporter,
 } from "@cli/interfaces/IReporter.js";
-import type { HeaderVerifyReport } from "@headers/HeaderVerifier.js";
+import type {
+  HeaderDrift,
+  HeaderVerifyReport,
+} from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ManifestCheck, VerifyReport } from "../LicenseVerifier.js";
@@ -451,8 +454,8 @@ export class CliReporter implements IReporter {
           `  ${this.#paint(this.#err, "cyan", file)} ${this.#paint(this.#err, "yellow", "is missing the header")}`,
       ),
       ...report.drifted.map(
-        (file) =>
-          `  ${this.#paint(this.#err, "cyan", file)} ${this.#paint(this.#err, "yellow", "header has drifted")}`,
+        (drift) =>
+          `  ${this.#paint(this.#err, "cyan", drift.file)} ${this.#paint(this.#err, "yellow", this.#driftNote(drift))}`,
       ),
     ].join("\n");
     const fix = this.#paint(this.#err, "dim", `${this.#programName} --verify`);
@@ -461,6 +464,22 @@ export class CliReporter implements IReporter {
       `${mark}${heading}\n${lines}\n` +
         `Run ${fix} to inscribe and reconcile them.\n`,
     );
+  }
+
+  /**
+   * Describes a drifted header for the mismatch listing: a header altered by
+   * hand is flagged as edited, while one written for an earlier selection notes
+   * what it still declares — `(declares Apache-2.0 full)` — mirroring how a
+   * drifted manifest reports the license it carries.
+   */
+  #driftNote(drift: HeaderDrift): string {
+    if (drift.reason === "edited") {
+      return "header was edited by hand";
+    }
+    if (drift.declares !== null) {
+      return `header has drifted (declares ${drift.declares.licenseId} ${drift.declares.style})`;
+    }
+    return "header has drifted";
   }
 
   /**
