@@ -242,6 +242,35 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 
+  it("writes the header-removal tally to stdout", () => {
+    new CliReporter("license-wizard").headersRemoved({
+      removed: ["a.ts", "b.ts"],
+      total: 5,
+    });
+
+    expect(stdout).toContain("Stripped the license header from 2 of 5");
+    expect(stderr).toBe("");
+  });
+
+  it("reports when removal found no wizard headers", () => {
+    new CliReporter("license-wizard").headersRemoved({ removed: [], total: 5 });
+
+    expect(stdout).toContain("No wizard-written headers found across 5");
+    expect(stderr).toBe("");
+  });
+
+  it("previews the files a removal dry run would strip", () => {
+    new CliReporter("license-wizard").headersRemoveDryRun({
+      removed: ["a.ts"],
+      total: 3,
+    });
+
+    expect(stdout).toContain("Dry run — no source file was touched.");
+    expect(stdout).toContain("Would strip the license header from 1 of 3");
+    expect(stdout).toContain("a.ts");
+    expect(stderr).toBe("");
+  });
+
   it("lists the suggested licenses with a --license hint on an unknown id", () => {
     new CliReporter("license-wizard").licenseNotFound("apache-2-0", [
       { licenseId: "Apache-2.0", name: "Apache License 2.0" },

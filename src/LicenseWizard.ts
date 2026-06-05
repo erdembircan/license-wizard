@@ -31,6 +31,8 @@ import { RcConfigStore } from "@configuration/RcConfigStore.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import { HeaderInstaller } from "@headers/HeaderInstaller.js";
+import { HeaderRemover } from "@headers/HeaderRemover.js";
+import { HeaderStripper } from "@headers/HeaderStripper.js";
 import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import { HeaderVerifier } from "@headers/HeaderVerifier.js";
@@ -53,6 +55,10 @@ const GENERATION_MODE_ID = "generationMode";
 const SAVE_CONFIG_ID = "saveConfig";
 const HEADERS_ENABLE_ID = "addHeaders";
 const HEADERS_STYLE_ID = "headerStyle";
+const MODE_ID = "mode";
+const MODE_SETUP = "setup";
+const MODE_REMOVE = "remove";
+const REMOVE_HEADERS_ID = "removeHeaders";
 const SKIP_SAVE = "skip";
 const PACKAGE_JSON = "package.json";
 const COMPOSER_JSON = "composer.json";
@@ -82,6 +88,7 @@ export class LicenseWizard {
   // that never touches headers — the common case — never pays to assemble them.
   #scannerInstance: SourceFileScanner | null = null;
   #headerInstallerInstance: HeaderInstaller | null = null;
+  #headerRemoverInstance: HeaderRemover | null = null;
   #headerVerifierInstance: HeaderVerifier | null = null;
   readonly #reporter: IReporter;
   readonly #flags;
@@ -158,6 +165,17 @@ export class LicenseWizard {
    */
   get #headerInstaller(): HeaderInstaller {
     return (this.#headerInstallerInstance ??= new HeaderInstaller(
+      this.#reader,
+      this.#writer,
+    ));
+  }
+
+  /**
+   * Lazily builds and memoizes the header remover, so it is assembled only when
+   * a `--remove-headers` run actually strips headers.
+   */
+  get #headerRemover(): HeaderRemover {
+    return (this.#headerRemoverInstance ??= new HeaderRemover(
       this.#reader,
       this.#writer,
     ));
@@ -255,6 +273,12 @@ export class LicenseWizard {
           "Extra gitignore-style pattern to skip when writing headers (repeatable).",
         placeholder: "<glob>",
       },
+      "remove-headers": {
+        type: "boolean",
+        default: false,
+        description:
+          "Remove wizard-written SPDX headers from source files and drop the saved headers preference (standalone; takes priority over --headers).",
+      },
       "dry-run": {
         type: "boolean",
         default: false,
@@ -265,11 +289,12 @@ export class LicenseWizard {
   }
 
   /**
-   * Builds the ordered list of questions, reading the saved config to
-   * pre-populate defaults where applicable.
+   * Builds the ordered license-setup questions (license → headers → save),
+   * pre-populating defaults from the saved config and project manifest.
+   *
+   * @param config - The saved configuration, used for license/token defaults.
    */
-  async #buildQuestions(): Promise<Question[]> {
-    const config = await this.#config.read();
+  async #buildSetupQuestions(config: WizardConfig | null): Promise<Question[]> {
     const projectLicense = await this.#manifests.readLicense();
 
     const licenseQuestion: AutocompleteQuestion = {
@@ -293,6 +318,45 @@ export class LicenseWizard {
     const saveConfigQuestion = await this.#buildSaveConfigQuestion();
 
     return [licenseQuestion, headersQuestion, saveConfigQuestion];
+  }
+
+  /**
+   * Builds the opening mode prompt, shown only when the saved config carries a
+   * headers preference. Its answer routes {@link run} to either the license
+   * setup flow or the header-removal path.
+   */
+  #buildModeQuestion(): SelectQuestion {
+    return {
+      id: MODE_ID,
+      text: "What would you like to do?",
+      type: "select",
+      defaultValue: MODE_SETUP,
+      options: [
+        {
+          value: MODE_SETUP,
+          label: "Set up a license",
+          hint: "choose a license, optionally add headers",
+        },
+        {
+          value: MODE_REMOVE,
+          label: "Remove license headers",
+          hint: "delete the wizard-written headers from your files",
+        },
+      ],
+    };
+  }
+
+  /**
+   * Builds the removal confirmation shown after the "remove license headers"
+   * mode is chosen. Its answer decides whether {@link run} strips the headers.
+   */
+  #buildRemoveHeadersQuestion(): ConfirmQuestion {
+    return {
+      id: REMOVE_HEADERS_ID,
+      text: "Remove the wizard-written license headers from your source files?",
+      type: "confirm",
+      defaultValue: true,
+    };
   }
 
   /**
@@ -900,6 +964,71 @@ export class LicenseWizard {
   }
 
   /**
+   * Runs the standalone `--remove-headers` mode: scans the project for source
+   * files and strips any wizard-written header from each, regardless of whether
+   * it had drifted, then drops the saved headers preference so verification no
+   * longer checks that surface. Honors `--headers-ignore` for scope and
+   * `--dry-run`, which lists the files that would be cleared without touching
+   * them (and leaves the configuration alone).
+   */
+  async #runRemoveHeaders(): Promise<void> {
+    const files = await this.#scanner.scan({
+      extraIgnores: this.#flags["headers-ignore"],
+    });
+
+    if (this.#flags["dry-run"]) {
+      const stripper = new HeaderStripper();
+      const removed: string[] = [];
+      for (const file of files) {
+        const content = await this.#reader.read(file);
+        if (stripper.strip(content, file).removed) {
+          removed.push(file);
+        }
+      }
+      this.#reporter.headersRemoveDryRun({ removed, total: files.length });
+      return;
+    }
+
+    let summary = { removed: [] as string[], total: files.length };
+    if (files.length > 0) {
+      const bar = new ProgressBar("  Removing headers");
+      bar.start(files.length);
+      summary = await this.#headerRemover.remove(files, (progress) =>
+        bar.update(progress.done),
+      );
+      bar.stop();
+    }
+
+    this.#reporter.headersRemoved(summary);
+    await this.#clearHeadersConfig();
+  }
+
+  /**
+   * Drops the saved `headers` preference from the configuration after a removal,
+   * so verification no longer checks a header surface the project no longer has.
+   * Rewrites the configuration in place — keeping the license id and any tokens —
+   * to the store it already lives in; does nothing when no header preference is
+   * set or no configuration exists.
+   */
+  async #clearHeadersConfig(): Promise<void> {
+    const config = await this.#config.read();
+    if (!config?.headers) {
+      return;
+    }
+
+    const source = await this.#config.source();
+    if (source === null) {
+      return;
+    }
+
+    const next: WizardConfig = { licenseId: config.licenseId };
+    if (config.tokens) {
+      next.tokens = config.tokens;
+    }
+    await this.#config.write(next, source);
+  }
+
+  /**
    * Reports an error message through the reporter and sets a non-zero exit code
    * without throwing, so non-interactive failures surface cleanly to callers and
    * agents.
@@ -938,6 +1067,13 @@ export class LicenseWizard {
       return [];
     }
 
+    // --remove-headers is a standalone mode and takes priority over --headers:
+    // when both are given, the headers are removed rather than written.
+    if (this.#flags["remove-headers"]) {
+      await this.#runRemoveHeaders();
+      return [];
+    }
+
     // --verify is a standalone mode: it ignores every other selection flag and
     // checks the existing LICENSE against the saved configuration instead.
     if (this.#flags.verify) {
@@ -950,12 +1086,30 @@ export class LicenseWizard {
       return [];
     }
 
-    const questions = await this.#buildQuestions();
     const renderer = new ClackRenderer({
       name: pkg.name,
       description: pkg.description,
       version: pkg.version,
     });
+    const config = await this.#config.read();
+
+    // Adaptive opening: when the project already opted into headers, ask up front
+    // whether to set up a license or remove the headers. Removal is rendered on
+    // its own and short-circuits the license setup flow entirely.
+    if (config?.headers) {
+      const mode = await renderer.render(this.#buildModeQuestion());
+      if (mode.value === MODE_REMOVE) {
+        const confirmed = await renderer.render(
+          this.#buildRemoveHeadersQuestion(),
+        );
+        if (confirmed.value === true) {
+          await this.#runRemoveHeaders();
+        }
+        return [mode, confirmed];
+      }
+    }
+
+    const questions = await this.#buildSetupQuestions(config);
     const repository = new QuestionRepository(questions);
     const orchestrator = new Orchestrator(repository, renderer);
 

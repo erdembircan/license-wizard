@@ -3,6 +3,7 @@ import type {
   DryRunReport,
   HeaderDryRunReport,
   HeaderGenerateReport,
+  HeaderRemoveReport,
   IReporter,
 } from "@cli/interfaces/IReporter.js";
 import type {
@@ -408,6 +409,56 @@ export class CliReporter implements IReporter {
       `${mark}${heading}\n\n` +
         `Would inscribe the ${id} ${style} header into ${report.files.length} file(s):\n\n` +
         `${report.sample}\n\n${list}\n`,
+    );
+  }
+
+  /**
+   * Renders the confirmation printed after headers are stripped: how many files
+   * had a header removed, or a note that none were found.
+   */
+  headersRemoved(report: HeaderRemoveReport): void {
+    if (report.removed.length === 0) {
+      const mark = this.#mark(this.#out, GLIMMER, "yellow");
+      this.#out.write(
+        `${mark}No wizard-written headers found across ${report.total} source file(s).\n`,
+      );
+      return;
+    }
+
+    const mark = this.#mark(this.#out, SPARK, "green");
+    const count = this.#paint(this.#out, "bold", String(report.removed.length));
+    this.#out.write(
+      `${mark}Stripped the license header from ${count} of ${report.total} source file(s).\n`,
+    );
+  }
+
+  /**
+   * Renders the removal dry-run preview to stdout: the files a managed header
+   * would be stripped from, with nothing changed.
+   */
+  headersRemoveDryRun(report: HeaderRemoveReport): void {
+    const mark = this.#mark(this.#out, GLIMMER, "yellow");
+    const heading = this.#paint(
+      this.#out,
+      ["bold", "yellow"],
+      "Dry run — no source file was touched.",
+    );
+
+    if (report.removed.length === 0) {
+      this.#out.write(
+        `${mark}${heading}\n\n` +
+          `No wizard-written headers found across ${report.total} source file(s).\n`,
+      );
+      return;
+    }
+
+    const list = report.removed
+      .map((file) => `  ${this.#paint(this.#out, "cyan", file)}`)
+      .join("\n");
+    this.#out.write(
+      `${mark}${heading}\n\n` +
+        `Would strip the license header from ${report.removed.length} of ${report.total} file(s):\n\n` +
+        `${list}\n`,
     );
   }
 

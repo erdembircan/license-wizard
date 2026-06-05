@@ -129,6 +129,12 @@ npx license-wizard --license Apache-2.0 --set "name of copyright owner=Erdem Bir
 
 **Managed, idempotent, verifiable.** Each header carries a hidden marker identifying it as written by License Wizard and fingerprinting its content. That marker is what lets the tool *own* the block: re-running over an unchanged project writes nothing, switching licenses rewrites the existing header in place (rather than stacking a second one), and `--verify` checks the header surface too — without ever touching a hand-written notice that lacks the marker.
 
+**Removing them.** To take the headers back out, pass `--remove-headers`. It strips every License Wizard header from your source files — whether or not they had drifted — and drops the headers preference from the saved config so `--verify` stops checking that surface. It is a standalone mode and takes priority over `--headers` (if both are given, the headers are removed), needs no `--license`, and honors `--headers-ignore` and `--dry-run`. The interactive wizard offers it as a "Remove license headers" option when your saved config already has headers; a hand-written notice that lacks the marker is always left alone.
+
+```bash
+npx license-wizard --remove-headers
+```
+
 ### Verifying an existing LICENSE
 
 Once a configuration is saved, `--verify` checks that the project still matches it across two surfaces: the **`LICENSE` file** (re-rendered from the configuration and compared by content hash) and the **`"license"` field of every manifest** (compared against the configured SPDX identifier). It is a standalone mode — every other selection flag is ignored, and the configuration is the single source of truth (the `.licensewizardrc.json` dot-file first, then the manifests). Both a `LICENSE` file and a saved configuration must exist, or it reports the problem and exits non-zero.
@@ -163,6 +169,7 @@ By default, verification **self-heals**: anything out of sync (an edited copyrig
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit without generating. |
 | `--headers <short\|full>` | Also write SPDX license headers into source files — `short` (SPDX tag lines) or `full` (the standard header notice). Implies non-interactive mode. |
 | `--headers-ignore <glob>...` | Extra gitignore-style pattern to skip when writing headers, on top of the defaults and `.gitignore` (repeatable). |
+| `--remove-headers` | Strip License Wizard's headers from source files and drop the saved headers preference. Standalone mode; takes priority over `--headers`; honors `--headers-ignore` and `--dry-run`. |
 | `--dry-run` | Preview the license (and, with `--headers`, a sample block and the files it would touch) and skip every write. |
 
 Run `npx license-wizard --help` to print the same list from the CLI.

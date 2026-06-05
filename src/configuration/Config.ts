@@ -59,6 +59,23 @@ export class Config {
   }
 
   /**
+   * Returns the id of the highest-priority store that currently holds the
+   * configuration — the one `read` resolves to — or `null` when no store does.
+   * Lets a caller rewrite the existing configuration in place rather than
+   * guessing a target.
+   *
+   * @throws {FileSystemReaderError} When a file system read operation fails.
+   */
+  async source(): Promise<string | null> {
+    for (const store of this.#stores) {
+      if (await store.read(this.#reader)) {
+        return store.id;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Returns the stores currently eligible as save targets, in order. The
    * dot-file is always present; a manifest appears only when its file exists.
    */

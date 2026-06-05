@@ -110,6 +110,8 @@ classDiagram
       +headersNoFiles(licenseId: string) void
       +headersGenerated(report: HeaderGenerateReport) void
       +headersDryRun(report: HeaderDryRunReport) void
+      +headersRemoved(report: HeaderRemoveReport) void
+      +headersRemoveDryRun(report: HeaderRemoveReport) void
       +headersVerifyMatch(report: HeaderVerifyReport) void
       +headersVerifyFixed(report: HeaderVerifyReport) void
       +headersVerifyMismatch(report: HeaderVerifyReport) void
@@ -129,6 +131,11 @@ classDiagram
       +style: HeaderStyle
       +files: string[]
       +sample: string
+    }
+
+    class HeaderRemoveReport {
+      +removed: string[]
+      +total: number
     }
 
     class DryRunReport {
@@ -361,6 +368,7 @@ classDiagram
     class Config {
       +Config(stores: IConfigStore[], reader: IFileSystemReader, writer: IFileSystemWriter)
       +read() Promise~WizardConfig | null~
+      +source() Promise~string | null~
       +targets() Promise~ConfigTarget[]~
       +write(config: WizardConfig, targetId: string) Promise~void~
       +clear() Promise~void~
@@ -472,6 +480,32 @@ classDiagram
     class HeaderInstallSummary {
       +written: string[]
       +unchanged: string[]
+    }
+
+    class ManagedBlock {
+      <<module>>
+      +splitToLines(content: string) string[]
+      +dropLeadingBlanks(lines: string[]) string[]
+      +stripManagedBlocks(lines: string[]) string[]
+    }
+
+    class HeaderStripper {
+      +strip(content: string, filePath: string) StripResult
+    }
+
+    class StripResult {
+      +content: string
+      +removed: boolean
+    }
+
+    class HeaderRemover {
+      +HeaderRemover(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +remove(files: string[], onProgress?: Function) Promise~HeaderRemoveSummary~
+    }
+
+    class HeaderRemoveSummary {
+      +removed: string[]
+      +total: number
     }
 
     class HeaderVerifier {
@@ -629,6 +663,9 @@ classDiagram
   LicenseWizard ..> NodeFileTreeWalker : creates
   LicenseWizard ..> HeaderInstaller : creates
   LicenseWizard ..> HeaderInstaller : writes headers through
+  LicenseWizard ..> HeaderRemover : creates
+  LicenseWizard ..> HeaderRemover : removes headers through
+  LicenseWizard ..> HeaderStripper : previews removal with
   LicenseWizard ..> HeaderVerifier : creates
   LicenseWizard ..> HeaderVerifier : verifies headers through
   LicenseWizard ..> HeaderRenderer : checks full-header support with
@@ -637,6 +674,7 @@ classDiagram
   LicenseWizard ..> HeaderPlan : builds
   CliReporter ..> HeaderGenerateReport : renders
   CliReporter ..> HeaderDryRunReport : renders
+  CliReporter ..> HeaderRemoveReport : renders
   CliReporter ..> HeaderVerifyReport : renders
   CliReporter ..> HeaderDrift : describes drift from
   HeaderConfig ..> HeaderStyle : style by
@@ -651,6 +689,13 @@ classDiagram
   HeaderInstaller ..> IFileSystemReader : reads files through
   HeaderInstaller ..> IFileSystemWriter : writes files through
   HeaderInstaller ..> HeaderInstallSummary : produces
+  HeaderStripper ..> StripResult : produces
+  HeaderStripper ..> ManagedBlock : strips blocks via
+  HeaderRemover ..> HeaderStripper : strips with
+  HeaderRemover ..> IFileSystemReader : reads files through
+  HeaderRemover ..> IFileSystemWriter : writes files through
+  HeaderRemover ..> HeaderRemoveSummary : produces
+  HeaderComposer ..> ManagedBlock : strips existing blocks via
   HeaderVerifier ..> SourceFileScanner : rediscovers files through
   HeaderVerifier ..> HeaderComposer : compares against
   HeaderVerifier ..> LicenseRepository : fetches header detail through

@@ -11,7 +11,19 @@ flowchart TD
     HELP -->|Yes| HU[Print usage + flag listing]
     HU --> H
 
-    HELP -->|No| NI{--license, --set, --headers,<br/>--get-tokens, or a --save-* flag given?}
+    HELP -->|No| RH{--remove-headers flag?<br/>takes priority over --headers}
+
+    %% ─── Header removal path (standalone) ───
+    RH -->|Yes| RHSCAN[Scan source files —<br/>same scope as writing,<br/>--headers-ignore honored]
+    RHSCAN --> RHDR{--dry-run given?}
+    RHDR -->|Yes| RHPREV[List the files a header<br/>would be stripped from;<br/>skip every write] --> H
+    RHDR -->|No| RHSTRIP[Strip the marked header block<br/>from each file that has one]
+    RHSTRIP -.->|reads and rewrites| SF
+    RHSTRIP --> RHCFG[Drop the headers preference<br/>from the saved config]
+    RHCFG -.->|rewrites config| LC
+    RHCFG --> H
+
+    RH -->|No| NI{--license, --set, --headers,<br/>--get-tokens, or a --save-* flag given?}
 
     %% ─── Non-interactive CLI path ───
     NI -->|Yes| NIL{--license given?}
@@ -40,7 +52,15 @@ flowchart TD
     NI -->|No| M{--verify flag?}
 
     %% ─── Interactive / generation path ───
-    M -->|No| C
+    %% Adaptive opening: the remove option appears only when the saved config
+    %% already opted into headers; otherwise the wizard goes straight to setup.
+    M -->|No| MQ{saved config opts into<br/>source-file headers?}
+    MQ -->|No| C
+    MQ -->|Yes| MODEQ[Ask: set up a license,<br/>or remove license headers?]
+    MODEQ -->|Set up a license| C
+    MODEQ -->|Remove license headers| RMQ[Confirm removal]
+    RMQ -->|No| H
+    RMQ -->|Yes| RHSCAN
 
     subgraph IO [Input Orchestrator]
         C[Prepare question]

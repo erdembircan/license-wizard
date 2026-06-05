@@ -6,6 +6,7 @@ import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
+import { HeaderComposer } from "@headers/HeaderComposer.js";
 
 type GenerateCall = { licenseId: string; slotValues: Record<string, string> };
 
@@ -106,11 +107,13 @@ vi.mock("@cli/ClackRenderer.js", () => ({
 vi.mock("@configuration/Config.js", () => ({
   Config: vi.fn(function (this: {
     read: () => Promise<WizardConfig | null>;
+    source: () => Promise<string | null>;
     targets: () => Promise<{ id: string; label: string }[]>;
     write: (config: WizardConfig, targetId: string) => Promise<void>;
     clear: () => Promise<void>;
   }) {
     this.read = async () => state.config;
+    this.source = async () => (state.config ? "rc" : null);
     this.targets = async () => state.configTargets;
     this.write = async (config, targetId) => {
       state.writtenConfig = config;
@@ -1195,5 +1198,71 @@ describe("LicenseWizard dry-run mode", () => {
     expect(state.writtenProjectLicense).toBeNull();
     expect(state.writtenConfig).toBeNull();
     expect(state.configCleared).toBe(false);
+  });
+});
+
+describe("LicenseWizard header removal", () => {
+  beforeEach(() => {
+    state.reset();
+  });
+
+  const headed = (source: string, path: string): string =>
+    new HeaderComposer({
+      detail: { licenseId: "MIT", name: "MIT License", licenseText: "x" },
+      style: "short",
+      tokens: {},
+    }).apply(source, path);
+
+  it("strips headers and clears the saved preference with --remove-headers", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = {
+      "a.ts": headed("export const a = 1;\n", "a.ts"),
+      "b.ts": "export const b = 2;\n",
+    };
+
+    await new LicenseWizard(["--remove-headers"]).run();
+
+    // The headed file was rewritten without its header; the bare file was not.
+    const write = state.headerWrites.find((w) => w.path === "a.ts");
+    expect(write?.content).toBe("export const a = 1;\n");
+    expect(state.headerWrites.some((w) => w.path === "b.ts")).toBe(false);
+    // The headers preference is dropped, license id and tokens kept.
+    expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
+  });
+
+  it("takes priority over --headers (removes rather than writes)", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "a.ts": headed("export const a = 1;\n", "a.ts") };
+
+    await new LicenseWizard(["--remove-headers", "--headers", "full"]).run();
+
+    expect(state.headerWrites[0]?.content).toBe("export const a = 1;\n");
+    expect(state.generateCalls).toEqual([]);
+  });
+
+  it("offers the remove option interactively only when the config has headers", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "a.ts": headed("export const a = 1;\n", "a.ts") };
+    state.answer = (q: Question) => {
+      if (q.id === "mode") return "remove";
+      if (q.id === "removeHeaders") return true;
+      return q.type === "confirm" ? false : "MIT";
+    };
+
+    await new LicenseWizard([]).run();
+
+    // The mode prompt was shown, removal ran, and the preference was cleared.
+    expect(state.rendered.some((q) => q.id === "mode")).toBe(true);
+    expect(state.headerWrites[0]?.content).toBe("export const a = 1;\n");
+    expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
+  });
+
+  it("does not show the mode prompt when no headers are configured", async () => {
+    state.config = { licenseId: "MIT" };
+
+    await new LicenseWizard([]).run();
+
+    expect(state.rendered.some((q) => q.id === "mode")).toBe(false);
+    expect(state.rendered.some((q) => q.id === "license")).toBe(true);
   });
 });

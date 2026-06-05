@@ -27,6 +27,13 @@ export type HeaderDryRunReport = {
   sample: string;
 };
 
+export type HeaderRemoveReport = {
+  /** Files a managed header was (or would be) stripped from. */
+  removed: string[];
+  /** The total number of source files examined. */
+  total: number;
+};
+
 /**
  * Contract for rendering non-interactive CLI output to the terminal — the usage
  * screen, generation results, field listings, and error messages.
@@ -151,6 +158,23 @@ export interface IReporter {
    * @param report - The header style, sample block, and target file list.
    */
   headersDryRun(report: HeaderDryRunReport): void;
+
+  /**
+   * Renders the confirmation printed after `--remove-headers` strips wizard
+   * headers: how many of the scanned files had a header removed, or that none
+   * were found.
+   *
+   * @param report - The stripped-file list and total examined.
+   */
+  headersRemoved(report: HeaderRemoveReport): void;
+
+  /**
+   * Renders the removal dry-run preview: the files a managed header would be
+   * stripped from, with nothing touched.
+   *
+   * @param report - The would-be-stripped file list and total examined.
+   */
+  headersRemoveDryRun(report: HeaderRemoveReport): void;
 
   /**
    * Renders the confirmation shown when `--verify` finds every in-scope source
