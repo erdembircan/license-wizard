@@ -3,4 +3,6 @@ export type LicenseDetail = {
   name: string;
   licenseText: string;
   standardLicenseTemplate?: string;
+  standardLicenseHeader?: string;
+  standardLicenseHeaderTemplate?: string;
 };

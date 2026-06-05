@@ -1,11 +1,19 @@
 import type { Answer } from "@cli/Answer.js";
 import type { Question } from "@cli/Question.js";
+import type { HeaderStyle } from "@headers/HeaderPlan.js";
+
+export type CompletionHeaders = {
+  style: HeaderStyle;
+  written: number;
+  total: number;
+};
 
 export type CompletionSummary = {
   licenseId: string;
   customized: boolean;
   savedTo: string;
   manifests: string[];
+  headers?: CompletionHeaders;
 };
 
 /**

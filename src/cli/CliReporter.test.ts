@@ -210,6 +210,75 @@ describe("CliReporter", () => {
     expect(stdout).toBe("");
   });
 
+  it("writes the header verify mismatch error, explaining each file's drift", () => {
+    new CliReporter("license-wizard").headersVerifyMismatch({
+      licenseId: "MIT",
+      style: "short",
+      total: 3,
+      matched: [],
+      missing: ["a.ts"],
+      drifted: [
+        {
+          file: "b.ts",
+          declares: { licenseId: "Apache-2.0", style: "short" },
+          reason: "outdated",
+        },
+        {
+          file: "c.ts",
+          declares: { licenseId: "MIT", style: "short" },
+          reason: "edited",
+        },
+      ],
+      fixed: [],
+    });
+
+    expect(stderr).toContain("out of sync with your saved MIT short header");
+    expect(stderr).toContain("a.ts is missing the header");
+    expect(stderr).toContain(
+      "b.ts header has drifted (declares Apache-2.0 short)",
+    );
+    expect(stderr).toContain("c.ts header was edited by hand");
+    expect(stderr).toContain("license-wizard --verify");
+    expect(stdout).toBe("");
+  });
+
+  it("writes the header-removal tally to stdout — the count of files that had one", () => {
+    new CliReporter("license-wizard").headersRemoved({
+      removed: ["a.ts", "b.ts"],
+      total: 5,
+    });
+
+    // The tally is the files that carried a header, not every scanned file, so
+    // it never reads as if a headed file was missed.
+    expect(stdout).toContain(
+      "Stripped the license header from 2 source file(s)",
+    );
+    expect(stdout).not.toContain("of 5");
+    expect(stderr).toBe("");
+  });
+
+  it("reports when removal found no wizard headers", () => {
+    new CliReporter("license-wizard").headersRemoved({ removed: [], total: 5 });
+
+    expect(stdout).toContain("No wizard-written headers found across 5");
+    expect(stderr).toBe("");
+  });
+
+  it("previews the files a removal dry run would strip", () => {
+    new CliReporter("license-wizard").headersRemoveDryRun({
+      removed: ["a.ts"],
+      total: 3,
+    });
+
+    expect(stdout).toContain("Dry run — no source file was touched.");
+    expect(stdout).toContain(
+      "Would strip the license header from 1 source file(s)",
+    );
+    expect(stdout).not.toContain("of 3");
+    expect(stdout).toContain("a.ts");
+    expect(stderr).toBe("");
+  });
+
   it("lists the suggested licenses with a --license hint on an unknown id", () => {
     new CliReporter("license-wizard").licenseNotFound("apache-2-0", [
       { licenseId: "Apache-2.0", name: "Apache License 2.0" },

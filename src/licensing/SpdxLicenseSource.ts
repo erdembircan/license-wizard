@@ -24,6 +24,8 @@ type SpdxDetailResponse = {
   name: string;
   licenseText: string;
   standardLicenseTemplate?: string;
+  standardLicenseHeader?: string;
+  standardLicenseHeaderTemplate?: string;
 };
 
 type IndexCache = {
@@ -222,6 +224,8 @@ export class SpdxLicenseSource implements ILicenseSource {
       name: data.name,
       licenseText: data.licenseText,
       standardLicenseTemplate: data.standardLicenseTemplate,
+      standardLicenseHeader: data.standardLicenseHeader,
+      standardLicenseHeaderTemplate: data.standardLicenseHeaderTemplate,
     };
 
     this.#detailCache.set(key, { data: detail, cachedAt: Date.now() });

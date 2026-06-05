@@ -1,5 +1,15 @@
 import { styleText } from "node:util";
-import type { DryRunReport, IReporter } from "@cli/interfaces/IReporter.js";
+import type {
+  DryRunReport,
+  HeaderDryRunReport,
+  HeaderGenerateReport,
+  HeaderRemoveReport,
+  IReporter,
+} from "@cli/interfaces/IReporter.js";
+import type {
+  HeaderDrift,
+  HeaderVerifyReport,
+} from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ManifestCheck, VerifyReport } from "../LicenseVerifier.js";
@@ -351,6 +361,176 @@ export class CliReporter implements IReporter {
    */
   #declared(manifest: ManifestCheck): string {
     return manifest.declared === null ? "no license" : manifest.declared;
+  }
+
+  /**
+   * Renders the notice shown when header writing found no eligible source files.
+   */
+  headersNoFiles(licenseId: string): void {
+    const id = this.#paint(this.#out, "bold", licenseId);
+    this.#out.write(
+      `No source files to inscribe with the ${id} header — the scan found nothing eligible.\n`,
+    );
+  }
+
+  /**
+   * Renders the one-line confirmation printed after headers are written.
+   */
+  headersGenerated(report: HeaderGenerateReport): void {
+    const mark = this.#mark(this.#out, SPARK, "green");
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    const style = this.#paint(this.#out, "cyan", report.style);
+    const written = this.#paint(this.#out, "bold", String(report.written));
+    const unchanged =
+      report.unchanged > 0 ? ` ${report.unchanged} already bore the mark.` : "";
+    this.#out.write(
+      `${mark}Inscribed the ${id} ${style} header across ${written} of ${report.total} source file(s).${unchanged}\n`,
+    );
+  }
+
+  /**
+   * Renders the header dry-run preview to stdout: the block that would be
+   * written and the files it would touch, with nothing changed.
+   */
+  headersDryRun(report: HeaderDryRunReport): void {
+    const mark = this.#mark(this.#out, GLIMMER, "yellow");
+    const heading = this.#paint(
+      this.#out,
+      ["bold", "yellow"],
+      "Dry run — no source file was touched.",
+    );
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    const style = this.#paint(this.#out, "cyan", report.style);
+    const list = report.files
+      .map((file) => `  ${this.#paint(this.#out, "cyan", file)}`)
+      .join("\n");
+
+    this.#out.write(
+      `${mark}${heading}\n\n` +
+        `Would inscribe the ${id} ${style} header into ${report.files.length} file(s):\n\n` +
+        `${report.sample}\n\n${list}\n`,
+    );
+  }
+
+  /**
+   * Renders the confirmation printed after headers are stripped: how many files
+   * had a header removed, or a note that none were found.
+   */
+  headersRemoved(report: HeaderRemoveReport): void {
+    if (report.removed.length === 0) {
+      const mark = this.#mark(this.#out, GLIMMER, "yellow");
+      this.#out.write(
+        `${mark}No wizard-written headers found across ${report.total} source file(s).\n`,
+      );
+      return;
+    }
+
+    const mark = this.#mark(this.#out, SPARK, "green");
+    const count = this.#paint(this.#out, "bold", String(report.removed.length));
+    this.#out.write(
+      `${mark}Stripped the license header from ${count} source file(s).\n`,
+    );
+  }
+
+  /**
+   * Renders the removal dry-run preview to stdout: the files a managed header
+   * would be stripped from, with nothing changed.
+   */
+  headersRemoveDryRun(report: HeaderRemoveReport): void {
+    const mark = this.#mark(this.#out, GLIMMER, "yellow");
+    const heading = this.#paint(
+      this.#out,
+      ["bold", "yellow"],
+      "Dry run — no source file was touched.",
+    );
+
+    if (report.removed.length === 0) {
+      this.#out.write(
+        `${mark}${heading}\n\n` +
+          `No wizard-written headers found across ${report.total} source file(s).\n`,
+      );
+      return;
+    }
+
+    const list = report.removed
+      .map((file) => `  ${this.#paint(this.#out, "cyan", file)}`)
+      .join("\n");
+    this.#out.write(
+      `${mark}${heading}\n\n` +
+        `Would strip the license header from ${report.removed.length} source file(s):\n\n` +
+        `${list}\n`,
+    );
+  }
+
+  /**
+   * Renders the header verify "in sync" confirmation to stdout.
+   */
+  headersVerifyMatch(report: HeaderVerifyReport): void {
+    const mark = this.#mark(this.#out, SPARK, "green");
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    this.#out.write(
+      `${mark}All ${report.total} source file(s) bear the expected ${id} ${report.style} header.\n`,
+    );
+  }
+
+  /**
+   * Renders the header verify "reconciled the drift" notice to stdout.
+   */
+  headersVerifyFixed(report: HeaderVerifyReport): void {
+    const mark = this.#mark(this.#out, SPARK, "green");
+    const id = this.#paint(this.#out, "bold", report.licenseId);
+    const added = report.missing.length;
+    const rewritten = report.drifted.length;
+    this.#out.write(
+      `${mark}Realigned the ${id} ${report.style} header: ` +
+        `${this.#paint(this.#out, "cyan", String(added))} added, ` +
+        `${this.#paint(this.#out, "cyan", String(rewritten))} rewritten.\n`,
+    );
+  }
+
+  /**
+   * Renders the header verify mismatch error to stderr, listing the files that
+   * are missing or carry a drifted header.
+   */
+  headersVerifyMismatch(report: HeaderVerifyReport): void {
+    const mark = this.#mark(this.#err, FIZZLE, "red");
+    const heading = this.#paint(
+      this.#err,
+      ["bold", "red"],
+      `Source files are out of sync with your saved ${report.licenseId} ${report.style} header:`,
+    );
+    const lines = [
+      ...report.missing.map(
+        (file) =>
+          `  ${this.#paint(this.#err, "cyan", file)} ${this.#paint(this.#err, "yellow", "is missing the header")}`,
+      ),
+      ...report.drifted.map(
+        (drift) =>
+          `  ${this.#paint(this.#err, "cyan", drift.file)} ${this.#paint(this.#err, "yellow", this.#driftNote(drift))}`,
+      ),
+    ].join("\n");
+    const fix = this.#paint(this.#err, "dim", `${this.#programName} --verify`);
+
+    this.#err.write(
+      `${mark}${heading}\n${lines}\n` +
+        `Run ${fix} to inscribe and reconcile them.\n`,
+    );
+  }
+
+  /**
+   * Describes a drifted header for the mismatch listing: a header altered by
+   * hand is flagged as edited, while one written for an earlier selection notes
+   * what it still declares — `(declares Apache-2.0 full)` — mirroring how a
+   * drifted manifest reports the license it carries.
+   */
+  #driftNote(drift: HeaderDrift): string {
+    if (drift.reason === "edited") {
+      return "header was edited by hand";
+    }
+    if (drift.declares !== null) {
+      return `header has drifted (declares ${drift.declares.licenseId} ${drift.declares.style})`;
+    }
+    return "header has drifted";
   }
 
   /**

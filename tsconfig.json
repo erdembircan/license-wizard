@@ -10,7 +10,8 @@
     "paths": {
       "@cli/*": ["./src/cli/*"],
       "@licensing/*": ["./src/licensing/*"],
-      "@configuration/*": ["./src/configuration/*"]
+      "@configuration/*": ["./src/configuration/*"],
+      "@headers/*": ["./src/headers/*"]
     }
   },
   "include": ["src/**/*.ts", "vitest.config.ts"]

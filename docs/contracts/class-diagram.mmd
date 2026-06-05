@@ -20,6 +20,7 @@ classDiagram
     +licenseId: string
     +tokens: Record~string, string~
     +save: ConfigSave
+    +headers?: HeaderConfig
   }
 
   class ConfigSave {
@@ -74,6 +75,20 @@ classDiagram
       +customized: boolean
       +savedTo: string
       +manifests: string[]
+      +headers?: CompletionHeaders
+    }
+
+    class CompletionHeaders {
+      +style: HeaderStyle
+      +written: number
+      +total: number
+    }
+
+    class ProgressBar {
+      +ProgressBar(label: string, out?: object)
+      +start(total: number) void
+      +update(done: number) void
+      +stop() void
     }
 
     class ClackRenderer {
@@ -89,7 +104,38 @@ classDiagram
       +missingFields(licenseId: string, missing: TemplateSlot[]) void
       +unknownFields(licenseId: string, unknown: string[], slots: TemplateSlot[]) void
       +licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]) void
+      +verifyMatch(report: VerifyReport) void
+      +verifyFixed(report: VerifyReport) void
+      +verifyMismatch(report: VerifyReport) void
+      +headersNoFiles(licenseId: string) void
+      +headersGenerated(report: HeaderGenerateReport) void
+      +headersDryRun(report: HeaderDryRunReport) void
+      +headersRemoved(report: HeaderRemoveReport) void
+      +headersRemoveDryRun(report: HeaderRemoveReport) void
+      +headersVerifyMatch(report: HeaderVerifyReport) void
+      +headersVerifyFixed(report: HeaderVerifyReport) void
+      +headersVerifyMismatch(report: HeaderVerifyReport) void
       +error(message: string) void
+    }
+
+    class HeaderGenerateReport {
+      +licenseId: string
+      +style: HeaderStyle
+      +total: number
+      +written: number
+      +unchanged: number
+    }
+
+    class HeaderDryRunReport {
+      +licenseId: string
+      +style: HeaderStyle
+      +files: string[]
+      +sample: string
+    }
+
+    class HeaderRemoveReport {
+      +removed: string[]
+      +total: number
     }
 
     class DryRunReport {
@@ -219,13 +265,20 @@ classDiagram
       +name: string
       +licenseText: string
       +standardLicenseTemplate?: string
+      +standardLicenseHeader?: string
+      +standardLicenseHeaderTemplate?: string
+    }
+
+    class SpdxTemplate {
+      <<abstract>>
+      +SpdxTemplate(template: string)
+      +slots() TemplateSlot[]
+      +resolveSlots(entries: Map~string, string~) SlotResolution
+      +render(values: Record~string, string~) string
     }
 
     class LicenseTemplate {
       +LicenseTemplate(template: string)
-      +slots() TemplateSlot[]
-      +resolveSlots(entries: Map~string, string~) SlotResolution
-      +render(values: Record~string, string~) string
     }
 
     class TemplateSlot {
@@ -282,6 +335,11 @@ classDiagram
     class WizardConfig {
       +licenseId: string
       +tokens?: Record~string, string~
+      +headers?: HeaderConfig
+    }
+
+    class HeaderConfig {
+      +style: HeaderStyle
     }
 
     class ConfigTarget {
@@ -310,6 +368,7 @@ classDiagram
     class Config {
       +Config(stores: IConfigStore[], reader: IFileSystemReader, writer: IFileSystemWriter)
       +read() Promise~WizardConfig | null~
+      +source() Promise~string | null~
       +targets() Promise~ConfigTarget[]~
       +write(config: WizardConfig, targetId: string) Promise~void~
       +clear() Promise~void~
@@ -352,6 +411,134 @@ classDiagram
     class ManifestLicense {
       +name: string
       +licenseId: string | null
+    }
+  }
+
+  namespace Headers {
+    class HeaderPlan {
+      +detail: LicenseDetail
+      +style: HeaderStyle
+      +tokens: Record~string, string~
+    }
+
+    class HeaderStyle {
+      <<union>>
+    }
+
+    class HeaderRenderer {
+      +HeaderRenderer(plan: HeaderPlan)
+      +supportsFull(detail: LicenseDetail)$ boolean
+      +body() string
+    }
+
+    class HeaderTemplate {
+      +HeaderTemplate(template: string)
+    }
+
+    class HeaderComposer {
+      +HeaderComposer(plan: HeaderPlan)
+      +fingerprint() string
+      +block(extension: string) string
+      +hasManaged(content: string) boolean
+      +apply(content: string, filePath: string) string
+    }
+
+    class SourceFileScanner {
+      +SourceFileScanner(walker: IFileTreeWalker, reader: IFileSystemReader, matchers?: GitignoreMatcherFactory)
+      +scan(options?: ScanOptions) Promise~string[]~
+    }
+
+    class ScanOptions {
+      +root?: string
+      +extensions?: string[]
+      +extraIgnores?: string[]
+    }
+
+    class GitignoreMatcher {
+      +GitignoreMatcher(patterns: string[])
+      +ignores(path: string, isDirectory: boolean) boolean
+    }
+
+    class GitignoreMatcherFactory {
+      +fromContent(content: string, extra?: string[]) GitignoreMatcher
+    }
+
+    class IFileTreeWalker {
+      <<interface>>
+      +walk(root: string, skipDirectory: Function) Promise~string[]~
+    }
+
+    class NodeFileTreeWalker {
+      +NodeFileTreeWalker()
+    }
+
+    class HeaderInstaller {
+      +HeaderInstaller(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +install(files: string[], plan: HeaderPlan, onProgress?: Function) Promise~HeaderInstallSummary~
+    }
+
+    class HeaderInstallSummary {
+      +written: string[]
+      +unchanged: string[]
+    }
+
+    class SourceFile {
+      +SourceFile(content: string, path: string)
+      +extensionOf(path: string)$ string
+      +commentStyleFor(extension: string)$ CommentStyle
+      +hasManagedHeader() boolean
+      +withoutManagedHeaders() SourceFile
+      +withManagedHeader(block: string) SourceFile
+      +toString() string
+    }
+
+    class CommentStyle {
+      +blockStart: string
+      +linePrefix: string
+      +blockEnd: string
+    }
+
+    class HeaderRemover {
+      +HeaderRemover(reader: IFileSystemReader, writer: IFileSystemWriter)
+      +remove(files: string[], onProgress?: Function) Promise~HeaderRemoveSummary~
+    }
+
+    class HeaderRemoveSummary {
+      +removed: string[]
+      +total: number
+    }
+
+    class HeaderVerifier {
+      +HeaderVerifier(scanner: SourceFileScanner, reader: IFileSystemReader, writer: IFileSystemWriter, licenses: LicenseRepository)
+      +verify(config: WizardConfig, options: HeaderVerifyOptions) Promise~HeaderVerifyOutcome~
+    }
+
+    class HeaderVerifyOptions {
+      +fix: boolean
+    }
+
+    class HeaderVerifyOutcome {
+      <<union>>
+    }
+
+    class HeaderVerifyReport {
+      +licenseId: string
+      +style: HeaderStyle
+      +total: number
+      +matched: string[]
+      +missing: string[]
+      +drifted: HeaderDrift[]
+      +fixed: string[]
+    }
+
+    class HeaderDrift {
+      +file: string
+      +declares: object | null
+      +reason: HeaderDriftReason
+    }
+
+    class HeaderDriftReason {
+      <<union>>
     }
   }
 
@@ -427,8 +614,10 @@ classDiagram
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
-  LicenseTemplate ..> TemplateSlot : produces
-  LicenseTemplate ..> SlotResolution : produces
+  LicenseTemplate --|> SpdxTemplate : extends
+  HeaderTemplate --|> SpdxTemplate : extends
+  SpdxTemplate ..> TemplateSlot : produces
+  SpdxTemplate ..> SlotResolution : produces
   LicenseWizard ..> LicenseTemplate : creates
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
@@ -470,3 +659,61 @@ classDiagram
   LicenseWizard ..> ComposerManifest : creates
   LicenseWizard ..> ProjectManifestRepository : creates
   LicenseWizard ..> ProjectManifestRepository : reads defaults from
+  LicenseWizard ..> SourceFileScanner : creates
+  LicenseWizard ..> NodeFileTreeWalker : creates
+  LicenseWizard ..> HeaderInstaller : creates
+  LicenseWizard ..> HeaderInstaller : writes headers through
+  LicenseWizard ..> HeaderRemover : creates
+  LicenseWizard ..> HeaderRemover : removes headers through
+  LicenseWizard ..> SourceFile : previews removal with
+  LicenseWizard ..> HeaderVerifier : creates
+  LicenseWizard ..> HeaderVerifier : verifies headers through
+  LicenseWizard ..> HeaderRenderer : checks full-header support with
+  LicenseWizard ..> HeaderComposer : previews header block with
+  LicenseWizard ..> ProgressBar : drives header progress with
+  LicenseWizard ..> HeaderPlan : builds
+  CliReporter ..> HeaderGenerateReport : renders
+  CliReporter ..> HeaderDryRunReport : renders
+  CliReporter ..> HeaderRemoveReport : renders
+  CliReporter ..> HeaderVerifyReport : renders
+  CliReporter ..> HeaderDrift : describes drift from
+  HeaderConfig ..> HeaderStyle : style by
+  HeaderPlan ..> LicenseDetail : carries
+  HeaderPlan ..> HeaderStyle : styled by
+  HeaderRenderer ..> HeaderPlan : renders
+  HeaderRenderer ..> HeaderTemplate : substitutes header template with
+  HeaderComposer ..> HeaderPlan : composes
+  HeaderComposer ..> HeaderRenderer : renders body with
+  HeaderInstaller ..> HeaderComposer : applies header with
+  HeaderInstaller ..> HeaderPlan : applies
+  HeaderInstaller ..> IFileSystemReader : reads files through
+  HeaderInstaller ..> IFileSystemWriter : writes files through
+  HeaderInstaller ..> HeaderInstallSummary : produces
+  HeaderRemover ..> SourceFile : strips header through
+  HeaderRemover ..> IFileSystemReader : reads files through
+  HeaderRemover ..> IFileSystemWriter : writes files through
+  HeaderRemover ..> HeaderRemoveSummary : produces
+  HeaderComposer ..> SourceFile : places header through
+  SourceFile ..> CommentStyle : wraps with
+  SourceFileScanner ..> SourceFile : derives extension with
+  HeaderVerifier ..> SourceFileScanner : rediscovers files through
+  HeaderVerifier ..> HeaderComposer : compares against
+  HeaderVerifier ..> LicenseRepository : fetches header detail through
+  HeaderVerifier ..> IFileSystemReader : reads files through
+  HeaderVerifier ..> IFileSystemWriter : rewrites files through
+  HeaderVerifier ..> WizardConfig : verifies against
+  HeaderVerifier ..> HeaderVerifyOptions : configured by
+  HeaderVerifier ..> HeaderVerifyOutcome : returns
+  HeaderVerifyOutcome ..> HeaderVerifyReport : carries
+  HeaderVerifyReport ..> HeaderDrift : details drift by
+  HeaderDrift ..> HeaderDriftReason : explained by
+  HeaderVerifier ..> HeaderDrift : classifies drift into
+  SourceFileScanner ..> IFileTreeWalker : walks with
+  SourceFileScanner ..> IFileSystemReader : reads .gitignore through
+  SourceFileScanner ..> GitignoreMatcherFactory : builds matchers with
+  SourceFileScanner ..> GitignoreMatcher : filters with
+  SourceFileScanner ..> ScanOptions : configured by
+  GitignoreMatcherFactory ..> GitignoreMatcher : creates
+  NodeFileTreeWalker ..|> IFileTreeWalker : implements
+  ClackRenderer ..> CompletionHeaders : renders
+  CompletionSummary ..> CompletionHeaders : carries

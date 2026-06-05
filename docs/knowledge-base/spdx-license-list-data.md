@@ -63,6 +63,8 @@ Each license has a detailed JSON file at `https://spdx.org/licenses/{licenseId}.
 | `name` | Full license name |
 | `licenseText` | Complete license text (plain text) |
 | `standardLicenseTemplate` | Text with SPDX template markup for variable sections |
+| `standardLicenseHeader` | Per-file license notice (plain text), present only when the license publishes one |
+| `standardLicenseHeaderTemplate` | The same notice with SPDX template markup for its variable sections |
 | `isOsiApproved` | OSI approval status |
 | `isFsfLibre` | FSF free/libre status |
 | `crossRef` | Array of canonical URLs with validity flags |
@@ -98,3 +100,4 @@ The license-list-data repository is generated from XML source files maintained i
 - [Source Trust and Verification](source-trust-and-verification.md) — why SPDX is the most authoritative source
 - [Caching and Retrieval](caching-and-retrieval.md) — how to efficiently consume this data
 - [Template Syntax](template-syntax.md) — the template markup used in the `standardLicenseTemplate` field
+- [License Headers](license-headers.md) — the `standardLicenseHeader` field and how per-file headers are written

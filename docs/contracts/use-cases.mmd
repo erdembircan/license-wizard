@@ -11,7 +11,19 @@ flowchart TD
     HELP -->|Yes| HU[Print usage + flag listing]
     HU --> H
 
-    HELP -->|No| NI{--license, --set, --get-tokens,<br/>or a --save-* flag given?}
+    HELP -->|No| RH{--remove-headers flag?<br/>takes priority over --headers}
+
+    %% ─── Header removal path (standalone) ───
+    RH -->|Yes| RHSCAN[Scan source files —<br/>same scope as writing,<br/>--headers-ignore honored]
+    RHSCAN --> RHDR{--dry-run given?}
+    RHDR -->|Yes| RHPREV[List the files a header<br/>would be stripped from;<br/>skip every write] --> H
+    RHDR -->|No| RHSTRIP[Strip the marked header block<br/>from each file that has one]
+    RHSTRIP -.->|reads and rewrites| SF
+    RHSTRIP --> RHCFG[Drop the headers preference<br/>from the saved config]
+    RHCFG -.->|rewrites config| LC
+    RHCFG --> H
+
+    RH -->|No| NI{--license, --set, --headers,<br/>--get-tokens, or a --save-* flag given?}
 
     %% ─── Non-interactive CLI path ───
     NI -->|Yes| NIL{--license given?}
@@ -31,7 +43,7 @@ flowchart TD
 
     %% ─── Dry-run gate (shared by both generation paths) ───
     DR{--dry-run flag given?}
-    DR -->|Yes| DRP[Render the license to the terminal;<br/>skip every write — no LICENSE,<br/>config, or manifest update] --> H
+    DR -->|Yes| DRP[Render the license to the terminal —<br/>and, when a header was chosen, a sample<br/>block and the files it would touch;<br/>skip every write] --> H
     DR -->|No| PSV
     PSV[Persist config to the chosen save location,<br/>clearing the others — or, when skipped<br/>interactively, clearing every location]
     PSV -.->|writes or clears config| LC
@@ -40,7 +52,15 @@ flowchart TD
     NI -->|No| M{--verify flag?}
 
     %% ─── Interactive / generation path ───
-    M -->|No| C
+    %% Adaptive opening: the remove option appears only when the saved config
+    %% already opted into headers; otherwise the wizard goes straight to setup.
+    M -->|No| MQ{saved config opts into<br/>source-file headers?}
+    MQ -->|No| C
+    MQ -->|Yes| MODEQ[Ask: set up a license,<br/>or remove license headers?]
+    MODEQ -->|Set up a license| C
+    MODEQ -->|Remove license headers| RMQ[Confirm removal]
+    RMQ -->|No| H
+    RMQ -->|Yes| RHSCAN
 
     subgraph IO [Input Orchestrator]
         C[Prepare question]
@@ -49,9 +69,11 @@ flowchart TD
         E --> INJ{answer injects<br/>follow-up questions?}
         INJ -->|license has customizable fields| MODE[Inject Standard / Customize choice]
         INJ -->|Customize selected| FIELDS[Inject one question per copyright field<br/>defaults pre-filled from saved tokens]
+        INJ -->|Add headers? = Yes and<br/>license publishes a standard header| HSTYLE[Inject short / full header-style choice<br/>tokens reused from the license customization]
         INJ -->|none| F
         MODE --> F
         FIELDS --> F
+        HSTYLE --> F
         F{more questions?}
         F -->|Yes| C
         F -->|No| OG[Generate options object]
@@ -61,7 +83,12 @@ flowchart TD
     LW --> DR
     G[License is generated]
     G -->|writes license id<br/>to all present manifests| PJ
-    G --> H([Done])
+    G --> GH{header style chosen?<br/>--headers, or interactive opt-in}
+    GH -->|No| H([Done])
+    GH -->|Yes| HSCAN[Scan source files —<br/>prune node_modules, vendor, .git,<br/>and the project's .gitignore matches]
+    HSCAN --> HWRITE[Write or refresh the marked SPDX header<br/>block in each source file, replacing any<br/>previous one; progress bar over the list]
+    HWRITE -.->|reads and rewrites| SF[/Project source files/]
+    HWRITE --> H
 
     %% ─── Verification path (standalone: ignores every other flag) ───
     M -->|Yes| V[Verify]
@@ -73,7 +100,20 @@ flowchart TD
     HASL -->|Yes| HASC{Saved config exists?}
     HASC -->|No| ERRNC[Error: no saved config] --> H
     HASC -->|Yes| R{LICENSE and every manifest's<br/>license in sync with config?<br/>file by hash, manifests by id}
-    R -->|Yes| PASS([Pass])
+    R -->|Yes| PASS[Report LICENSE in sync]
     R -->|No| AG{--strict given?}
-    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests] --> H
-    AG -->|Yes| FAIL([Fail: exit non-zero,<br/>report every drifted surface])
+    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests]
+    AG -->|Yes| FAIL[Fail the LICENSE surface:<br/>exit non-zero, report every drift]
+    PASS --> HV
+    G2 --> HV
+    FAIL --> HV
+
+    %% ─── Header verification (same run, when config opts into headers) ───
+    HV{config opts into<br/>source-file headers?}
+    HV -->|No| H
+    HV -.->|re-scans source files<br/>and re-derives the header| SF
+    HV -->|Yes| HVR{every source file carries<br/>the expected marked header?}
+    HVR -->|Yes| H
+    HVR -->|No| HVAG{--strict given?}
+    HVAG -->|No, default| HVFIX[Inscribe missing headers and<br/>rewrite drifted ones to match] --> H
+    HVAG -->|Yes| HVFAIL([Fail: exit non-zero,<br/>list missing and drifted files])
