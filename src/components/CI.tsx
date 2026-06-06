@@ -1,6 +1,9 @@
+import Pipeline from "./Pipeline";
+
 /**
- * The "Continuous integration" section: a static terminal mockup of a CI
- * --verify --strict run beside copy explaining the in-pipeline drift check.
+ * The "Continuous integration" section: an animated GitHub Actions run — lint,
+ * test and typecheck pass, then `pnpm verify` catches a drifted LICENSE and
+ * fails, blocking build — beside copy explaining the in-pipeline drift check.
  */
 export default function CI() {
   return (
@@ -26,46 +29,8 @@ export default function CI() {
           <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
         </svg>
         <div className="relative grid items-center gap-10 lg:grid-cols-2">
-          <div className="order-2 font-mono text-[13px] leading-relaxed lg:order-1">
-            <div className="terminal">
-              <div className="terminal-bar">
-                <span className="term-dot bg-term-red"></span>
-                <span className="term-dot bg-term-amber"></span>
-                <span className="term-dot bg-term-green"></span>
-                <span className="ml-2 font-mono text-xs text-term-dim">
-                  license-check · GitHub Actions
-                </span>
-              </div>
-              <div className="px-5 py-4 text-term-text">
-                <p className="text-term-dim"># .github/workflows/ci.yml</p>
-                <p className="mt-1 text-term-text">
-                  - <span className="text-term-accent">name</span>: Check the
-                  license is in sync
-                </p>
-                <p className="pl-2 text-term-text">
-                  <span className="text-term-accent">run</span>: npx
-                  license-wizard --verify --strict
-                </p>
-                <p className="mt-4 text-term-green">
-                  ✦ LICENSE and project manifests are up to date, in harmony
-                  with your saved MIT enchantment.
-                </p>
-                <p className="text-term-dim">exit 0 — the build moves on</p>
-                <p className="mt-4 text-term-dim">
-                  # someone hand-edits LICENSE …
-                </p>
-                <p className="mt-1 text-term-red">
-                  ✗ Project is out of sync with your saved MIT enchantment:
-                </p>
-                <p className="pl-4 text-term-amber">LICENSE does not match</p>
-                <p className="pl-4 text-term-text">
-                  package.json license declares{" "}
-                  <span className="text-term-amber">Apache-2.0</span> (expected
-                  MIT)
-                </p>
-                <p className="mt-1 text-term-red">exit 1 — the build stops</p>
-              </div>
-            </div>
+          <div className="order-2 lg:order-1">
+            <Pipeline />
           </div>
 
           <div className="order-1 lg:order-2">
