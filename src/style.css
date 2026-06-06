@@ -354,23 +354,17 @@
   font-weight: 600;
 }
 .term-think-char {
-  color: var(--color-term-dim);
+  color: #905a38; /* dimmed shade of the orange thinking phrase */
   animation: thinkShimmer 1.1s ease-in-out infinite;
   animation-delay: calc(var(--i, 0) * -0.07s);
 }
 @keyframes thinkShimmer {
   0%,
   100% {
-    color: var(--color-term-dim);
-  }
-  40% {
-    color: var(--color-term-text);
+    color: #905a38;
   }
   50% {
-    color: #f6f9ff;
-  }
-  60% {
-    color: var(--color-term-text);
+    color: var(--color-term-orange); /* the original phrase color */
   }
 }
 
@@ -495,6 +489,6 @@
     transform: none;
   }
   .term-think-char {
-    color: var(--color-term-text) !important;
+    color: var(--color-term-orange) !important;
   }
 }
