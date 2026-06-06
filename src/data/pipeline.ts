@@ -87,16 +87,16 @@ export const pipelineJobs: PipelineJob[] = [
       {
         name: "Run pnpm verify",
         runMs: 720,
+        // Verbatim from a real `license-wizard --verify --strict` run on a
+        // drifted LICENSE in CI (non-TTY): the reporter suppresses its glyph and
+        // all color off a TTY, so the program output is plain. Failure is shown
+        // the way GitHub does — the red ✗ on the job/step rows and the trailing
+        // runner annotation — not by recoloring the program's own lines.
         log: [
           [{ text: "$ license-wizard --verify --strict", tone: "dim" }],
           [{ text: "" }],
-          [
-            {
-              text: "✗ Project is out of sync with your saved MIT enchantment:",
-              tone: "red",
-            },
-          ],
-          [{ text: "  LICENSE " }, { text: "does not match", tone: "amber" }],
+          [{ text: "Project is out of sync with your saved MIT enchantment:" }],
+          [{ text: "  LICENSE does not match" }],
           [
             {
               text: "Run license-wizard --verify to reconcile, or update the configuration to match.",
