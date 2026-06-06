@@ -45,11 +45,8 @@ export default function CI() {
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-soft">
               Drop <code className="flag-code">--verify --strict</code> into any
-              workflow. It re-renders the{" "}
-              <code className="font-mono text-[0.9em]">LICENSE</code> from your
-              saved config and checks every manifest's license field against it.
-              Nothing drifted? It exits zero and the build moves on. Anything
-              out of sync — an edited copyright line, a stale file, a
+              workflow. Nothing drifted? It exits zero and the build moves on.
+              Anything out of sync — an edited copyright line, a stale file, a
               hand-changed manifest — and it lists each one and exits non-zero,
               so the pipeline stops before bad metadata ships.
             </p>
