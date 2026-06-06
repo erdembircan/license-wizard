@@ -443,6 +443,322 @@
 }
 
 /* ----------------------------------------------------------------------------
+   CI pipeline — an animated GitHub Actions run that mirrors the package's own
+   workflow: lint / test / typecheck pass, then `pnpm verify` fails and blocks
+   build. Built on the same deep-navy terminal palette as the hero shell.
+---------------------------------------------------------------------------- */
+.ghp {
+  background: var(--color-term-bg);
+  border: 1px solid var(--color-term-line);
+  border-radius: 16px;
+  overflow: hidden;
+  color: var(--color-term-text);
+  min-height: 22rem;
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    0 40px 80px -40px rgba(14, 24, 48, 0.6),
+    0 18px 40px -28px rgba(31, 83, 196, 0.45);
+}
+
+.ghp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.95rem;
+  background: var(--color-term-bar);
+  border-bottom: 1px solid var(--color-term-line);
+}
+.ghp-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ghp-mark {
+  width: 16px;
+  height: 16px;
+  fill: var(--color-term-dim);
+  flex: 0 0 16px;
+}
+.ghp-workflow {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.ghp-sep {
+  color: var(--color-term-dim);
+}
+.ghp-trigger {
+  color: var(--color-term-dim);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.ghp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  padding: 0.16rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.ghp-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.ghp-pill--queued {
+  color: var(--color-term-dim);
+  border-color: rgba(128, 144, 176, 0.35);
+  background: rgba(128, 144, 176, 0.1);
+}
+.ghp-pill--running {
+  color: var(--color-term-amber);
+  border-color: rgba(244, 192, 107, 0.35);
+  background: rgba(244, 192, 107, 0.12);
+}
+.ghp-pill--running .ghp-pill-dot {
+  animation: ghpPulse 1.3s ease-in-out infinite;
+}
+.ghp-pill--failing {
+  color: var(--color-term-red);
+  border-color: rgba(255, 133, 133, 0.4);
+  background: rgba(255, 133, 133, 0.12);
+}
+@keyframes ghpPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.78);
+  }
+}
+
+.ghp-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.95rem;
+  border-bottom: 1px solid var(--color-term-line);
+  font-size: 0.78rem;
+  color: var(--color-term-dim);
+}
+.ghp-commit {
+  font-family: var(--font-mono);
+  color: var(--color-term-accent);
+  background: rgba(110, 168, 255, 0.12);
+  padding: 0.05rem 0.4rem;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+.ghp-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ghp-jobs {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0;
+}
+.ghp-job {
+  padding: 0 0.95rem;
+}
+.ghp-job-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.42rem 0.45rem;
+  border-radius: 8px;
+}
+.ghp-job--running > .ghp-job-row {
+  background: rgba(110, 168, 255, 0.06);
+}
+.ghp-job-name {
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+.ghp-job-cmd {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-term-dim);
+}
+.ghp-job-time {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--color-term-dim);
+  flex: 0 0 auto;
+}
+.ghp-job--queued .ghp-job-name,
+.ghp-job--queued .ghp-job-cmd {
+  opacity: 0.5;
+}
+.ghp-job--skipped .ghp-job-name,
+.ghp-job--skipped .ghp-job-cmd {
+  opacity: 0.6;
+}
+.ghp-job--failed .ghp-job-name {
+  color: var(--color-term-red);
+}
+
+/* nested steps with a GitHub-style left connector */
+.ghp-steps {
+  list-style: none;
+  margin: 0.1rem 0 0.35rem 1.45rem;
+  padding: 0;
+  border-left: 1px solid var(--color-term-line);
+}
+.ghp-step {
+  padding-left: 0.85rem;
+  animation: ghpReveal 0.28s ease both;
+}
+.ghp-step-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.24rem 0;
+}
+.ghp-step-name {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--color-term-dim);
+}
+
+.ghp-log {
+  margin: 0.3rem 0 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border-left: 2px solid var(--color-term-red);
+  background: rgba(14, 24, 48, 0.7);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.55;
+  animation: ghpReveal 0.3s ease both;
+}
+.ghp-log-line {
+  white-space: pre-wrap;
+  min-height: 0.9rem;
+}
+
+.ghp-annot {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0 0.95rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 133, 133, 0.35);
+  background: rgba(255, 133, 133, 0.08);
+  font-size: 0.78rem;
+  color: var(--color-term-text);
+  animation: ghpReveal 0.3s ease both;
+}
+.ghp-annot strong {
+  color: var(--color-term-red);
+  font-weight: 600;
+}
+
+.ghp-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.7rem 0.95rem 0.95rem;
+}
+.ghp-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.34rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-term-line);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--color-term-text);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    border-color 0.18s,
+    color 0.18s;
+}
+.ghp-replay:hover {
+  border-color: var(--color-term-accent);
+  color: var(--color-term-accent);
+}
+.ghp-replay-ico {
+  width: 14px;
+  height: 14px;
+}
+
+/* status icons ----------------------------------------------------------- */
+.ghp-ico {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: inline-block;
+  box-sizing: border-box;
+}
+.ghp-ico--sm {
+  width: 14px;
+  height: 14px;
+  flex-basis: 14px;
+}
+.ghp-disc-ok {
+  fill: var(--color-term-green);
+}
+.ghp-disc-fail {
+  fill: var(--color-term-red);
+}
+.ghp-disc-skip {
+  stroke: var(--color-term-dim);
+  stroke-width: 1.4;
+}
+.ghp-glyph {
+  stroke: var(--color-term-bg);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ghp-glyph-skip {
+  stroke: var(--color-term-dim);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.ghp-queued {
+  border-radius: 50%;
+  border: 1.5px dashed var(--color-term-dim);
+  opacity: 0.65;
+}
+.ghp-spin {
+  border-radius: 50%;
+  border: 2px solid rgba(244, 192, 107, 0.25);
+  border-top-color: var(--color-term-amber);
+  animation: ghpSpin 0.7s linear infinite;
+}
+@keyframes ghpSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ghpReveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ----------------------------------------------------------------------------
    Reveal-on-scroll
 ---------------------------------------------------------------------------- */
 [data-reveal] {
