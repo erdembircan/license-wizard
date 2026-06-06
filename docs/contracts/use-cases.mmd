@@ -23,7 +23,15 @@ flowchart TD
     RHCFG -.->|rewrites config| LC
     RHCFG --> H
 
-    RH -->|No| NI{--license, --set, --headers,<br/>--get-tokens, or a --save-* flag given?}
+    RH -->|No| AC{--apply-config flag?<br/>takes priority over the<br/>selection flags below}
+
+    %% ─── Apply-saved-config path (standalone) ───
+    AC -->|Yes| ACC{Saved config exists?}
+    ACC -->|No| ERRAC[Error: no saved config to apply] --> H
+    ACC -->|Yes| ACG[Generate from the saved config:<br/>license id, copyright fields, and<br/>header style — config left in place]
+    ACG --> DR
+
+    AC -->|No| NI{--license, --set, --headers,<br/>--get-tokens, or a --save-* flag given?}
 
     %% ─── Non-interactive CLI path ───
     NI -->|Yes| NIL{--license given?}

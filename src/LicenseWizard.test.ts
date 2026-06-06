@@ -1266,3 +1266,139 @@ describe("LicenseWizard header removal", () => {
     expect(state.rendered.some((q) => q.id === "license")).toBe(true);
   });
 });
+
+describe("LicenseWizard apply-config mode", () => {
+  const originalExitCode = process.exitCode;
+  let stdout: string;
+  let stderr: string;
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    state.reset();
+    stdout = "";
+    stderr = "";
+    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stdout += String(chunk);
+      return true;
+    }) as typeof process.stdout.write);
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
+      chunk: unknown,
+    ) => {
+      stderr += String(chunk);
+      return true;
+    }) as typeof process.stderr.write);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    process.exitCode = originalExitCode;
+  });
+
+  it("generates from the saved config without rendering any prompt", async () => {
+    state.config = { licenseId: "MIT", tokens: { "<year>": "2026" } };
+
+    await new LicenseWizard(["--apply-config"]).run();
+
+    expect(state.rendered).toEqual([]);
+    expect(state.generateCalls).toEqual([
+      { licenseId: "MIT", slotValues: { "<year>": "2026" } },
+    ]);
+    expect(state.writtenProjectLicense).toBe("MIT");
+    expect(stdout).toContain("Conjured your LICENSE (MIT)");
+  });
+
+  it("leaves the saved config in place, persisting nowhere new", async () => {
+    state.config = { licenseId: "MIT" };
+
+    await new LicenseWizard(["--apply-config"]).run();
+
+    // The config is the source of truth, not a write target: nothing is saved
+    // or cleared.
+    expect(state.writtenConfig).toBeNull();
+    expect(state.saveTarget).toBeNull();
+    expect(state.configCleared).toBe(false);
+  });
+
+  it("re-stamps source-file headers when the saved config opted into them", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
+
+    await new LicenseWizard(["--apply-config"]).run();
+
+    expect(state.headerWrites).toHaveLength(1);
+    expect(state.headerWrites[0].path).toBe("src/a.ts");
+    expect(state.headerWrites[0].content).toContain("SPDX-License-Identifier");
+  });
+
+  it("writes no headers when the saved config did not opt into them", async () => {
+    state.config = { licenseId: "MIT" };
+    state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
+
+    await new LicenseWizard(["--apply-config"]).run();
+
+    expect(state.headerWrites).toEqual([]);
+  });
+
+  it("fails when no saved configuration exists to apply", async () => {
+    state.config = null;
+
+    await new LicenseWizard(["--apply-config"]).run();
+
+    expect(stderr).toContain("no saved configuration found");
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("takes priority over the selection flags, applying the saved config instead", async () => {
+    state.config = { licenseId: "MIT" };
+
+    await new LicenseWizard([
+      "--apply-config",
+      "--license",
+      "Apache-2.0",
+      "--set",
+      "year=2026",
+      "--save-rc",
+    ]).run();
+
+    // The saved MIT config wins over the Apache-2.0 selection, and --save-rc is
+    // ignored — the config is left where it lives.
+    expect(state.rendered).toEqual([]);
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(state.writtenConfig).toBeNull();
+    expect(state.saveTarget).toBeNull();
+  });
+
+  it("previews from the saved config but writes nothing under --dry-run", async () => {
+    state.config = { licenseId: "MIT" };
+    state.declaredLicenses = [{ name: "package.json", licenseId: null }];
+
+    await new LicenseWizard(["--apply-config", "--dry-run"]).run();
+
+    expect(stdout).toContain("Would conjure LICENSE (MIT):");
+    expect(state.generateCalls).toEqual([]);
+    expect(state.writtenProjectLicense).toBeNull();
+    expect(state.writtenConfig).toBeNull();
+    expect(process.exitCode).toBe(originalExitCode);
+  });
+
+  it("reports the closest matches when the saved config names an unknown license", async () => {
+    state.config = { licenseId: "apache-2-0" };
+    state.notFoundLicenseId = "apache-2-0";
+    state.suggestions = [
+      { licenseId: "Apache-2.0", name: "Apache License 2.0" },
+    ];
+
+    await new LicenseWizard(["--apply-config"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(stderr).toContain('No license matches "apache-2-0"');
+    expect(stderr).toContain("Apache-2.0");
+    expect(process.exitCode).toBe(1);
+  });
+});
