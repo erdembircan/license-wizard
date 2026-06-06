@@ -226,6 +226,12 @@ export class LicenseWizard {
         description:
           "With --verify, fail (exit non-zero) on any drift instead of reconciling it (for CI).",
       },
+      "apply-config": {
+        type: "boolean",
+        default: false,
+        description:
+          "Generate non-interactively from the project's saved config; errors if none exists. Takes priority over --license, --set, --headers, and --save-*.",
+      },
       license: {
         type: "string",
         default: "",
@@ -614,6 +620,42 @@ export class LicenseWizard {
       values,
       saveTarget,
       headerStyle,
+    );
+  }
+
+  /**
+   * Runs the wizard in non-interactive mode driven entirely by the project's
+   * saved configuration instead of selection flags: it reads the highest-priority
+   * config store and regenerates the `LICENSE`, manifest fields, and — when the
+   * config opted into headers — the source-file headers from it, leaving the
+   * config where it lives (no save location is changed). A missing configuration
+   * is reported as a failure with a non-zero exit code. Honors `--dry-run`, which
+   * previews the regeneration without writing. Like the other non-interactive
+   * paths, failures are written to stderr and set the exit code without throwing.
+   */
+  async #runApplyConfig(): Promise<void> {
+    const config = await this.#config.read();
+
+    if (config === null) {
+      this.#fail(
+        "Cannot apply config: no saved configuration found. Save one first with a --save-* flag, or run the wizard interactively.",
+      );
+      return;
+    }
+
+    const detail = await this.#resolveLicenseDetail(config.licenseId);
+    if (detail === null) {
+      return;
+    }
+
+    // The saved config is the source of truth, so its license and header style
+    // are applied as recorded rather than re-validated against selection flags.
+    // The empty save target leaves the config in the store it already lives in.
+    await this.#generateNonInteractive(
+      config.licenseId,
+      config.tokens ?? {},
+      "",
+      config.headers?.style ?? "",
     );
   }
 
@@ -1055,7 +1097,9 @@ export class LicenseWizard {
    * (`composer.json`, `package.json`). Returns the collected answers.
    * When `--help` is passed, prints the usage screen and exits without running.
    * When `--verify` is passed, runs the standalone verification mode instead,
-   * ignoring every other selection flag. When `--dry-run` is passed, the
+   * ignoring every other selection flag. When `--apply-config` is passed,
+   * regenerates everything from the project's saved configuration, ignoring the
+   * selection flags it takes priority over. When `--dry-run` is passed, the
    * resolved license is rendered and printed along with the writes that would
    * have happened, but no `LICENSE`, config, or manifest is written.
    */
@@ -1076,6 +1120,14 @@ export class LicenseWizard {
     // checks the existing LICENSE against the saved configuration instead.
     if (this.#flags.verify) {
       await this.#runVerify();
+      return [];
+    }
+
+    // --apply-config is a standalone mode: it generates from the project's saved
+    // configuration rather than from selection flags, and so takes priority over
+    // --license, --set, --headers, and the --save-* flags.
+    if (this.#flags["apply-config"]) {
+      await this.#runApplyConfig();
       return [];
     }
 

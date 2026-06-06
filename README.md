@@ -154,6 +154,20 @@ By default, verification **self-heals**: anything out of sync (an edited copyrig
   run: npx license-wizard --verify --strict
 ```
 
+### Applying a saved configuration
+
+When a configuration is already saved, `--apply-config` regenerates the project from it in one shot — no selection flags, no prompts. It reads the saved config (the `.licensewizardrc.json` dot-file first, then the manifests), rewrites the `LICENSE` from the recorded license id and copyright fields, records the id in every present manifest, and — when the config opted into headers — re-stamps the source-file headers in the saved style. The config is left exactly where it lives; no save location is changed.
+
+```bash
+npx license-wizard --apply-config
+```
+
+It is a standalone mode and **takes priority over the selection flags** (`--license`, `--set`, `--headers`, `--save-*`): when both are present, the saved config wins. If no configuration is found anywhere, it reports the problem and exits non-zero rather than generating something unasked-for. `--dry-run` previews the regeneration without writing. This is the complement of `--save-*` — one run records the choice, the other replays it — handy for restoring a project's license state in CI or after a checkout.
+
+```bash
+npx license-wizard --apply-config --dry-run
+```
+
 ### Available flags
 
 | Flag | Description |
@@ -161,6 +175,7 @@ By default, verification **self-heals**: anything out of sync (an edited copyrig
 | `--help` | Show the help message and exit. |
 | `--verify` | Verify the `LICENSE` file and every manifest's `license` field — and the source-file headers, when configured — match the saved configuration, reconciling any drift. Standalone mode — ignores every other selection flag. |
 | `--strict` | With `--verify`, fail (exit non-zero) on any drift instead of reconciling it — for CI. |
+| `--apply-config` | Regenerate the `LICENSE`, manifest fields, and configured headers from the project's saved config; errors if none exists. Standalone mode — takes priority over `--license`, `--set`, `--headers`, and `--save-*`; honors `--dry-run`. |
 | `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively (no prompts). |
 | `--set <field=value>...` | Set a copyright field for the chosen license (repeatable). Implies non-interactive mode. |
 | `--save-rc` | Save the resolved config (license + fields) to `.licensewizardrc.json`. Implies non-interactive mode. |
