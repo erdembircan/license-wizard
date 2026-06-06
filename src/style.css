@@ -355,16 +355,24 @@
 }
 .term-think-char {
   color: var(--color-term-orange); /* base: the original phrase color */
-  animation: thinkShimmer 1.1s ease-in-out infinite;
-  animation-delay: calc(var(--i, 0) * -0.07s);
+  animation: thinkShimmer 2.5s linear infinite;
+  animation-delay: calc(var(--i, 0) * 0.05s);
 }
+/* One reflection sweeps left→right: each character flashes to a brighter
+   orange only briefly (the moving band), then every character rests at the
+   base orange for the long tail. All characters share the one 2.5s cycle, so
+   the band fully clears the right edge — and the line sits idle — before the
+   next sweep can begin from the left. */
 @keyframes thinkShimmer {
-  0%,
-  100% {
+  0% {
     color: var(--color-term-orange);
   }
-  50% {
-    color: #ffc79c; /* brighter orange — the highlight that sweeps across */
+  4% {
+    color: #ffc79c; /* brighter orange — the highlight */
+  }
+  8%,
+  100% {
+    color: var(--color-term-orange);
   }
 }
 

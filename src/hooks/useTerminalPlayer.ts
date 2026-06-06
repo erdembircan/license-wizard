@@ -227,22 +227,18 @@ export function useTerminalPlayer(
     }
 
     /**
-     * Renders a thinking phrase as one span per character so a shimmer can
-     * sweep across it. Each span carries an index in `--i`, which the CSS
-     * turns into a staggered animation delay — producing a band of brightness
-     * that travels left to right like light reflecting over a surface.
-     *
-     * The index counts down (rightmost char = 0), so the leftmost glyph sits
-     * furthest into the cycle and peaks first: the wave moves left→right with
-     * no start-up ramp, since every span is already mid-animation.
+     * Renders a thinking phrase as one span per character so a single bright
+     * band can sweep across it. Each span carries its index in `--i`, which
+     * the CSS turns into a staggered (positive) animation delay: the leftmost
+     * glyph flashes first and the rightmost last, so one reflection travels
+     * left→right, clears the edge, and rests before the next cycle begins.
      */
     function renderShimmerPhrase(el: HTMLElement, text: string): void {
       el.textContent = "";
-      const chars = [...text];
-      chars.forEach((ch, i) => {
+      [...text].forEach((ch, i) => {
         const span = document.createElement("span");
         span.className = "term-think-char";
-        span.style.setProperty("--i", String(chars.length - 1 - i));
+        span.style.setProperty("--i", String(i));
         span.textContent = ch;
         el.appendChild(span);
       });
