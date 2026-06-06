@@ -1,0 +1,98 @@
+---
+title: Licensing Domain — Contract
+---
+classDiagram
+  direction TB
+
+  %% Domain: Licensing (src/licensing)
+  %% Focused per-domain view extracted from ../class-diagram.mmd.
+  %% Shows ONLY Licensing-domain classes and their intra-domain relationships.
+  %% Cross-domain relationships (the generator writes through Configuration;
+  %% HeaderTemplate extends SpdxTemplate from Headers; consumers in the bootstrap,
+  %% CLI and Headers) are intentionally omitted — see ../class-diagram.mmd.
+
+  class LicenseRepository {
+    +LicenseRepository(source: ILicenseSource)
+    +search(query: string) Promise~LicenseIndexEntry[]~
+    +suggest(query: string, limit: number) Promise~LicenseIndexEntry[]~
+    +getLicense(licenseId: string) Promise~LicenseDetail~
+  }
+
+  class LicenseRepositoryError {
+    +name: string
+    +cause: unknown
+    +LicenseRepositoryError(message: string, cause?: unknown)
+  }
+
+  class LicenseNotFoundError {
+    +name: string
+    +licenseId: string
+    +LicenseNotFoundError(licenseId: string)
+  }
+
+  class ILicenseSource {
+    <<interface>>
+    +search(query: string) Promise~LicenseIndexEntry[]~
+    +suggest(query: string, limit: number) Promise~LicenseIndexEntry[]~
+    +fetchLicense(licenseId: string) Promise~LicenseDetail~
+  }
+
+  class SpdxLicenseSource {
+    +SpdxLicenseSource(ttlMs: number)
+  }
+
+  class LicenseIndexEntry {
+    +licenseId: string
+    +name: string
+  }
+
+  class LicenseDetail {
+    +licenseId: string
+    +name: string
+    +licenseText: string
+    +standardLicenseTemplate?: string
+    +standardLicenseHeader?: string
+    +standardLicenseHeaderTemplate?: string
+  }
+
+  class SpdxTemplate {
+    <<abstract>>
+    +SpdxTemplate(template: string)
+    +slots() TemplateSlot[]
+    +resolveSlots(entries: Map~string, string~) SlotResolution
+    +render(values: Record~string, string~) string
+  }
+
+  class LicenseTemplate {
+    +LicenseTemplate(template: string)
+  }
+
+  class TemplateSlot {
+    +token: string
+    +label: string
+  }
+
+  class SlotResolution {
+    +values: Record~string, string~
+    +missing: TemplateSlot[]
+    +unknown: string[]
+  }
+
+  class LicenseGenerator {
+    +LicenseGenerator(repository: LicenseRepository, writer: IFileSystemWriter)
+    +generate(licenseId: string, slotValues?: Record~string, string~) Promise~void~
+    +render(licenseId: string, slotValues?: Record~string, string~) Promise~string~
+  }
+
+  SpdxLicenseSource ..|> ILicenseSource : implements
+  LicenseRepository ..> ILicenseSource : uses
+  LicenseRepository ..> LicenseIndexEntry : produces
+  LicenseRepository ..> LicenseDetail : produces
+  LicenseRepository ..> LicenseRepositoryError : throws
+  LicenseRepository ..> LicenseNotFoundError : throws
+  SpdxLicenseSource ..> LicenseNotFoundError : throws
+  LicenseGenerator ..> LicenseRepository : uses
+  LicenseGenerator ..> LicenseTemplate : uses
+  LicenseTemplate --|> SpdxTemplate : extends
+  SpdxTemplate ..> TemplateSlot : produces
+  SpdxTemplate ..> SlotResolution : produces

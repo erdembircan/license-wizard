@@ -1,0 +1,42 @@
+---
+title: Application Domain — Contract
+---
+classDiagram
+  direction TB
+
+  %% Domain: Application (src root)
+  %% Focused per-domain view extracted from ../class-diagram.mmd.
+  %% Shows ONLY Application-domain classes and their intra-domain relationships.
+  %% Cross-domain relationships (to CLI, Licensing, Configuration, Headers, Verify)
+  %% are intentionally omitted — see ../class-diagram.mmd for the full picture.
+  %%
+  %% LicenseWizard is the bootstrap / composition root: it wires the whole
+  %% application together. Most of its relationships point outward into other
+  %% domains and so do not appear here.
+
+  class LicenseWizard {
+    +LicenseWizard(args: string[])
+    +run() Promise~Answer[]~
+  }
+
+  class LicenseInstaller {
+    +LicenseInstaller(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator)
+    +install(selection: LicenseSelection) Promise~void~
+  }
+
+  class LicenseSelection {
+    +licenseId: string
+    +tokens: Record~string, string~
+    +save: ConfigSave
+    +headers?: HeaderConfig
+  }
+
+  class ConfigSave {
+    <<union>>
+  }
+
+  LicenseWizard ..> LicenseInstaller : creates
+  LicenseWizard ..> LicenseInstaller : applies selection through
+  LicenseWizard ..> LicenseSelection : builds
+  LicenseInstaller ..> LicenseSelection : applies
+  LicenseSelection ..> ConfigSave : has
