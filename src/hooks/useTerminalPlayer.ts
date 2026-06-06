@@ -226,6 +226,23 @@ export function useTerminalPlayer(
       return { transcript, inputText };
     }
 
+    /**
+     * Renders a thinking phrase as one span per character so a shimmer can
+     * sweep across it. Each span carries its index in `--i`, which the CSS
+     * turns into a staggered animation delay — producing a band of light that
+     * travels end to end like a reflection moving over a surface.
+     */
+    function renderShimmerPhrase(el: HTMLElement, text: string): void {
+      el.textContent = "";
+      [...text].forEach((ch, i) => {
+        const span = document.createElement("span");
+        span.className = "term-think-char";
+        span.style.setProperty("--i", String(i));
+        span.textContent = ch;
+        el.appendChild(span);
+      });
+    }
+
     // Streams an agent turn Claude-Code style: one persistent thinking spinner
     // pinned to the bottom of the transcript — a single running timer + token
     // counter for the whole turn — with the agent's lines appearing above it.
@@ -236,10 +253,13 @@ export function useTerminalPlayer(
     ): Promise<void> {
       const spinner = document.createElement("div");
       spinner.className = "term-line term-think";
-      const head = document.createElement("span");
+      const glyphEl = document.createElement("span");
+      glyphEl.className = "term-think-glyph";
+      const phraseEl = document.createElement("span");
+      phraseEl.className = "term-think-phrase";
       const meta = document.createElement("span");
       meta.className = "t-dim";
-      spinner.append(head, meta);
+      spinner.append(glyphEl, phraseEl, meta);
       transcript.appendChild(spinner);
       scrollTargetToEnd();
 
@@ -247,6 +267,7 @@ export function useTerminalPlayer(
       let tokens = 0;
       let frame = 0;
       let phraseIdx = Math.floor(Math.random() * THINKING_PHRASES.length);
+      let renderedPhrase = -1;
       const tick = (): void => {
         const glyph = THINKING_FRAMES[frame % THINKING_FRAMES.length]!;
         frame += 1;
@@ -255,8 +276,14 @@ export function useTerminalPlayer(
           phraseIdx = (phraseIdx + 1) % THINKING_PHRASES.length;
         }
         const seconds = Math.max(1, Math.round((Date.now() - started) / 1000));
-        head.textContent = `${glyph} ${THINKING_PHRASES[phraseIdx]}… `;
-        meta.textContent = thinkingMeta(seconds, tokens);
+        glyphEl.textContent = `${glyph} `;
+        // Re-split into shimmer characters only when the phrase changes, so the
+        // sweeping wave runs uninterrupted between phrase swaps.
+        if (phraseIdx !== renderedPhrase) {
+          renderShimmerPhrase(phraseEl, `${THINKING_PHRASES[phraseIdx]}…`);
+          renderedPhrase = phraseIdx;
+        }
+        meta.textContent = ` ${thinkingMeta(seconds, tokens)}`;
       };
       tick();
       const iv = setInterval(tick, 110);
