@@ -96,16 +96,16 @@ export const pipelineJobs: PipelineJob[] = [
               tone: "red",
             },
           ],
+          [{ text: "  LICENSE " }, { text: "does not match", tone: "amber" }],
           [
-            {
-              text: "    LICENSE does not match the rendered template",
-              tone: "amber",
-            },
+            { text: "  " },
+            { text: "package.json", tone: "accent" },
+            { text: " license declares Apache-2.0 (expected MIT)" },
           ],
           [
-            { text: "    package.json license declares " },
-            { text: "Apache-2.0", tone: "amber" },
-            { text: " (expected MIT)" },
+            {
+              text: "Run license-wizard --verify to reconcile, or update the configuration to match.",
+            },
           ],
           [{ text: "" }],
           [{ text: "Error: Process completed with exit code 1.", tone: "red" }],
