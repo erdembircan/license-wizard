@@ -230,7 +230,7 @@ export class LicenseWizard {
         type: "boolean",
         default: false,
         description:
-          "Generate non-interactively from the project's saved config (.licensewizardrc.json, package.json, or composer.json); errors if none exists. Takes priority over --license, --set, --headers, and --save-*.",
+          "Generate non-interactively from the project's saved config; errors if none exists. Takes priority over --license, --set, --headers, and --save-*.",
       },
       license: {
         type: "string",
