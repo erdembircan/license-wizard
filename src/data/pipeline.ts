@@ -43,7 +43,7 @@ export const pipelineMeta = {
   event: "push",
   branch: "license-wizard:master",
   commit: "2f6e1ab",
-  subject: "Keep the LICENSE in sync with the manifests",
+  subject: "Adjust the LICENSE copyright line",
 };
 
 const setup: PipelineStep[] = [
@@ -97,11 +97,6 @@ export const pipelineJobs: PipelineJob[] = [
             },
           ],
           [{ text: "  LICENSE " }, { text: "does not match", tone: "amber" }],
-          [
-            { text: "  " },
-            { text: "package.json", tone: "accent" },
-            { text: " license declares Apache-2.0 (expected MIT)" },
-          ],
           [
             {
               text: "Run license-wizard --verify to reconcile, or update the configuration to match.",
