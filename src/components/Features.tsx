@@ -186,6 +186,38 @@ export default function Features() {
             answer a few prompts, done. No setup, no flags required.
           </p>
         </article>
+
+        <article
+          className="card"
+          data-reveal
+          style={{ transitionDelay: "0ms" }}
+        >
+          <span className="card-icon">
+            <svg
+              className="size-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <rect x="4" y="3" width="16" height="18" rx="2" />
+              <rect x="7" y="6.5" width="10" height="3.2" rx="1" />
+              <path d="M7 14h10M7 17.5h6" />
+            </svg>
+          </span>
+          <h3 className="font-display text-lg font-semibold text-ink">
+            Source-file headers
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+            Optionally stamps the per-file license notice — the short SPDX tag
+            or the full standard header — across your{" "}
+            <code className="font-mono text-[0.85em]">.js</code>/
+            <code className="font-mono text-[0.85em]">.ts</code>/
+            <code className="font-mono text-[0.85em]">.php</code> sources, with
+            a marker that keeps them verifiable.
+          </p>
+        </article>
       </div>
     </section>
   );

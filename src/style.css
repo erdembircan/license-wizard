@@ -797,6 +797,211 @@
 }
 
 /* ----------------------------------------------------------------------------
+   Source-file headers — an editor mock that stamps a license header into the
+   top of a file. Shares the deep-navy terminal palette; the stamped block gets
+   a brand-tinted highlight and a quick "stamp" reveal on every style/file flip.
+---------------------------------------------------------------------------- */
+
+/* segmented style toggle (short / full) */
+.hdr-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0.3rem;
+  border-radius: 14px;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+}
+.hdr-seg-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    box-shadow 0.18s;
+}
+.hdr-seg-btn:hover {
+  color: var(--color-ink);
+}
+.hdr-seg-btn[aria-pressed="true"] {
+  background: var(--color-paper-raised);
+  color: var(--color-brand-strong);
+  box-shadow:
+    0 1px 2px rgba(22, 34, 61, 0.08),
+    0 0 0 1px var(--color-brand-soft);
+}
+.hdr-seg-sub {
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--color-ink-faint);
+}
+
+/* the code editor body — same deep-navy as the terminal, fixed height + scroll */
+.hdr-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  height: 25rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.1rem;
+  color: var(--color-term-text);
+  background: var(--color-term-bg);
+}
+.hdr-code::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.hdr-code::-webkit-scrollbar-thumb {
+  background: var(--color-term-line);
+  border-radius: 999px;
+}
+.hdr-code::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hdr-ln {
+  white-space: pre;
+  min-height: 1.1em;
+}
+/* the preamble (shebang / <?php) the header is threaded around */
+.hdr-pre {
+  color: var(--color-term-amber);
+}
+/* the file's own code, dimmed so the freshly stamped header is the focus */
+.hdr-src {
+  color: var(--color-term-dim);
+  opacity: 0.7;
+}
+/* comment scaffolding: the open/close delimiters and the gutter prefix */
+.hdr-cm {
+  color: var(--color-term-dim);
+}
+/* the SPDX notice text itself — the bright, in-focus content */
+.hdr-body {
+  color: var(--color-term-text);
+}
+/* the marker line: present but quiet, the hidden plumbing */
+.hdr-marker {
+  color: var(--color-term-accent);
+  opacity: 0.85;
+}
+
+/* the highlighted, freshly stamped comment block */
+.hdr-block {
+  position: relative;
+  margin: 0.1rem -0.4rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.7rem;
+  border-radius: 8px;
+  border-left: 2px solid var(--color-term-accent);
+  background: linear-gradient(
+    90deg,
+    rgba(110, 168, 255, 0.12),
+    rgba(110, 168, 255, 0.02)
+  );
+  animation: stamp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.99);
+  }
+  60% {
+    box-shadow: 0 0 0 1px rgba(110, 168, 255, 0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* the sparkle that flashes once when a block is stamped */
+.hdr-spark {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-term-accent);
+  filter: drop-shadow(0 0 4px rgba(110, 168, 255, 0.7));
+  animation: stampSpark 0.7s ease-out both;
+  pointer-events: none;
+}
+@keyframes stampSpark {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.1) rotate(25deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85) rotate(40deg);
+  }
+}
+
+/* footer under the code: the marker call-out + the per-file note */
+.hdr-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.7rem 1.1rem;
+  background: var(--color-term-bar);
+  border-top: 1px solid var(--color-term-line);
+  font-size: 0.74rem;
+  color: var(--color-term-dim);
+}
+.hdr-foot-marker {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  max-width: 30rem;
+}
+.hdr-foot-arrow {
+  color: var(--color-term-accent);
+  font-weight: 700;
+}
+.hdr-foot-code {
+  font-family: var(--font-mono);
+  color: var(--color-term-accent);
+  background: rgba(110, 168, 255, 0.12);
+  padding: 0.02rem 0.35rem;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.hdr-foot-note {
+  font-family: var(--font-mono);
+  color: var(--color-term-dim);
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hdr-block {
+    animation: none;
+  }
+  .hdr-spark {
+    display: none;
+  }
+}
+
+/* ----------------------------------------------------------------------------
    Reveal-on-scroll
 ---------------------------------------------------------------------------- */
 [data-reveal] {

@@ -47,8 +47,9 @@ export default function CI() {
               Drop <code className="flag-code">--verify --strict</code> into any
               workflow. Nothing drifted? It exits zero and the build moves on.
               Anything out of sync — an edited copyright line, a stale file, a
-              hand-changed manifest — and it lists each one and exits non-zero,
-              so the pipeline stops before bad metadata ships.
+              hand-changed manifest, a source file missing its header — and it
+              lists each one and exits non-zero, so the pipeline stops before
+              bad metadata ships.
             </p>
             <p className="mt-4 max-w-md text-lg leading-relaxed text-ink-soft">
               We trust it because we run it on ourselves: License Wizard's own

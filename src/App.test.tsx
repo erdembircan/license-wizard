@@ -16,6 +16,7 @@ describe("App", () => {
     const links = within(nav);
     expect(links.getByText("Features")).toBeInTheDocument();
     expect(links.getByText("Usage")).toBeInTheDocument();
+    expect(links.getByText("Headers")).toBeInTheDocument();
     expect(links.getByText("Agents")).toBeInTheDocument();
     expect(links.getByText("CI")).toBeInTheDocument();
     expect(links.getByText("Flags")).toBeInTheDocument();
@@ -30,6 +31,9 @@ describe("App", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "A short, guided flow" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "A header in every file" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /Second nature/ }),
@@ -62,6 +66,9 @@ describe("App", () => {
       "--save-npm",
       "--save-composer",
       "--get-tokens",
+      "--headers <short|full>",
+      "--headers-ignore <glob>",
+      "--remove-headers",
       "--dry-run",
     ]);
   });
