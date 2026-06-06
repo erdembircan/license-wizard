@@ -448,19 +448,42 @@
    build. Built on the same deep-navy terminal palette as the hero shell.
 ---------------------------------------------------------------------------- */
 .ghp {
+  display: flex;
+  flex-direction: column;
+  /* Fixed height so the run scrolls inside the panel instead of growing it. */
+  height: 30rem;
   background: var(--color-term-bg);
   border: 1px solid var(--color-term-line);
   border-radius: 16px;
   overflow: hidden;
   color: var(--color-term-text);
-  min-height: 22rem;
   box-shadow:
     0 1px 0 0 rgba(255, 255, 255, 0.04) inset,
     0 40px 80px -40px rgba(14, 24, 48, 0.6),
     0 18px 40px -28px rgba(31, 83, 196, 0.45);
 }
 
+/* the scrollable run region between the fixed header and footer */
+.ghp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 0.5rem;
+}
+.ghp-body::-webkit-scrollbar {
+  width: 8px;
+}
+.ghp-body::-webkit-scrollbar-thumb {
+  background: var(--color-term-line);
+  border-radius: 999px;
+}
+.ghp-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .ghp-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -542,6 +565,7 @@
 }
 
 .ghp-sub {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -668,9 +692,11 @@
 }
 
 .ghp-foot {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   padding: 0.7rem 0.95rem 0.95rem;
+  border-top: 1px solid var(--color-term-line);
 }
 .ghp-replay {
   display: inline-flex;

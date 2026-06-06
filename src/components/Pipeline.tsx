@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { pipelineMeta } from "../data/pipeline";
 import type { LogLine, LogTone } from "../data/pipeline";
 import type { RunStatus, RuntimeJob } from "../lib/pipelineEngine";
@@ -141,6 +142,14 @@ function JobRow({ job }: { job: RuntimeJob }) {
  */
 export default function Pipeline() {
   const { rootRef, jobs, phase, settled, replay } = useCIPipeline();
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Keep the newest streaming step (and finally the error log) in view as the
+  // run advances, so the fixed-height panel scrolls itself instead of growing.
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [jobs]);
 
   return (
     <div ref={rootRef} className="ghp" data-reveal>
@@ -164,22 +173,24 @@ export default function Pipeline() {
         <span className="ghp-subject">{pipelineMeta.subject}</span>
       </div>
 
-      <ul className="ghp-jobs">
-        {jobs.map((job) => (
-          <JobRow key={job.id} job={job} />
-        ))}
-      </ul>
+      <div className="ghp-body" ref={bodyRef}>
+        <ul className="ghp-jobs">
+          {jobs.map((job) => (
+            <JobRow key={job.id} job={job} />
+          ))}
+        </ul>
 
-      {phase === "failing" && (
-        <div className="ghp-annot" role="status">
-          <StatusIcon status="failed" small />
-          <span>
-            <strong>verify</strong> — license drift detected. The{" "}
-            <strong>build</strong> job was skipped because a required job
-            failed.
-          </span>
-        </div>
-      )}
+        {phase === "failing" && (
+          <div className="ghp-annot" role="status">
+            <StatusIcon status="failed" small />
+            <span>
+              <strong>verify</strong> — license drift detected. The{" "}
+              <strong>build</strong> job was skipped because a required job
+              failed.
+            </span>
+          </div>
+        )}
+      </div>
 
       {settled && (
         <div className="ghp-foot">
