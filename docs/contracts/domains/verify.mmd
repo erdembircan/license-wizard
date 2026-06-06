@@ -1,0 +1,48 @@
+---
+title: Verify Domain — Contract
+---
+classDiagram
+  direction TB
+
+  %% Domain: Verify (src root)
+  %% Focused per-domain view extracted from ../class-diagram.mmd.
+  %% Shows ONLY Verify-domain classes and their intra-domain relationships.
+  %% Cross-domain relationships (LicenseWizard creates the verifier; the verifier
+  %% reads Configuration, re-renders through Licensing, reads the LICENSE file)
+  %% are intentionally omitted — see ../class-diagram.mmd for the full picture.
+
+  class LicenseVerifier {
+    +LicenseVerifier(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator, reader: IFileSystemReader)
+    +verify(options: VerifyOptions) Promise~VerifyOutcome~
+  }
+
+  class VerifyOptions {
+    +fix: boolean
+  }
+
+  class VerifyOutcome {
+    <<union>>
+  }
+
+  class VerifyReport {
+    +licenseId: string
+    +license: DriftStatus
+    +manifests: ManifestCheck[]
+  }
+
+  class ManifestCheck {
+    +name: string
+    +declared: string | null
+    +status: DriftStatus
+  }
+
+  class DriftStatus {
+    <<union>>
+  }
+
+  LicenseVerifier ..> VerifyOptions : configured by
+  LicenseVerifier ..> VerifyOutcome : returns
+  VerifyOutcome ..> VerifyReport : carries
+  VerifyReport ..> ManifestCheck : aggregates
+  VerifyReport ..> DriftStatus : statuses by
+  ManifestCheck ..> DriftStatus : status by

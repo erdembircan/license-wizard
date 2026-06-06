@@ -1,0 +1,160 @@
+---
+title: Configuration Domain — Contract
+---
+classDiagram
+  direction TB
+
+  %% Domain: Configuration (src/configuration)
+  %% Focused per-domain view extracted from ../class-diagram.mmd.
+  %% Shows ONLY Configuration-domain classes and their intra-domain relationships.
+  %% Cross-domain relationships (consumed by the bootstrap, Licensing, Headers and
+  %% Verify; HeaderConfig references HeaderStyle from Headers) are intentionally
+  %% omitted — see ../class-diagram.mmd for the full picture.
+  %%
+  %% HeaderConfig belongs to this domain but its only relationship (to HeaderStyle)
+  %% crosses into Headers, so it appears here without intra-domain edges.
+
+  class IFileSystemReader {
+    <<interface>>
+    +read(path: string) Promise~string~
+    +exists(path: string) Promise~boolean~
+  }
+
+  class IFileSystemWriter {
+    <<interface>>
+    +write(path: string, content: string) Promise~void~
+    +delete(path: string) Promise~void~
+  }
+
+  class NodeFileSystemReader {
+    +NodeFileSystemReader()
+  }
+
+  class NodeFileSystemWriter {
+    +NodeFileSystemWriter()
+  }
+
+  class FileSystemReaderError {
+    +name: string
+    +cause: unknown
+    +FileSystemReaderError(message: string, cause?: unknown)
+  }
+
+  class FileSystemWriterError {
+    +name: string
+    +cause: unknown
+    +FileSystemWriterError(message: string, cause?: unknown)
+  }
+
+  class WizardConfig {
+    +licenseId: string
+    +tokens?: Record~string, string~
+    +headers?: HeaderConfig
+  }
+
+  class HeaderConfig {
+    +style: HeaderStyle
+  }
+
+  class ConfigTarget {
+    +id: string
+    +label: string
+  }
+
+  class IConfigStore {
+    <<interface>>
+    +id: string
+    +label: string
+    +available(reader: IFileSystemReader) Promise~boolean~
+    +read(reader: IFileSystemReader) Promise~WizardConfig | null~
+    +write(reader: IFileSystemReader, writer: IFileSystemWriter, config: WizardConfig) Promise~void~
+    +clear(reader: IFileSystemReader, writer: IFileSystemWriter) Promise~void~
+  }
+
+  class RcConfigStore {
+    +RcConfigStore()
+  }
+
+  class ManifestConfigStore {
+    +ManifestConfigStore(fileName: string)
+  }
+
+  class Config {
+    +Config(stores: IConfigStore[], reader: IFileSystemReader, writer: IFileSystemWriter)
+    +read() Promise~WizardConfig | null~
+    +source() Promise~string | null~
+    +targets() Promise~ConfigTarget[]~
+    +write(config: WizardConfig, targetId: string) Promise~void~
+    +clear() Promise~void~
+  }
+
+  class IProjectManifest {
+    <<interface>>
+    +name: string
+    +exists(reader: IFileSystemReader) Promise~boolean~
+    +readLicense(reader: IFileSystemReader) Promise~string | null~
+    +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
+  }
+
+  class JsonManifest {
+    <<abstract>>
+    +JsonManifest(fileName: string)
+    +name: string
+    +exists(reader: IFileSystemReader) Promise~boolean~
+    +readLicense(reader: IFileSystemReader) Promise~string | null~
+    +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
+    #extractLicenseId(value: unknown)* string | null
+  }
+
+  class NpmManifest {
+    +NpmManifest()
+  }
+
+  class ComposerManifest {
+    +ComposerManifest()
+  }
+
+  class ProjectManifestRepository {
+    +ProjectManifestRepository(manifests: IProjectManifest[], reader: IFileSystemReader, writer: IFileSystemWriter)
+    +readLicense() Promise~string | null~
+    +writeLicense(licenseId: string) Promise~void~
+    +declaredLicenses() Promise~ManifestLicense[]~
+    +writeLicenseTo(name: string, licenseId: string) Promise~void~
+  }
+
+  class ManifestLicense {
+    +name: string
+    +licenseId: string | null
+  }
+
+  NodeFileSystemReader ..|> IFileSystemReader : implements
+  NodeFileSystemWriter ..|> IFileSystemWriter : implements
+  NodeFileSystemReader ..> FileSystemReaderError : throws
+  NodeFileSystemWriter ..> FileSystemWriterError : throws
+  Config ..> IConfigStore : coordinates
+  Config ..> IFileSystemReader : uses
+  Config ..> IFileSystemWriter : uses
+  Config ..> WizardConfig : produces
+  Config ..> ConfigTarget : produces
+  Config ..> FileSystemWriterError : throws
+  RcConfigStore ..|> IConfigStore : implements
+  ManifestConfigStore ..|> IConfigStore : implements
+  RcConfigStore ..> IFileSystemReader : uses
+  RcConfigStore ..> IFileSystemWriter : uses
+  RcConfigStore ..> FileSystemReaderError : throws
+  RcConfigStore ..> FileSystemWriterError : throws
+  ManifestConfigStore ..> IFileSystemReader : uses
+  ManifestConfigStore ..> IFileSystemWriter : uses
+  ManifestConfigStore ..> FileSystemReaderError : throws
+  ManifestConfigStore ..> FileSystemWriterError : throws
+  JsonManifest ..|> IProjectManifest : implements
+  NpmManifest --|> JsonManifest : extends
+  ComposerManifest --|> JsonManifest : extends
+  JsonManifest ..> IFileSystemReader : uses
+  JsonManifest ..> IFileSystemWriter : uses
+  JsonManifest ..> FileSystemReaderError : throws
+  JsonManifest ..> FileSystemWriterError : throws
+  ProjectManifestRepository ..> IProjectManifest : coordinates
+  ProjectManifestRepository ..> IFileSystemReader : uses
+  ProjectManifestRepository ..> IFileSystemWriter : uses
+  ProjectManifestRepository ..> ManifestLicense : produces

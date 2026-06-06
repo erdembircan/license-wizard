@@ -1,0 +1,215 @@
+---
+title: CLI Domain — Contract
+---
+classDiagram
+  direction TB
+
+  %% Domain: CLI (src/cli)
+  %% Focused per-domain view extracted from ../class-diagram.mmd.
+  %% Shows ONLY CLI-domain classes and their intra-domain relationships.
+  %% Cross-domain relationships (LicenseWizard creates these; CliReporter renders
+  %% Licensing/Verify/Headers reports) are intentionally omitted — see
+  %% ../class-diagram.mmd for the full picture.
+  %%
+  %% FlagParser and ProgressBar belong to this domain but have no intra-domain
+  %% relationships; they collaborate only with the bootstrap (LicenseWizard).
+
+  class FlagParser {
+    +FlagParser(flags: object)
+    +parse(args: string[]) object
+    +formatHelp() string
+  }
+
+  class Orchestrator {
+    +Orchestrator(repository: QuestionRepository, renderer: IRenderer)
+    +run() Promise~Answer[]~
+  }
+
+  class IRenderer {
+    <<interface>>
+    +render(question: Question) Promise~Answer~
+    +onCancel() string
+    +complete(summary: CompletionSummary) void
+  }
+
+  class CompletionSummary {
+    +licenseId: string
+    +customized: boolean
+    +savedTo: string
+    +manifests: string[]
+    +headers?: CompletionHeaders
+  }
+
+  class CompletionHeaders {
+    +style: HeaderStyle
+    +written: number
+    +total: number
+  }
+
+  class ProgressBar {
+    +ProgressBar(label: string, out?: object)
+    +start(total: number) void
+    +update(done: number) void
+    +stop() void
+  }
+
+  class ClackRenderer {
+    +ClackRenderer(meta: object, spinner: Spinner)
+  }
+
+  class IReporter {
+    <<interface>>
+    +usage(options: string) void
+    +tokens(licenseId: string, slots: TemplateSlot[]) void
+    +generated(licenseId: string, savedTo: string) void
+    +dryRun(report: DryRunReport) void
+    +missingFields(licenseId: string, missing: TemplateSlot[]) void
+    +unknownFields(licenseId: string, unknown: string[], slots: TemplateSlot[]) void
+    +licenseNotFound(licenseId: string, suggestions: LicenseIndexEntry[]) void
+    +verifyMatch(report: VerifyReport) void
+    +verifyFixed(report: VerifyReport) void
+    +verifyMismatch(report: VerifyReport) void
+    +headersNoFiles(licenseId: string) void
+    +headersGenerated(report: HeaderGenerateReport) void
+    +headersDryRun(report: HeaderDryRunReport) void
+    +headersRemoved(report: HeaderRemoveReport) void
+    +headersRemoveDryRun(report: HeaderRemoveReport) void
+    +headersVerifyMatch(report: HeaderVerifyReport) void
+    +headersVerifyFixed(report: HeaderVerifyReport) void
+    +headersVerifyMismatch(report: HeaderVerifyReport) void
+    +error(message: string) void
+  }
+
+  class HeaderGenerateReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +total: number
+    +written: number
+    +unchanged: number
+  }
+
+  class HeaderDryRunReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +files: string[]
+    +sample: string
+  }
+
+  class HeaderRemoveReport {
+    +removed: string[]
+    +total: number
+  }
+
+  class DryRunReport {
+    +licenseId: string
+    +content: string
+    +save: ConfigSave
+    +manifests: string[]
+  }
+
+  class CliReporter {
+    +CliReporter(programName: string, out?: object, err?: object)
+  }
+
+  class Banner {
+    +buildBanner(meta: object, options: object) string
+  }
+
+  class Spinner {
+    +start(handle: object) Function
+  }
+
+  class QuestionRepository {
+    +QuestionRepository(questions: Question[])
+    +getByIndex(index: number) Question | null
+    +insertAt(index: number, questions: Question[]) void
+  }
+
+  class QuestionLifecycle {
+    +inject(questions: Question[]) void
+  }
+
+  class Question {
+    <<union>>
+  }
+
+  class TextQuestion {
+    +id: string
+    +text: string
+    +type: "text"
+    +defaultValue: string
+    +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
+  }
+
+  class ConfirmQuestion {
+    +id: string
+    +text: string
+    +type: "confirm"
+    +defaultValue: boolean
+    +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
+  }
+
+  class AutocompleteQuestion {
+    +id: string
+    +text: string
+    +type: "autocomplete"
+    +defaultValue: string
+    +search(query: string) Promise~AutocompleteOption[]~
+    +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
+  }
+
+  class AutocompleteOption {
+    +value: string
+    +label: string
+    +hint: string
+  }
+
+  class SelectQuestion {
+    +id: string
+    +text: string
+    +type: "select"
+    +options: SelectOption[]
+    +defaultValue: string
+    +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
+  }
+
+  class SelectOption {
+    +value: string
+    +label: string
+    +hint: string
+  }
+
+  class Answer {
+    +questionId: string
+    +value: string | boolean
+    +fields: Record~string, string | boolean~
+  }
+
+  TextQuestion ..|> Question : member of
+  ConfirmQuestion ..|> Question : member of
+  AutocompleteQuestion ..|> Question : member of
+  SelectQuestion ..|> Question : member of
+  TextQuestion ..> QuestionLifecycle : onAnswer receives
+  ConfirmQuestion ..> QuestionLifecycle : onAnswer receives
+  AutocompleteQuestion ..> QuestionLifecycle : onAnswer receives
+  SelectQuestion ..> QuestionLifecycle : onAnswer receives
+  SelectQuestion ..> SelectOption : offers
+  Orchestrator ..> QuestionLifecycle : creates
+  Orchestrator ..> QuestionRepository : gets questions from
+  Orchestrator ..> IRenderer : feeds questions to
+  Orchestrator ..> Answer : collects
+  ClackRenderer ..|> IRenderer : implements
+  ClackRenderer ..> Spinner : uses
+  ClackRenderer ..> Banner : renders
+  ClackRenderer ..> CompletionSummary : renders
+  ClackRenderer ..> Question : renders
+  ClackRenderer ..> CompletionHeaders : renders
+  IRenderer ..> CompletionSummary : renders
+  CompletionSummary ..> CompletionHeaders : carries
+  CliReporter ..|> IReporter : implements
+  CliReporter ..> DryRunReport : renders
+  CliReporter ..> HeaderGenerateReport : renders
+  CliReporter ..> HeaderDryRunReport : renders
+  CliReporter ..> HeaderRemoveReport : renders
+  QuestionRepository ..> Question : produces
+  AutocompleteQuestion ..> AutocompleteOption : search produces

@@ -1,0 +1,168 @@
+---
+title: Headers Domain — Contract
+---
+classDiagram
+  direction TB
+
+  %% Domain: Headers (src/headers)
+  %% Focused per-domain view extracted from ../class-diagram.mmd.
+  %% Shows ONLY Headers-domain classes and their intra-domain relationships.
+  %% Cross-domain relationships (HeaderTemplate extends Licensing's SpdxTemplate;
+  %% HeaderPlan carries a LicenseDetail; installer/remover/verifier/scanner use
+  %% Configuration's file-system interfaces; HeaderVerifier fetches through the
+  %% LicenseRepository and verifies against WizardConfig) are intentionally
+  %% omitted — see ../class-diagram.mmd for the full picture.
+
+  class HeaderPlan {
+    +detail: LicenseDetail
+    +style: HeaderStyle
+    +tokens: Record~string, string~
+  }
+
+  class HeaderStyle {
+    <<union>>
+  }
+
+  class HeaderRenderer {
+    +HeaderRenderer(plan: HeaderPlan)
+    +supportsFull(detail: LicenseDetail)$ boolean
+    +body() string
+  }
+
+  class HeaderTemplate {
+    +HeaderTemplate(template: string)
+  }
+
+  class HeaderComposer {
+    +HeaderComposer(plan: HeaderPlan)
+    +fingerprint() string
+    +block(extension: string) string
+    +hasManaged(content: string) boolean
+    +apply(content: string, filePath: string) string
+  }
+
+  class SourceFileScanner {
+    +SourceFileScanner(walker: IFileTreeWalker, reader: IFileSystemReader, matchers?: GitignoreMatcherFactory)
+    +scan(options?: ScanOptions) Promise~string[]~
+  }
+
+  class ScanOptions {
+    +root?: string
+    +extensions?: string[]
+    +extraIgnores?: string[]
+  }
+
+  class GitignoreMatcher {
+    +GitignoreMatcher(patterns: string[])
+    +ignores(path: string, isDirectory: boolean) boolean
+  }
+
+  class GitignoreMatcherFactory {
+    +fromContent(content: string, extra?: string[]) GitignoreMatcher
+  }
+
+  class IFileTreeWalker {
+    <<interface>>
+    +walk(root: string, skipDirectory: Function) Promise~string[]~
+  }
+
+  class NodeFileTreeWalker {
+    +NodeFileTreeWalker()
+  }
+
+  class HeaderInstaller {
+    +HeaderInstaller(reader: IFileSystemReader, writer: IFileSystemWriter)
+    +install(files: string[], plan: HeaderPlan, onProgress?: Function) Promise~HeaderInstallSummary~
+  }
+
+  class HeaderInstallSummary {
+    +written: string[]
+    +unchanged: string[]
+  }
+
+  class SourceFile {
+    +SourceFile(content: string, path: string)
+    +extensionOf(path: string)$ string
+    +commentStyleFor(extension: string)$ CommentStyle
+    +hasManagedHeader() boolean
+    +withoutManagedHeaders() SourceFile
+    +withManagedHeader(block: string) SourceFile
+    +toString() string
+  }
+
+  class CommentStyle {
+    +blockStart: string
+    +linePrefix: string
+    +blockEnd: string
+  }
+
+  class HeaderRemover {
+    +HeaderRemover(reader: IFileSystemReader, writer: IFileSystemWriter)
+    +remove(files: string[], onProgress?: Function) Promise~HeaderRemoveSummary~
+  }
+
+  class HeaderRemoveSummary {
+    +removed: string[]
+    +total: number
+  }
+
+  class HeaderVerifier {
+    +HeaderVerifier(scanner: SourceFileScanner, reader: IFileSystemReader, writer: IFileSystemWriter, licenses: LicenseRepository)
+    +verify(config: WizardConfig, options: HeaderVerifyOptions) Promise~HeaderVerifyOutcome~
+  }
+
+  class HeaderVerifyOptions {
+    +fix: boolean
+  }
+
+  class HeaderVerifyOutcome {
+    <<union>>
+  }
+
+  class HeaderVerifyReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +total: number
+    +matched: string[]
+    +missing: string[]
+    +drifted: HeaderDrift[]
+    +fixed: string[]
+  }
+
+  class HeaderDrift {
+    +file: string
+    +declares: object | null
+    +reason: HeaderDriftReason
+  }
+
+  class HeaderDriftReason {
+    <<union>>
+  }
+
+  HeaderPlan ..> HeaderStyle : styled by
+  HeaderRenderer ..> HeaderPlan : renders
+  HeaderRenderer ..> HeaderTemplate : substitutes header template with
+  HeaderComposer ..> HeaderPlan : composes
+  HeaderComposer ..> HeaderRenderer : renders body with
+  HeaderComposer ..> SourceFile : places header through
+  HeaderInstaller ..> HeaderComposer : applies header with
+  HeaderInstaller ..> HeaderPlan : applies
+  HeaderInstaller ..> HeaderInstallSummary : produces
+  HeaderRemover ..> SourceFile : strips header through
+  HeaderRemover ..> HeaderRemoveSummary : produces
+  SourceFile ..> CommentStyle : wraps with
+  SourceFileScanner ..> SourceFile : derives extension with
+  SourceFileScanner ..> IFileTreeWalker : walks with
+  SourceFileScanner ..> GitignoreMatcherFactory : builds matchers with
+  SourceFileScanner ..> GitignoreMatcher : filters with
+  SourceFileScanner ..> ScanOptions : configured by
+  GitignoreMatcherFactory ..> GitignoreMatcher : creates
+  NodeFileTreeWalker ..|> IFileTreeWalker : implements
+  HeaderVerifier ..> SourceFileScanner : rediscovers files through
+  HeaderVerifier ..> HeaderComposer : compares against
+  HeaderVerifier ..> HeaderVerifyOptions : configured by
+  HeaderVerifier ..> HeaderVerifyOutcome : returns
+  HeaderVerifier ..> HeaderDrift : classifies drift into
+  HeaderVerifyOutcome ..> HeaderVerifyReport : carries
+  HeaderVerifyReport ..> HeaderDrift : details drift by
+  HeaderDrift ..> HeaderDriftReason : explained by
