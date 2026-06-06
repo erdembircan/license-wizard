@@ -2,6 +2,7 @@ import Nav from "./components/Nav";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
 import Usage from "./components/Usage";
+import Headers from "./components/Headers";
 import Agents from "./components/Agents";
 import CI from "./components/CI";
 import Flags from "./components/Flags";
@@ -26,6 +27,7 @@ export default function App() {
         <Hero />
         <Features />
         <Usage />
+        <Headers />
         <Agents />
         <CI />
         <Flags />

@@ -43,9 +43,10 @@ export default function Flags() {
               </td>
               <td className="px-5 py-3.5 text-ink-soft">
                 Check the{" "}
-                <code className="font-mono text-[0.85em]">LICENSE</code> file
-                and every manifest&apos;s license field against the saved
-                config, reconciling drift. Standalone mode.
+                <code className="font-mono text-[0.85em]">LICENSE</code> file,
+                every manifest&apos;s license field — and the source-file
+                headers, when configured — against the saved config, reconciling
+                drift. Standalone mode.
               </td>
             </tr>
             <tr>
@@ -118,6 +119,37 @@ export default function Flags() {
               </td>
               <td className="px-5 py-3.5 text-ink-soft">
                 List the copyright fields the selected license accepts and exit.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-5 py-3.5 align-top">
+                <code className="flag-code">--headers &lt;short|full&gt;</code>
+              </td>
+              <td className="px-5 py-3.5 text-ink-soft">
+                Also stamp SPDX license headers into source files —{" "}
+                <code className="font-mono text-[0.85em]">short</code> (SPDX tag
+                lines) or <code className="font-mono text-[0.85em]">full</code>{" "}
+                (the standard notice). Implies non-interactive mode.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-5 py-3.5 align-top">
+                <code className="flag-code">--headers-ignore &lt;glob&gt;</code>
+              </td>
+              <td className="px-5 py-3.5 text-ink-soft">
+                Extra gitignore-style pattern to skip when writing headers, on
+                top of the defaults and{" "}
+                <code className="font-mono text-[0.85em]">.gitignore</code>{" "}
+                (repeatable).
+              </td>
+            </tr>
+            <tr>
+              <td className="px-5 py-3.5 align-top">
+                <code className="flag-code">--remove-headers</code>
+              </td>
+              <td className="px-5 py-3.5 text-ink-soft">
+                Strip License Wizard&apos;s headers from source files and drop
+                the saved headers preference. Standalone mode.
               </td>
             </tr>
             <tr>

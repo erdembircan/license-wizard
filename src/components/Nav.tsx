@@ -31,6 +31,9 @@ export default function Nav() {
           <a href="#usage" className="nav-link">
             Usage
           </a>
+          <a href="#headers" className="nav-link">
+            Headers
+          </a>
           <a href="#agents" className="nav-link">
             Agents
           </a>
