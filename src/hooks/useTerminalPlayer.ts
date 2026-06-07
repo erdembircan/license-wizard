@@ -18,6 +18,14 @@ const toneClass: Record<NonNullable<TerminalLine["tone"]>, string> = {
 };
 
 /**
+ * Per-character speed for typing an output line. Faster than the prompt (which
+ * stands in for a human at the keyboard) so the streamed answer reads as the
+ * machine emitting text, while still being visibly typed rather than appearing
+ * whole.
+ */
+const OUTPUT_CHAR_MS = 9;
+
+/**
  * Runs the interactive hero terminal engine against the given tabs container and
  * body elements: builds the scene tabs, types each prompt, plays back the shell
  * scenes line-by-line, streams the agent turn with the thinking spinner, and
@@ -42,10 +50,15 @@ export function useTerminalPlayer(
     let autoAdvance = true;
     const pending: ReturnType<typeof setTimeout>[] = [];
     const intervals: ReturnType<typeof setInterval>[] = [];
+    // Finishers for typewriters that are mid-flight: calling one stops its timer,
+    // drops its caret, and resolves the awaiting line so a scene switch can never
+    // leave a half-typed line or a dangling promise behind.
+    const cancelers: (() => void)[] = [];
 
     const clearPending = (): void => {
       while (pending.length) clearTimeout(pending.pop());
       while (intervals.length) clearInterval(intervals.pop());
+      while (cancelers.length) cancelers.pop()!();
     };
     const later = (fn: () => void, ms: number): void => {
       pending.push(setTimeout(fn, ms));
@@ -80,13 +93,26 @@ export function useTerminalPlayer(
       scrollTargetToEnd();
     }
 
+    // A line's element plus the hooks needed to type it: `typeable` is the text
+    // that streams in, `setText` reveals a prefix of it (rebuilding only the
+    // characters, never the structural glyph/gutter/marker), and `caretEl` is the
+    // node that carries the blinking caret while the line is being typed.
+    interface BuiltLine {
+      el: HTMLElement;
+      typeable: string;
+      setText: (prefix: string) => void;
+      caretEl: HTMLElement;
+    }
+
     // Builds one output line. Tree lines (◇ ◆ │ └) get a CSS-drawn gutter so the
     // connectors form one continuous vertical line; other lines are plain text
     // with an optional tinted leading marker (⏺ agent action / ✦ success spark).
+    // The structural parts (gutter, marker glyph) are fixed up front; only the
+    // line's text is fed in progressively via `setText` so it can be typed out.
     function buildLineEl(
       line: TerminalLine,
       isFirstTreeRow: boolean,
-    ): HTMLElement {
+    ): BuiltLine {
       const { glyph, content } = classifyTreeLine(line.text);
       const toneCls = toneClass[line.tone ?? "default"];
 
@@ -97,16 +123,22 @@ export function useTerminalPlayer(
 
         const marker = lineMarker(line.text);
         if (marker) {
+          // The marker glyph is fixed and tinted; only the text after it types.
           const mark = document.createElement("span");
           mark.className = marker === "bullet" ? "term-bullet" : "term-check";
           mark.textContent = line.text.charAt(0);
           const rest = document.createElement("span");
-          rest.textContent = line.text.slice(1);
           el.append(mark, rest);
-        } else {
-          el.textContent = line.text;
+          const setText = (prefix: string): void => {
+            rest.textContent = prefix.slice(1);
+          };
+          return { el, typeable: line.text, setText, caretEl: rest };
         }
-        return el;
+
+        const setText = (prefix: string): void => {
+          el.textContent = prefix;
+        };
+        return { el, typeable: line.text, setText, caretEl: el };
       }
 
       const row = document.createElement("div");
@@ -125,14 +157,67 @@ export function useTerminalPlayer(
 
       const body = document.createElement("span");
       body.className = `term-content ${toneCls}`.trim();
-      body.textContent = content;
 
       row.append(gutter, body);
-      return row;
+      const setText = (prefix: string): void => {
+        body.textContent = prefix;
+      };
+      return { el: row, typeable: content, setText, caretEl: body };
     }
 
+    /**
+     * Types `built.typeable` into the line one character at a time, mirroring the
+     * prompt's typewriter so an answer streams in instead of appearing whole. A
+     * blinking caret rides the end of the text while it types and is dropped when
+     * the line is complete. Resolves once the line finishes — or sooner if the
+     * scene is switched out from under it.
+     */
+    function typeLine(built: BuiltLine, token: number): Promise<void> {
+      return new Promise((resolve) => {
+        if (built.typeable === "") {
+          resolve();
+          return;
+        }
+        built.caretEl.classList.add("caret");
+        let cancelTimer = (): void => {};
+        const finish = (): void => {
+          cancelTimer();
+          built.caretEl.classList.remove("caret");
+          resolve();
+        };
+        cancelTimer = runTypewriter(built.typeable, {
+          charMs: OUTPUT_CHAR_MS,
+          onFrame: (frame) => {
+            if (token !== runToken) {
+              finish();
+              return;
+            }
+            built.setText(frame);
+            scrollTargetToEnd();
+          },
+          onDone: finish,
+        });
+        cancelers.push(finish);
+      });
+    }
+
+    // Appends a freshly-built line to the current render target and types it out.
+    function renderTypedLine(
+      line: TerminalLine,
+      isFirstTreeRow: boolean,
+      token: number,
+    ): Promise<void> {
+      const built = buildLineEl(line, isFirstTreeRow);
+      built.setText("");
+      appendChild(built.el);
+      return typeLine(built, token);
+    }
+
+    // Appends a freshly-built line with its full text already in place.
     function renderLine(line: TerminalLine, isFirstTreeRow: boolean): void {
-      appendChild(buildLineEl(line, isFirstTreeRow));
+      const built = buildLineEl(line, isFirstTreeRow);
+      built.setText(built.typeable);
+      appendChild(built.el);
     }
 
     // Types the leading prompt ($ command or > agent prompt), then runs `after`.
@@ -170,22 +255,39 @@ export function useTerminalPlayer(
       }, ms);
     }
 
-    // Plain shell scenes: type the command, then reveal each output line on a timer.
+    // Plain shell scenes: type the command, then reveal each output line on a
+    // timer. The `interactive` tab additionally types each answer line in,
+    // character by character, mirroring the prompt's typewriter; the other shell
+    // tabs keep revealing whole lines.
     function playShell(scene: TerminalScene, token: number): void {
-      typePrompt(scene, token, () => {
+      const typeAnswers = scene.id === "interactive";
+      typePrompt(scene, token, async () => {
         const firstTreeIndex = scene.output.findIndex(
           (l) => classifyTreeLine(l.text).glyph !== null,
         );
-        scene.output.forEach((line, i) => {
-          later(
-            () => {
-              if (token !== runToken) return;
-              renderLine(line, i === firstTreeIndex);
-            },
-            90 * (i + 1),
-          );
-        });
-        advanceAfter(token, 90 * (scene.output.length + 1) + 3200);
+
+        if (!typeAnswers) {
+          scene.output.forEach((line, i) => {
+            later(
+              () => {
+                if (token !== runToken) return;
+                renderLine(line, i === firstTreeIndex);
+              },
+              90 * (i + 1),
+            );
+          });
+          advanceAfter(token, 90 * (scene.output.length + 1) + 3200);
+          return;
+        }
+
+        for (let i = 0; i < scene.output.length; i++) {
+          if (token !== runToken) return;
+          const line = scene.output[i]!;
+          await renderTypedLine(line, i === firstTreeIndex, token);
+          await sleep(line.text === "" ? 110 : 45);
+        }
+        if (token !== runToken) return;
+        advanceAfter(token, 3200);
       });
     }
 
@@ -298,7 +400,9 @@ export function useTerminalPlayer(
           clearInterval(iv);
           return;
         }
-        transcript.insertBefore(buildLineEl(line, false), spinner);
+        const built = buildLineEl(line, false);
+        built.setText(built.typeable);
+        transcript.insertBefore(built.el, spinner);
         scrollTargetToEnd();
       }
 
