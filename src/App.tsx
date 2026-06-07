@@ -1,4 +1,5 @@
 import Nav from "./components/Nav";
+import Sparkles from "./components/Sparkles";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
 import Usage from "./components/Usage";
@@ -22,6 +23,7 @@ export default function App() {
 
   return (
     <>
+      <Sparkles />
       <Nav />
       <main id="top">
         <Hero />

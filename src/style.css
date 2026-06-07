@@ -108,14 +108,31 @@
 }
 
 /* ----------------------------------------------------------------------------
-   Sparkles — tiny twinkling stars echoing the logo's wand.
+   Sparkles — tiny twinkling stars echoing the logo's wand. Spawned at random
+   spots across the viewport (see Sparkles.tsx), sitting on a fixed overlay just
+   above the dotted-grid atmosphere and behind the page content.
 ---------------------------------------------------------------------------- */
+.sparkle-field {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .sparkle {
   position: absolute;
   color: var(--color-brand-glow);
   opacity: 0;
-  animation: twinkle 4.5s ease-in-out infinite;
+  /* One fade-in/out per sparkle; the duration is set per-instance inline. */
+  animation: twinkle 4s ease-in-out both;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sparkle-field {
+    display: none;
+  }
 }
 
 @keyframes twinkle {

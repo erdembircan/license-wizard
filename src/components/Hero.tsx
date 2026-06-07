@@ -8,35 +8,6 @@ import Terminal from "./Terminal";
 export default function Hero() {
   return (
     <section className="relative mx-auto max-w-6xl px-5 pt-32 pb-20 md:pt-40">
-      {/* decorative sparkles */}
-      <svg
-        className="sparkle left-[6%] top-[22%] size-5"
-        style={{ animationDelay: "0s" }}
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
-      </svg>
-      <svg
-        className="sparkle right-[10%] top-[12%] size-3.5"
-        style={{ animationDelay: "1.4s" }}
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
-      </svg>
-      <svg
-        className="sparkle left-[48%] top-[6%] size-2.5"
-        style={{ animationDelay: "2.6s" }}
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
-      </svg>
-
       <div className="grid items-center gap-14 lg:grid-cols-[1.05fr_1fr]">
         {/* copy */}
         <div>

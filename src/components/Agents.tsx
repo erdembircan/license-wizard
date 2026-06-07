@@ -16,15 +16,6 @@ export default function Agents() {
               "radial-gradient(circle, rgba(47,111,224,0.14), transparent 65%)",
           }}
         ></div>
-        <svg
-          className="sparkle left-[12%] bottom-[16%] size-4"
-          style={{ animationDelay: "0.7s" }}
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
-        </svg>
         <div className="relative grid items-center gap-10 lg:grid-cols-2">
           <div>
             <p className="eyebrow">

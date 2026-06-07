@@ -10,24 +10,6 @@ export default function FinalCta() {
         className="relative overflow-hidden rounded-3xl border border-line bg-paper-raised px-6 py-16 text-center"
         data-reveal
       >
-        <svg
-          className="sparkle left-[14%] top-[26%] size-4"
-          style={{ animationDelay: "0.5s" }}
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
-        </svg>
-        <svg
-          className="sparkle right-[16%] top-[58%] size-5"
-          style={{ animationDelay: "1.8s" }}
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <path d="M12 0l2.2 9.8L24 12l-9.8 2.2L12 24l-2.2-9.8L0 12l9.8-2.2z" />
-        </svg>
         <img
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt=""
