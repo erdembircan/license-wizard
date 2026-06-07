@@ -105,7 +105,7 @@ export default function Agents() {
                 <p className="pl-4 text-term-text">
                   --set{" "}
                   <span className="text-term-amber">
-                    "copyright holders=Erdem Bircan"
+                    "copyright holders=Acme Corporation"
                   </span>
                 </p>
                 <p className="mt-3 text-term-green">
