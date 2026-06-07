@@ -27,14 +27,14 @@ const STYLES: Record<Style, HeaderStyle> = {
     license: "MIT",
     body: [
       "SPDX-License-Identifier: MIT",
-      "SPDX-FileCopyrightText: 2026 Erdem Bircan",
+      "SPDX-FileCopyrightText: 2026 Acme Corporation",
     ],
     marker: "license-wizard managed-header v1 MIT short 9f2a1c7b4e08",
   },
   full: {
     license: "Apache-2.0",
     body: [
-      "Copyright 2026 Erdem Bircan",
+      "Copyright 2026 Acme Corporation",
       "",
       'Licensed under the Apache License, Version 2.0 (the "License");',
       "you may not use this file except in compliance with the License.",

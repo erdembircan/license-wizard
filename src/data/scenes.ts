@@ -26,7 +26,7 @@ export const scenes: TerminalScene[] = [
     id: "agent",
     label: "agent",
     kind: "agent",
-    command: "add an MIT license to this project for Erdem Bircan, 2026",
+    command: "add an MIT license to this project for Acme Corporation, 2026",
     output: [
       { text: "" },
       { text: "⏺ I'll add the MIT license and fill in your" },
@@ -46,13 +46,13 @@ export const scenes: TerminalScene[] = [
       { text: "" },
       { text: "⏺ Bash(npx license-wizard --license MIT \\" },
       { text: '        --set "year=2026" \\' },
-      { text: '        --set "copyright holders=Erdem Bircan" \\' },
+      { text: '        --set "copyright holders=Acme Corporation" \\' },
       { text: "        --save-rc)" },
       { text: "  ⎿ Conjured your LICENSE (MIT) and inscribed", tone: "dim" },
       { text: "    it across the project manifests.", tone: "dim" },
       { text: "    Spellbook saved to .licensewizardrc.json.", tone: "dim" },
       { text: "" },
-      { text: "⏺ Done — MIT LICENSE created for Erdem Bircan" },
+      { text: "⏺ Done — MIT LICENSE created for Acme Corporation" },
       { text: "  (2026) and recorded in package.json." },
     ],
   },
@@ -79,7 +79,7 @@ export const scenes: TerminalScene[] = [
       { text: "│  2026", tone: "dim" },
       { text: "│" },
       { text: "◇  copyright holders" },
-      { text: "│  Erdem Bircan", tone: "dim" },
+      { text: "│  Acme Corporation", tone: "dim" },
       { text: "│" },
       { text: "◇  Where do you want to save the wizard config?" },
       { text: "│  .licensewizardrc.json", tone: "dim" },
@@ -100,7 +100,7 @@ export const scenes: TerminalScene[] = [
     id: "oneshot",
     label: "one-shot",
     command:
-      'npx license-wizard --license MIT --set "year=2026" --set "copyright holders=Erdem Bircan" --save-rc',
+      'npx license-wizard --license MIT --set "year=2026" --set "copyright holders=Acme Corporation" --save-rc',
     output: [
       { text: "" },
       {
