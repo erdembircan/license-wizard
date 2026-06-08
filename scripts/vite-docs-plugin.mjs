@@ -2,8 +2,12 @@
  * Dev-server plugin: serves the documentation on the fly under `pnpm dev`, so
  * the same `vite` command runs the whole site — no separate build/preview step
  * to see the docs. Pages render through the shared renderer (identical to the
- * production prerender), styles load via a dev module so HMR works, and editing
- * `documentation.md` triggers a full reload.
+ * production prerender), and editing `documentation.md` (or the stylesheet)
+ * triggers a full reload.
+ *
+ * Styles are served as a real render-blocking <link> (a compiled-CSS endpoint),
+ * not injected by JS — otherwise every full-page navigation between sections
+ * would flash unstyled content before the CSS loaded.
  *
  * In production the docs are prerendered to static files instead (see
  * scripts/prerender-docs.mjs); this plugin only applies while serving.
@@ -15,11 +19,10 @@ import { getSections, renderPage } from "./lib/render-docs.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SOURCE = resolve(here, "..", "src", "content", "documentation.md");
+const STYLESHEET = resolve(here, "..", "src", "style.css");
 
-// In dev, styles come from a module so Vite injects them with HMR (there is no
-// built stylesheet yet). transformIndexHtml() also adds the Vite HMR client.
-const DEV_ASSET_TAGS =
-  '<script type="module" src="/src/docs/docsStyles.ts"></script>';
+// Path (after the base) of the dev-only compiled-CSS endpoint.
+const CSS_ROUTE = "/__docs.css";
 
 /** @returns {import("vite").Plugin} */
 export function docsDevPlugin() {
@@ -31,10 +34,11 @@ export function docsDevPlugin() {
       base = config.base;
     },
     configureServer(server) {
-      // Reload open docs pages when the single source changes.
-      server.watcher.add(SOURCE);
+      // Reload open docs pages when the source or the stylesheet changes.
+      server.watcher.add([SOURCE, STYLESHEET]);
       server.watcher.on("change", (file) => {
-        if (resolve(file) === SOURCE) {
+        const changed = resolve(file);
+        if (changed === SOURCE || changed === STYLESHEET) {
           server.ws.send({ type: "full-reload", path: "*" });
         }
       });
@@ -47,6 +51,16 @@ export function docsDevPlugin() {
         const rel = path.startsWith(base)
           ? "/" + path.slice(base.length)
           : path;
+
+        // Compiled stylesheet, served render-blocking to avoid a flash of
+        // unstyled content on navigation. `?direct` returns the processed CSS
+        // text rather than Vite's JS style-injection wrapper.
+        if (rel === CSS_ROUTE) {
+          const result = await server.transformRequest("/src/style.css?direct");
+          res.setHeader("Content-Type", "text/css");
+          res.end(result?.code ?? "");
+          return;
+        }
 
         if (rel === "/documentation.md") {
           res.setHeader("Content-Type", "text/markdown; charset=utf-8");
@@ -67,7 +81,8 @@ export function docsDevPlugin() {
           sections,
           index,
           base,
-          assetTags: DEV_ASSET_TAGS,
+          // Base-less href: transformIndexHtml() prepends the configured base.
+          assetTags: `<link rel="stylesheet" href="${CSS_ROUTE}" />`,
         });
         res.setHeader("Content-Type", "text/html");
         res.end(await server.transformIndexHtml(req.url || "/", html));
