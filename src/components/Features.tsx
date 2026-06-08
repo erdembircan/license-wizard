@@ -71,7 +71,7 @@ export default function Features() {
             Canonical text, every time
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            License text comes straight from the official SPDX data — no
+            License text comes straight from the official SPDX data, no
             hand-copied variations creeping in.
           </p>
         </article>
@@ -210,8 +210,8 @@ export default function Features() {
             Source-file headers
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Optionally stamps the per-file license notice — the short SPDX tag
-            or the full standard header — across your{" "}
+            Optionally stamps the per-file license notice (the short SPDX tag or
+            the full standard header) across your{" "}
             <code className="font-mono text-[0.85em]">.js</code>/
             <code className="font-mono text-[0.85em]">.ts</code>/
             <code className="font-mono text-[0.85em]">.php</code> sources, with

@@ -147,7 +147,7 @@ export default function Headers() {
         <p className="mt-4 text-lg text-ink-soft">
           The <code className="font-mono text-[0.95em]">LICENSE</code> file
           covers the repo. The little notice many licenses ask you to add to{" "}
-          <em>each source file</em> is a per-file chore — so License Wizard
+          <em>each source file</em> is a per-file chore, so License Wizard
           stamps it for you, and keeps it honest.
         </p>
       </div>
@@ -203,8 +203,8 @@ export default function Headers() {
                 <span>
                   Scans <code className="font-mono text-[0.85em]">.js</code>,{" "}
                   <code className="font-mono text-[0.85em]">.ts</code> and{" "}
-                  <code className="font-mono text-[0.85em]">.php</code> sources
-                  — pruning{" "}
+                  <code className="font-mono text-[0.85em]">.php</code> sources,
+                  pruning{" "}
                   <code className="font-mono text-[0.85em]">node_modules</code>,{" "}
                   <code className="font-mono text-[0.85em]">vendor</code> and
                   everything your{" "}
@@ -216,7 +216,7 @@ export default function Headers() {
                 <Check />
                 <span>
                   A hidden marker fingerprints each block, so re-runs are
-                  idempotent and switching licenses rewrites in place — never
+                  idempotent and switching licenses rewrites in place, never
                   stacking a second notice.
                 </span>
               </li>
@@ -338,7 +338,7 @@ export default function Headers() {
                 <span className="hdr-foot-arrow" aria-hidden="true">
                   ↑
                 </span>
-                that last line is the managed marker — it&apos;s how{" "}
+                that last line is the managed marker; it&apos;s how{" "}
                 <code className="hdr-foot-code">--verify</code> re-checks and
                 re-applies the block
               </div>

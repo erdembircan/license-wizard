@@ -37,8 +37,8 @@ export default function CI() {
             <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-soft">
               Drop <code className="flag-code">--verify --strict</code> into any
               workflow. Nothing drifted? It exits zero and the build moves on.
-              Anything out of sync — an edited copyright line, a stale file, a
-              hand-changed manifest, a source file missing its header — and it
+              Anything out of sync (an edited copyright line, a stale file, a
+              hand-changed manifest, a source file missing its header) and it
               lists each one and exits non-zero, so the pipeline stops before
               bad metadata ships.
             </p>
@@ -46,7 +46,7 @@ export default function CI() {
               We trust it because we run it on ourselves: License Wizard's own
               build workflow gates every push to{" "}
               <code className="font-mono text-[0.9em]">master</code> with{" "}
-              <code className="flag-code">pnpm verify</code> — the very same
+              <code className="flag-code">pnpm verify</code>, the very same
               check.
             </p>
             <a

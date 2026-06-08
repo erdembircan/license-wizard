@@ -56,7 +56,7 @@ export default function Hero() {
             says one thing; the{" "}
             <code className="font-mono text-[0.95em] text-ink">LICENSE</code>{" "}
             file at your repo root is a separate, manual chore. License Wizard
-            closes that gap — canonical SPDX text, your copyright filled in,
+            closes that gap: canonical SPDX text, your copyright filled in,
             every manifest kept in sync.
           </p>
 
@@ -154,7 +154,7 @@ export default function Hero() {
         <div className="hero-rise" style={{ animationDelay: "0.22s" }}>
           <Terminal />
           <p className="mt-3 text-center text-xs text-ink-faint">
-            A real run — interactive, one-shot, or CI verification.
+            A real run: interactive, one-shot, or CI verification.
           </p>
         </div>
       </div>
