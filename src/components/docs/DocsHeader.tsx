@@ -1,54 +1,37 @@
 /**
- * Fixed top navigation bar with the logo, in-page section links, and the npm
- * and GitHub star links.
+ * The fixed top bar for the documentation page: the logo (linking back to the
+ * landing page), a "Docs" marker, and the npm and GitHub links. Unlike the
+ * landing nav it carries a steady translucent background, since the docs always
+ * scroll beneath it.
  */
-export default function Nav() {
+export default function DocsHeader() {
   return (
-    <header
-      id="nav"
-      className="fixed inset-x-0 top-0 z-50 transition-all duration-300"
-    >
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-line bg-paper/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-        <a
-          href="#top"
-          className="flex items-center gap-2.5"
-          aria-label="License Wizard home"
-        >
-          <img
-            src={`${import.meta.env.BASE_URL}logo-mark.png`}
-            alt=""
-            className="h-9 w-auto"
-          />
-          <span className="font-display text-lg font-bold tracking-tight text-ink">
-            license <span className="text-brand">wizard</span>
-          </span>
-        </a>
-
-        <nav className="hidden items-center gap-8 md:flex">
-          <a href="#features" className="nav-link">
-            Features
+        <div className="flex items-center gap-3">
+          <a
+            href="#top"
+            className="flex items-center gap-2.5"
+            aria-label="License Wizard home"
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}logo-mark.png`}
+              alt=""
+              className="h-9 w-auto"
+            />
+            <span className="font-display text-lg font-bold tracking-tight text-ink">
+              license <span className="text-brand">wizard</span>
+            </span>
           </a>
-          <a href="#usage" className="nav-link">
-            Usage
-          </a>
-          <a href="#headers" className="nav-link">
-            Headers
-          </a>
-          <a href="#agents" className="nav-link">
-            Agents
-          </a>
-          <a href="#ci" className="nav-link">
-            CI
-          </a>
-          <a href="#flags" className="nav-link">
-            Flags
-          </a>
-          <a href="#/docs" className="nav-link">
+          <span className="rounded-md border border-line-strong bg-paper-raised px-2 py-0.5 text-xs font-semibold tracking-wide text-ink-soft uppercase">
             Docs
-          </a>
-        </nav>
+          </span>
+        </div>
 
         <div className="flex items-center gap-3">
+          <a href="#top" className="nav-link hidden sm:inline">
+            Home
+          </a>
           <a
             href="https://www.npmjs.com/package/license-wizard"
             className="nav-link hidden sm:inline"

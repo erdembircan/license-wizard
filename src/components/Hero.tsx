@@ -94,12 +94,7 @@ export default function Hero() {
             >
               Get started
             </a>
-            <a
-              href="https://github.com/erdembircan/license-wizard#readme"
-              className="btn-ghost"
-              target="_blank"
-              rel="noopener"
-            >
+            <a href="#/docs" className="btn-ghost">
               Read the docs
             </a>
           </div>
