@@ -40,9 +40,6 @@ export default function Nav() {
           <a href="#ci" className="nav-link">
             CI
           </a>
-          <a href="#flags" className="nav-link">
-            Flags
-          </a>
           <a href="#/docs" className="nav-link">
             Docs
           </a>

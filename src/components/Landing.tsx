@@ -6,7 +6,6 @@ import Usage from "./Usage";
 import Headers from "./Headers";
 import Agents from "./Agents";
 import CI from "./CI";
-import Flags from "./Flags";
 import FinalCta from "./FinalCta";
 import Footer from "./Footer";
 import { useReveal } from "../hooks/useReveal";
@@ -32,7 +31,6 @@ export default function Landing() {
         <Headers />
         <Agents />
         <CI />
-        <Flags />
         <FinalCta />
       </main>
       <Footer />
