@@ -69,6 +69,19 @@ describe("ClackRenderer", () => {
 
       expect(output).toContain(META.name);
     });
+
+    it("writes the agent hint with the docs link beneath the banner", () => {
+      new ClackRenderer(META);
+
+      const output = vi
+        .mocked(process.stdout.write)
+        .mock.calls.map((call) => String(call[0]))
+        .join("");
+
+      expect(output).toContain(
+        "https://erdembircan.github.io/license-wizard/documentation.md",
+      );
+    });
   });
 
   describe("render", () => {

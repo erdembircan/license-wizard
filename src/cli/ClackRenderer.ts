@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import { buildBanner } from "@cli/Banner.js";
+import { buildAgentHint, buildBanner } from "@cli/Banner.js";
 import type { Answer } from "@cli/Answer.js";
 import type {
   CompletionSummary,
@@ -41,8 +41,11 @@ export class ClackRenderer implements IRenderer {
     spinner: Spinner = new Spinner(),
   ) {
     this.#spinner = spinner;
+    const color = this.#supportsColor();
+    // The agent hint sits directly under the banner so automated callers see,
+    // before any prompt blocks, that a flag-driven non-interactive mode exists.
     process.stdout.write(
-      buildBanner(meta, { color: this.#supportsColor() }) + "\n",
+      buildBanner(meta, { color }) + "\n" + buildAgentHint({ color }) + "\n",
     );
   }
 
