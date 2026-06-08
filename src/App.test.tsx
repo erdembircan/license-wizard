@@ -4,10 +4,9 @@ import App from "./App";
 
 /**
  * Content smoke test for the full landing page: renders App in jsdom and
- * asserts that every major landmark from the original monolithic page survives
- * the React migration — the nav links, each section heading, all flag rows,
- * and the footer. The hero terminal is filled asynchronously by timers,
- * so this only asserts that it mounts, never on its streamed lines.
+ * asserts that every major landmark survives — the nav links, each section
+ * heading, and the footer. The hero terminal is filled asynchronously by
+ * timers, so this only asserts that it mounts, never on its streamed lines.
  */
 describe("App", () => {
   it("renders the nav links", () => {
@@ -19,7 +18,7 @@ describe("App", () => {
     expect(links.getByText("Headers")).toBeInTheDocument();
     expect(links.getByText("Agents")).toBeInTheDocument();
     expect(links.getByText("CI")).toBeInTheDocument();
-    expect(links.getByText("Flags")).toBeInTheDocument();
+    expect(links.getByText("Docs")).toBeInTheDocument();
   });
 
   it("renders every section heading", () => {
@@ -42,35 +41,8 @@ describe("App", () => {
       screen.getByRole("heading", { name: /Keep it honest/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Available flags" }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("heading", { name: "License your project in seconds" }),
     ).toBeInTheDocument();
-  });
-
-  it("renders every flag row in the reference table", () => {
-    render(<App />);
-    const table = within(document.getElementById("flags")!).getByRole("table");
-    const bodyRows = within(table).getAllByRole("row").slice(1); // drop header
-    const flagLabels = bodyRows.map(
-      (row) => within(row).getAllByRole("cell")[0]!.textContent,
-    );
-    expect(flagLabels).toEqual([
-      "--help",
-      "--verify",
-      "--strict",
-      "--license <spdx-id>",
-      "--set <field=value>",
-      "--save-rc",
-      "--save-npm",
-      "--save-composer",
-      "--get-tokens",
-      "--headers <short|full>",
-      "--headers-ignore <glob>",
-      "--remove-headers",
-      "--dry-run",
-    ]);
   });
 
   it("mounts the hero terminal shell", () => {

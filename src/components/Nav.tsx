@@ -40,8 +40,8 @@ export default function Nav() {
           <a href="#ci" className="nav-link">
             CI
           </a>
-          <a href="#flags" className="nav-link">
-            Flags
+          <a href={`${import.meta.env.BASE_URL}docs/`} className="nav-link">
+            Docs
           </a>
         </nav>
 
