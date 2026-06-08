@@ -22,7 +22,7 @@ export default function FinalCta() {
           No install required. Just run it and answer a few prompts.
         </p>
         <p className="mx-auto mt-2 max-w-md text-lg text-ink-soft">
-          Better yet, just tell your agent to use it — License Wizard works with
+          Better yet, just tell your agent to use it. License Wizard works with
           any AI agent.
         </p>
         <div className="mx-auto mt-9 flex max-w-md flex-col items-center gap-4 sm:flex-row sm:justify-center">

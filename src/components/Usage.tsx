@@ -62,7 +62,7 @@ export default function Usage() {
                     Save your settings
                   </h3>
                   <p className="mt-1 text-sm text-ink-soft">
-                    Choose whether to remember your selection — then the{" "}
+                    Choose whether to remember your selection, then the{" "}
                     <code className="font-mono text-[0.85em]">LICENSE</code>{" "}
                     file is written and your manifests updated.
                   </p>

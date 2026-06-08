@@ -1,6 +1,6 @@
 /**
  * Site footer with the logo, copyright line (current year rendered
- * dynamically), and links to GitHub, npm, and the issue tracker.
+ * dynamically), and links to GitHub and npm.
  */
 export default function Footer() {
   return (
@@ -32,14 +32,6 @@ export default function Footer() {
             className="nav-link"
           >
             npm
-          </a>
-          <a
-            href="https://github.com/erdembircan/license-wizard/issues"
-            target="_blank"
-            rel="noopener"
-            className="nav-link"
-          >
-            Issues
           </a>
         </nav>
       </div>

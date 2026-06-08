@@ -30,15 +30,15 @@ export default function Agents() {
             <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-soft">
               License Wizard talks to agents the way agents talk back. Ask{" "}
               <code className="flag-code">--get-tokens</code> and it lists
-              exactly which copyright fields a license needs — your agent
+              exactly which copyright fields a license needs; your agent
               discovers the task instead of guessing at it.
             </p>
             <p className="mt-4 max-w-md text-lg leading-relaxed text-ink-soft">
               Every run leaves a breadcrumb: a one-line note of what it wrote,
-              or — when a field is missing — the precise fix and a non-zero
-              exit, never a half-written file. Piped output stays plain text,
-              results on stdout and errors on stderr, so reading the result is
-              second nature for any agent.
+              or, when a field is missing, the precise fix and a non-zero exit,
+              never a half-written file. Piped output stays plain text, results
+              on stdout and errors on stderr, so reading the result is second
+              nature for any agent.
             </p>
             <a
               href="https://github.com/erdembircan/license-wizard#non-interactive-mode-scripting--agents"

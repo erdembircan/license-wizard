@@ -44,8 +44,8 @@ export default function Flags() {
               <td className="px-5 py-3.5 text-ink-soft">
                 Check the{" "}
                 <code className="font-mono text-[0.85em]">LICENSE</code> file,
-                every manifest&apos;s license field — and the source-file
-                headers, when configured — against the saved config, reconciling
+                every manifest&apos;s license field (and the source-file
+                headers, when configured) against the saved config, reconciling
                 drift. Standalone mode.
               </td>
             </tr>
@@ -55,7 +55,7 @@ export default function Flags() {
               </td>
               <td className="px-5 py-3.5 text-ink-soft">
                 With <code className="font-mono text-[0.85em]">--verify</code>,
-                fail on any drift instead of reconciling — for CI.
+                fail on any drift instead of reconciling, for CI.
               </td>
             </tr>
             <tr>
@@ -126,7 +126,7 @@ export default function Flags() {
                 <code className="flag-code">--headers &lt;short|full&gt;</code>
               </td>
               <td className="px-5 py-3.5 text-ink-soft">
-                Also stamp SPDX license headers into source files —{" "}
+                Also stamp SPDX license headers into source files:{" "}
                 <code className="font-mono text-[0.85em]">short</code> (SPDX tag
                 lines) or <code className="font-mono text-[0.85em]">full</code>{" "}
                 (the standard notice). Implies non-interactive mode.
