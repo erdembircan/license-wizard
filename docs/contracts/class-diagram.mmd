@@ -6,7 +6,7 @@ classDiagram
   direction TB
 
   class LicenseWizard {
-    +LicenseWizard(args: string[])
+    +LicenseWizard(args: string[], sink?: IOutputSink)
     +run() Promise~Answer[]~
   }
 
@@ -199,8 +199,37 @@ classDiagram
       +manifests: string[]
     }
 
+    class MessageReporter {
+      +MessageReporter(sink: IOutputSink)
+    }
+
     class CliReporter {
       +CliReporter(programName: string, out?: object, err?: object)
+    }
+
+    class IOutputSink {
+      <<interface>>
+      +emit(message: OutputMessage) void
+    }
+
+    class StreamSink {
+      +StreamSink(presenter: ReportPresenter, out?: object, err?: object)
+      +emit(message: OutputMessage) void
+    }
+
+    class RecordingSink {
+      +RecordingSink()
+      +emit(message: OutputMessage) void
+      +messages: OutputMessage[]
+    }
+
+    class ReportPresenter {
+      +ReportPresenter(programName: string)
+      +present(message: OutputMessage, options: object) string
+    }
+
+    class OutputMessage {
+      <<union>>
     }
 
     class Banner {
@@ -612,15 +641,25 @@ classDiagram
   ClackRenderer ..> Banner : renders
   IRenderer ..> CompletionSummary : renders
   ClackRenderer ..> CompletionSummary : renders
-  CliReporter ..|> IReporter : implements
-  CliReporter ..> TemplateSlot : renders
-  CliReporter ..> VerifyReport : renders
-  CliReporter ..> DryRunReport : renders
+  MessageReporter ..|> IReporter : implements
+  CliReporter --|> MessageReporter : terminal wiring
+  MessageReporter ..> IOutputSink : emits to
+  MessageReporter ..> OutputMessage : builds
+  StreamSink ..|> IOutputSink : implements
+  RecordingSink ..|> IOutputSink : implements
+  StreamSink ..> ReportPresenter : renders with
+  ReportPresenter ..> OutputMessage : renders
+  CliReporter ..> StreamSink : wires
+  CliReporter ..> ReportPresenter : wires
+  MessageReporter ..> TemplateSlot : reads
+  MessageReporter ..> VerifyReport : reads
+  MessageReporter ..> DryRunReport : reads
   %% Composition root: LicenseWizard parses flags, builds the shared graph, and
   %% delegates each run to one of the three modes through IWizardMode.
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> WizardFlags : parses
   LicenseWizard ..> CliReporter : creates
+  LicenseWizard ..> IOutputSink : reports through (injectable)
   LicenseWizard ..> IReporter : reports usage through
   LicenseWizard ..> ClackRenderer : creates
   LicenseWizard ..> SpdxLicenseSource : creates
@@ -704,7 +743,7 @@ classDiagram
   LicenseRepository ..> LicenseRepositoryError : throws
   LicenseRepository ..> LicenseNotFoundError : throws
   SpdxLicenseSource ..> LicenseNotFoundError : throws
-  CliReporter ..> LicenseIndexEntry : renders
+  MessageReporter ..> LicenseIndexEntry : reads
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
@@ -768,11 +807,11 @@ classDiagram
   HeaderApplier ..> HeaderApplyReport : produces
   HeaderApplier ..> HeaderPreview : produces
   HeaderApplier ..> HeaderRemovalReport : produces
-  CliReporter ..> HeaderGenerateReport : renders
-  CliReporter ..> HeaderDryRunReport : renders
-  CliReporter ..> HeaderRemoveReport : renders
-  CliReporter ..> HeaderVerifyReport : renders
-  CliReporter ..> HeaderDrift : describes drift from
+  MessageReporter ..> HeaderGenerateReport : reads
+  MessageReporter ..> HeaderDryRunReport : reads
+  MessageReporter ..> HeaderRemoveReport : reads
+  MessageReporter ..> HeaderVerifyReport : reads
+  MessageReporter ..> HeaderDrift : reduces drift from
   HeaderConfig ..> HeaderStyle : style by
   HeaderPlan ..> LicenseDetail : carries
   HeaderPlan ..> HeaderStyle : styled by

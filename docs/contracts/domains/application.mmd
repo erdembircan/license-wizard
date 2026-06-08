@@ -16,7 +16,7 @@ classDiagram
   %% relationships point outward into other domains and so do not appear here.
 
   class LicenseWizard {
-    +LicenseWizard(args: string[])
+    +LicenseWizard(args: string[], sink?: IOutputSink)
     +run() Promise~Answer[]~
   }
 

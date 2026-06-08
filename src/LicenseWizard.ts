@@ -2,7 +2,9 @@ import type { Answer } from "@cli/Answer.js";
 import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { CliReporter } from "@cli/CliReporter.js";
 import { FlagParser } from "@cli/FlagParser.js";
+import type { IOutputSink } from "@cli/interfaces/IOutputSink.js";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
+import { MessageReporter } from "@cli/MessageReporter.js";
 import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { Config } from "@configuration/Config.js";
 import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
@@ -67,8 +69,11 @@ export class LicenseWizard {
    * assembling the shared (mode-independent) application graph.
    *
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
+   * @param sink - An optional destination for the reporter's view-model
+   *   messages; defaults to the terminal. Tests pass a recording sink to assert
+   *   against the emitted messages instead of the rendered prose.
    */
-  constructor(args: string[]) {
+  constructor(args: string[], sink?: IOutputSink) {
     this.#flags = this.#parseFlags(args);
 
     const reader = new NodeFileSystemReader();
@@ -97,7 +102,9 @@ export class LicenseWizard {
     const licenseSource = new SpdxLicenseSource();
     this.#licenseRepository = new LicenseRepository(licenseSource);
     this.#generator = new LicenseGenerator(this.#licenseRepository, writer);
-    this.#reporter = new CliReporter(pkg.name);
+    this.#reporter = sink
+      ? new MessageReporter(sink)
+      : new CliReporter(pkg.name);
   }
 
   /**
