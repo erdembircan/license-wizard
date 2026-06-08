@@ -4,24 +4,75 @@ title: Application Domain — Contract
 classDiagram
   direction TB
 
-  %% Domain: Application (src root)
+  %% Domain: Application (src root + src/modes)
   %% Focused per-domain view extracted from ../class-diagram.mmd.
   %% Shows ONLY Application-domain classes and their intra-domain relationships.
   %% Cross-domain relationships (to CLI, Licensing, Configuration, Headers, Verify)
   %% are intentionally omitted — see ../class-diagram.mmd for the full picture.
   %%
-  %% LicenseWizard is the bootstrap / composition root: it wires the whole
-  %% application together. Most of its relationships point outward into other
-  %% domains and so do not appear here.
+  %% LicenseWizard is the bootstrap / composition root and the mode router: it
+  %% wires the shared graph together and delegates each run to one of the three
+  %% modes through the IWizardMode contract. Most of its (and the modes')
+  %% relationships point outward into other domains and so do not appear here.
 
   class LicenseWizard {
     +LicenseWizard(args: string[])
     +run() Promise~Answer[]~
   }
 
+  class IWizardMode {
+    <<interface>>
+    +run() Promise~Answer[]~
+  }
+
+  class InteractiveMode {
+    +InteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, renderer: IRenderer, reporter: IReporter, flags: WizardFlags)
+    +run() Promise~Answer[]~
+  }
+
+  class NonInteractiveMode {
+    +NonInteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, reporter: IReporter, flags: WizardFlags, saveTargetByFlag: Record~string, string~)
+    +run() Promise~Answer[]~
+  }
+
+  class VerifyMode {
+    +VerifyMode(verifier: LicenseVerifier, headerVerifier: HeaderVerifier, config: Config, reporter: IReporter, strict: boolean)
+    +run() Promise~Answer[]~
+  }
+
+  class WizardFlags {
+    <<type>>
+  }
+
   class LicenseInstaller {
     +LicenseInstaller(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator)
     +install(selection: LicenseSelection) Promise~void~
+  }
+
+  class HeaderApplier {
+    +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader, writer: IFileSystemWriter)
+    +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
+    +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
+    +remove(extraIgnores: string[]) Promise~HeaderRemovalReport~
+    +previewRemoval(extraIgnores: string[]) Promise~HeaderRemovalReport~
+  }
+
+  class HeaderApplyReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +total: number
+    +written: number
+    +unchanged: number
+  }
+
+  class HeaderPreview {
+    +files: string[]
+    +sample: string
+  }
+
+  class HeaderRemovalReport {
+    +removed: string[]
+    +total: number
   }
 
   class LicenseSelection {
@@ -35,8 +86,29 @@ classDiagram
     <<union>>
   }
 
+  InteractiveMode ..|> IWizardMode : implements
+  NonInteractiveMode ..|> IWizardMode : implements
+  VerifyMode ..|> IWizardMode : implements
+
+  LicenseWizard ..> IWizardMode : delegates the run to
+  LicenseWizard ..> InteractiveMode : creates
+  LicenseWizard ..> NonInteractiveMode : creates
+  LicenseWizard ..> VerifyMode : creates
   LicenseWizard ..> LicenseInstaller : creates
-  LicenseWizard ..> LicenseInstaller : applies selection through
-  LicenseWizard ..> LicenseSelection : builds
+  LicenseWizard ..> HeaderApplier : creates
+  LicenseWizard ..> WizardFlags : parses
+
+  InteractiveMode ..> LicenseInstaller : applies selection through
+  NonInteractiveMode ..> LicenseInstaller : applies selection through
+  InteractiveMode ..> HeaderApplier : applies headers through
+  NonInteractiveMode ..> HeaderApplier : applies headers through
+  InteractiveMode ..> LicenseSelection : builds
+  NonInteractiveMode ..> LicenseSelection : builds
+  InteractiveMode ..> WizardFlags : reads
+  NonInteractiveMode ..> WizardFlags : reads
+
   LicenseInstaller ..> LicenseSelection : applies
   LicenseSelection ..> ConfigSave : has
+  HeaderApplier ..> HeaderApplyReport : produces
+  HeaderApplier ..> HeaderPreview : produces
+  HeaderApplier ..> HeaderRemovalReport : produces

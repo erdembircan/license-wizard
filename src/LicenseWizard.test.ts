@@ -111,6 +111,7 @@ vi.mock("@configuration/Config.js", () => ({
     targets: () => Promise<{ id: string; label: string }[]>;
     write: (config: WizardConfig, targetId: string) => Promise<void>;
     clear: () => Promise<void>;
+    clearHeaders: () => Promise<void>;
   }) {
     this.read = async () => state.config;
     this.source = async () => (state.config ? "rc" : null);
@@ -121,6 +122,19 @@ vi.mock("@configuration/Config.js", () => ({
     };
     this.clear = async () => {
       state.configCleared = true;
+    };
+    // Mirrors the real Config.clearHeaders: rewrite in place without the headers
+    // preference, keeping the license id and any tokens.
+    this.clearHeaders = async () => {
+      if (!state.config?.headers) {
+        return;
+      }
+      const next: WizardConfig = { licenseId: state.config.licenseId };
+      if (state.config.tokens) {
+        next.tokens = state.config.tokens;
+      }
+      state.writtenConfig = next;
+      state.saveTarget = "rc";
     };
   }),
 }));

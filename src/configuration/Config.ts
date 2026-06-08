@@ -123,4 +123,31 @@ export class Config {
       await store.clear(this.#reader, this.#writer);
     }
   }
+
+  /**
+   * Drops the saved `headers` preference, rewriting the configuration in place
+   * to the store it already lives in while keeping the license id and any
+   * tokens. Used after a header removal so later verification no longer checks a
+   * header surface the project no longer has. Does nothing when no header
+   * preference is set or no configuration exists.
+   *
+   * @throws {FileSystemWriterError} When a file system operation fails.
+   */
+  async clearHeaders(): Promise<void> {
+    const config = await this.read();
+    if (!config?.headers) {
+      return;
+    }
+
+    const source = await this.source();
+    if (source === null) {
+      return;
+    }
+
+    const next: WizardConfig = { licenseId: config.licenseId };
+    if (config.tokens) {
+      next.tokens = config.tokens;
+    }
+    await this.write(next, source);
+  }
 }
