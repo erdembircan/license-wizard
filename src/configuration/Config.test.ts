@@ -187,4 +187,54 @@ describe("Config", () => {
       expect(await config.read()).toBeNull();
     });
   });
+
+  describe("clearHeaders", () => {
+    it("rewrites the source store without the headers preference, keeping the license id and tokens", async () => {
+      const rc = new FakeStore("rc", "rc", true, {
+        licenseId: "MIT",
+        tokens: { "<year>": "2026" },
+        headers: { style: "short" },
+      });
+      const config = makeConfig([rc]);
+
+      await config.clearHeaders();
+
+      expect(rc.written).toEqual({
+        licenseId: "MIT",
+        tokens: { "<year>": "2026" },
+      });
+    });
+
+    it("rewrites in place to the highest-priority store that holds the config", async () => {
+      const rc = new FakeStore("rc", "rc", true, null);
+      const pkg = new FakeStore("package.json", "package.json", true, {
+        licenseId: "MIT",
+        headers: { style: "full" },
+      });
+      const config = makeConfig([rc, pkg]);
+
+      await config.clearHeaders();
+
+      expect(pkg.written).toEqual({ licenseId: "MIT" });
+      expect(rc.written).toBeNull();
+    });
+
+    it("does nothing when the saved config has no headers preference", async () => {
+      const rc = new FakeStore("rc", "rc", true, { licenseId: "MIT" });
+      const config = makeConfig([rc]);
+
+      await config.clearHeaders();
+
+      expect(rc.written).toBeNull();
+    });
+
+    it("does nothing when no config is saved", async () => {
+      const rc = new FakeStore("rc", "rc", true, null);
+      const config = makeConfig([rc]);
+
+      await config.clearHeaders();
+
+      expect(rc.written).toBeNull();
+    });
+  });
 });

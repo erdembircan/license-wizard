@@ -14,7 +14,7 @@ whole-system picture (and the place to look for how domains talk to each other).
 
 | File | Domain | Source |
 | --- | --- | --- |
-| [`application.mmd`](application.mmd) | Application — the bootstrap (`LicenseWizard`) and the install use-case | `src/` (root), `src/LicenseInstaller.ts` |
+| [`application.mmd`](application.mmd) | Application — the bootstrap (`LicenseWizard`), the run modes, and the install/header use-cases | `src/` (root), `src/LicenseInstaller.ts`, `src/HeaderApplier.ts`, `src/modes/` |
 | [`verify.mmd`](verify.mmd) | Verify — the verification use-case and its report types | `src/LicenseVerifier.ts` |
 | [`cli.mmd`](cli.mmd) | CLI — flag parsing, question/answer flow, rendering, reporting | `src/cli/` |
 | [`licensing.mmd`](licensing.mmd) | Licensing — SPDX sourcing, templating, generation | `src/licensing/` |

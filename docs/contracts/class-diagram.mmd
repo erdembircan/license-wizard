@@ -10,6 +10,56 @@ classDiagram
     +run() Promise~Answer[]~
   }
 
+  class IWizardMode {
+    <<interface>>
+    +run() Promise~Answer[]~
+  }
+
+  class InteractiveMode {
+    +InteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, renderer: IRenderer, reporter: IReporter, flags: WizardFlags)
+    +run() Promise~Answer[]~
+  }
+
+  class NonInteractiveMode {
+    +NonInteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, reporter: IReporter, flags: WizardFlags, saveTargetByFlag: Record~string, string~)
+    +run() Promise~Answer[]~
+  }
+
+  class VerifyMode {
+    +VerifyMode(verifier: LicenseVerifier, headerVerifier: HeaderVerifier, config: Config, reporter: IReporter, strict: boolean)
+    +run() Promise~Answer[]~
+  }
+
+  class WizardFlags {
+    <<type>>
+  }
+
+  class HeaderApplier {
+    +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader, writer: IFileSystemWriter)
+    +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
+    +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
+    +remove(extraIgnores: string[]) Promise~HeaderRemovalReport~
+    +previewRemoval(extraIgnores: string[]) Promise~HeaderRemovalReport~
+  }
+
+  class HeaderApplyReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +total: number
+    +written: number
+    +unchanged: number
+  }
+
+  class HeaderPreview {
+    +files: string[]
+    +sample: string
+  }
+
+  class HeaderRemovalReport {
+    +removed: string[]
+    +total: number
+  }
+
   class LicenseInstaller {
     +LicenseInstaller(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator)
     +install(selection: LicenseSelection) Promise~void~
@@ -376,6 +426,7 @@ classDiagram
       +targets() Promise~ConfigTarget[]~
       +write(config: WizardConfig, targetId: string) Promise~void~
       +clear() Promise~void~
+      +clearHeaders() Promise~void~
     }
 
     class IProjectManifest {
@@ -565,24 +616,64 @@ classDiagram
   CliReporter ..> TemplateSlot : renders
   CliReporter ..> VerifyReport : renders
   CliReporter ..> DryRunReport : renders
+  %% Composition root: LicenseWizard parses flags, builds the shared graph, and
+  %% delegates each run to one of the three modes through IWizardMode.
   LicenseWizard ..> FlagParser : uses
-  LicenseWizard ..> FlagParser : reads defaults from
-  LicenseWizard ..> QuestionRepository : creates
-  LicenseWizard ..> ClackRenderer : creates
+  LicenseWizard ..> WizardFlags : parses
   LicenseWizard ..> CliReporter : creates
-  LicenseWizard ..> IRenderer : reports completion through
-  LicenseWizard ..> IReporter : reports through
-  LicenseWizard ..> Orchestrator : creates
+  LicenseWizard ..> IReporter : reports usage through
+  LicenseWizard ..> ClackRenderer : creates
   LicenseWizard ..> SpdxLicenseSource : creates
   LicenseWizard ..> LicenseRepository : creates
   LicenseWizard ..> LicenseGenerator : creates
-  LicenseWizard ..> LicenseGenerator : renders dry-run preview through
   LicenseWizard ..> LicenseInstaller : creates
-  LicenseWizard ..> LicenseInstaller : applies selection through
-  LicenseWizard ..> LicenseSelection : builds
-  LicenseWizard ..> DryRunReport : builds
+  LicenseWizard ..> HeaderApplier : creates
   LicenseWizard ..> LicenseVerifier : creates
-  LicenseWizard ..> LicenseVerifier : verifies through
+  LicenseWizard ..> IWizardMode : delegates the run to
+  LicenseWizard ..> InteractiveMode : creates
+  LicenseWizard ..> NonInteractiveMode : creates
+  LicenseWizard ..> VerifyMode : creates
+  InteractiveMode ..|> IWizardMode : implements
+  NonInteractiveMode ..|> IWizardMode : implements
+  VerifyMode ..|> IWizardMode : implements
+
+  %% Interactive mode: the prompt-driven setup flow.
+  InteractiveMode ..> ClackRenderer : renders through
+  InteractiveMode ..> IRenderer : reports completion through
+  InteractiveMode ..> Orchestrator : creates
+  InteractiveMode ..> QuestionRepository : creates
+  InteractiveMode ..> LicenseRepository : searches and resolves with
+  InteractiveMode ..> LicenseTemplate : creates
+  InteractiveMode ..> HeaderRenderer : checks full-header support with
+  InteractiveMode ..> LicenseInstaller : applies selection through
+  InteractiveMode ..> HeaderApplier : applies headers through
+  InteractiveMode ..> LicenseGenerator : renders dry-run preview through
+  InteractiveMode ..> Config : reads config and targets from
+  InteractiveMode ..> ProjectManifestRepository : reads and reports manifests through
+  InteractiveMode ..> IReporter : reports dry-run through
+  InteractiveMode ..> LicenseSelection : builds
+  InteractiveMode ..> DryRunReport : builds
+
+  %% Non-interactive mode: flag-driven generation, apply-config, and removal.
+  NonInteractiveMode ..> LicenseRepository : resolves and suggests with
+  NonInteractiveMode ..> LicenseTemplate : creates
+  NonInteractiveMode ..> HeaderRenderer : checks full-header support with
+  NonInteractiveMode ..> LicenseInstaller : applies selection through
+  NonInteractiveMode ..> HeaderApplier : applies headers through
+  NonInteractiveMode ..> LicenseGenerator : renders dry-run preview through
+  NonInteractiveMode ..> Config : reads config and clears headers through
+  NonInteractiveMode ..> ProjectManifestRepository : reports manifests through
+  NonInteractiveMode ..> IReporter : reports through
+  NonInteractiveMode ..> LicenseSelection : builds
+  NonInteractiveMode ..> DryRunReport : builds
+  NonInteractiveMode ..> LicenseNotFoundError : handles
+
+  %% Verify mode: LICENSE/manifest and source-header verification.
+  VerifyMode ..> LicenseVerifier : verifies through
+  VerifyMode ..> HeaderVerifier : verifies headers through
+  VerifyMode ..> Config : reads config from
+  VerifyMode ..> IReporter : reports through
+
   LicenseInstaller ..> Config : uses
   LicenseInstaller ..> ProjectManifestRepository : writes selection to
   LicenseInstaller ..> LicenseGenerator : uses
@@ -613,7 +704,6 @@ classDiagram
   LicenseRepository ..> LicenseRepositoryError : throws
   LicenseRepository ..> LicenseNotFoundError : throws
   SpdxLicenseSource ..> LicenseNotFoundError : throws
-  LicenseWizard ..> LicenseNotFoundError : handles
   CliReporter ..> LicenseIndexEntry : renders
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
@@ -622,7 +712,6 @@ classDiagram
   HeaderTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces
   SpdxTemplate ..> SlotResolution : produces
-  LicenseWizard ..> LicenseTemplate : creates
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
   NodeFileSystemReader ..> FileSystemReaderError : throws
@@ -656,26 +745,29 @@ classDiagram
   LicenseWizard ..> NodeFileSystemReader : creates
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates
-  LicenseWizard ..> Config : reads defaults from
   LicenseWizard ..> RcConfigStore : creates
   LicenseWizard ..> ManifestConfigStore : creates
   LicenseWizard ..> NpmManifest : creates
   LicenseWizard ..> ComposerManifest : creates
   LicenseWizard ..> ProjectManifestRepository : creates
-  LicenseWizard ..> ProjectManifestRepository : reads defaults from
+  LicenseWizard ..> HeaderVerifier : creates
   LicenseWizard ..> SourceFileScanner : creates
   LicenseWizard ..> NodeFileTreeWalker : creates
-  LicenseWizard ..> HeaderInstaller : creates
-  LicenseWizard ..> HeaderInstaller : writes headers through
-  LicenseWizard ..> HeaderRemover : creates
-  LicenseWizard ..> HeaderRemover : removes headers through
-  LicenseWizard ..> SourceFile : previews removal with
-  LicenseWizard ..> HeaderVerifier : creates
-  LicenseWizard ..> HeaderVerifier : verifies headers through
-  LicenseWizard ..> HeaderRenderer : checks full-header support with
-  LicenseWizard ..> HeaderComposer : previews header block with
-  LicenseWizard ..> ProgressBar : drives header progress with
-  LicenseWizard ..> HeaderPlan : builds
+  %% HeaderApplier owns the source-file header surface for both write modes.
+  HeaderApplier ..> SourceFileScanner : creates
+  HeaderApplier ..> NodeFileTreeWalker : creates
+  HeaderApplier ..> HeaderInstaller : creates
+  HeaderApplier ..> HeaderInstaller : writes headers through
+  HeaderApplier ..> HeaderRemover : creates
+  HeaderApplier ..> HeaderRemover : removes headers through
+  HeaderApplier ..> SourceFile : previews removal with
+  HeaderApplier ..> HeaderComposer : previews header block with
+  HeaderApplier ..> ProgressBar : drives header progress with
+  HeaderApplier ..> HeaderPlan : builds
+  HeaderApplier ..> LicenseRepository : fetches header detail through
+  HeaderApplier ..> HeaderApplyReport : produces
+  HeaderApplier ..> HeaderPreview : produces
+  HeaderApplier ..> HeaderRemovalReport : produces
   CliReporter ..> HeaderGenerateReport : renders
   CliReporter ..> HeaderDryRunReport : renders
   CliReporter ..> HeaderRemoveReport : renders
