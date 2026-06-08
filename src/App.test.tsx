@@ -86,6 +86,6 @@ describe("App", () => {
     expect(within_.getByText(/Erdem Bircan/)).toBeInTheDocument();
     expect(within_.getByText("GitHub")).toBeInTheDocument();
     expect(within_.getByText("npm")).toBeInTheDocument();
-    expect(within_.getByText("Issues")).toBeInTheDocument();
+    expect(within_.queryByText("Issues")).not.toBeInTheDocument();
   });
 });
