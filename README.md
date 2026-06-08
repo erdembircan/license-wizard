@@ -70,7 +70,7 @@ npx license-wizard --license MIT
 
 Full documentation lives on the docs site:
 
-**→ [License Wizard documentation](https://erdembircan.github.io/license-wizard/#/docs)**
+**→ [License Wizard documentation](https://erdembircan.github.io/license-wizard/docs/)**
 
 It covers everything beyond the quick start:
 
@@ -81,6 +81,8 @@ It covers everything beyond the quick start:
 - **Configuration files** — `.licensewizardrc.json` and manifest fields
 - **Scripting & agents** — exit codes and non-interactive contracts
 - **Flags reference** — the complete flag list
+
+Reading this as an AI agent or from a script? The same documentation is published as plain Markdown: **[`documentation.md`](https://erdembircan.github.io/license-wizard/documentation.md)**.
 
 Run `npx license-wizard --help` to print the flag list from the CLI.
 
