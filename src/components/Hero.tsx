@@ -94,7 +94,7 @@ export default function Hero() {
             >
               Get started
             </a>
-            <a href="#/docs" className="btn-ghost">
+            <a href={`${import.meta.env.BASE_URL}docs/`} className="btn-ghost">
               Read the docs
             </a>
           </div>
