@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/license-wizard/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flags reference — License Wizard docs</title>
+    <meta name="description" content="License Wizard documentation: Flags reference." />
+    <meta name="theme-color" content="#f6f8fc" />
+    <!-- Plain-Markdown version of the full documentation, for agents and scripts. -->
+    <link rel="alternate" type="text/markdown" href="/license-wizard/documentation.md" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/license-wizard/assets/index-5HrARb-a.css" />
+  </head>
+  <body class="page-canvas">
+    <header class="docs-topbar">
+      <div class="docs-topbar-inner">
+        <div class="docs-brand">
+          <a href="/license-wizard/" class="docs-brand-link" aria-label="License Wizard home">
+            <img src="/license-wizard/logo-mark.png" alt="" class="docs-brand-logo" />
+            <span class="docs-brand-name">license <span class="t-brand">wizard</span></span>
+          </a>
+          <span class="docs-brand-badge">Docs</span>
+        </div>
+        <div class="docs-topbar-links">
+          <a href="/license-wizard/" class="nav-link">Home</a>
+          <a href="https://www.npmjs.com/package/license-wizard" class="nav-link" target="_blank" rel="noopener">npm</a>
+          <a href="https://github.com/erdembircan/license-wizard" class="btn-ghost docs-star" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z" /></svg>
+            Star
+          </a>
+        </div>
+      </div>
+    </header>
+    <div class="docs-shell">
+      <nav class="docs-side" aria-label="Documentation sections">
+    <p class="docs-side-title">Documentation</p>
+    <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link is-active" aria-current="page">Flags reference</a></li></ul>
+  </nav>
+      <main class="docs-main">
+        <article class="doc-prose"><h2>Flags reference</h2>
+<p>The complete flag list. Run <code>npx license-wizard --help</code> to print the same reference from the CLI.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--help</code></td>
+<td>Show the help message and exit.</td>
+</tr>
+<tr>
+<td><code>--verify</code></td>
+<td>Check the <code>LICENSE</code> file, every manifest&#39;s <code>license</code> field, and (when configured) the source-file headers against your saved configuration, reconciling any drift. Standalone mode.</td>
+</tr>
+<tr>
+<td><code>--strict</code></td>
+<td>With <code>--verify</code>, fail on any drift instead of reconciling it — for CI.</td>
+</tr>
+<tr>
+<td><code>--apply-config</code></td>
+<td>Regenerate the <code>LICENSE</code>, manifest fields, and configured headers from the saved config; errors if none exists. Standalone — takes priority over selection flags; honors <code>--dry-run</code>.</td>
+</tr>
+<tr>
+<td><code>--license &lt;spdx-id&gt;</code></td>
+<td>Select a license by its SPDX identifier and run non-interactively.</td>
+</tr>
+<tr>
+<td><code>--set &lt;field=value&gt;</code></td>
+<td>Set a copyright field for the chosen license (repeatable). Implies non-interactive mode.</td>
+</tr>
+<tr>
+<td><code>--save-rc</code></td>
+<td>Save the resolved config to <code>.licensewizardrc.json</code>. Implies non-interactive mode.</td>
+</tr>
+<tr>
+<td><code>--save-npm</code></td>
+<td>Save the resolved config to the <code>license-wizard</code> field of <code>package.json</code> (must exist).</td>
+</tr>
+<tr>
+<td><code>--save-composer</code></td>
+<td>Save the resolved config to the <code>license-wizard</code> field of <code>composer.json</code> (must exist).</td>
+</tr>
+<tr>
+<td><code>--get-tokens</code></td>
+<td>List the copyright fields the selected license accepts (requires <code>--license</code>) and exit.</td>
+</tr>
+<tr>
+<td><code>--headers &lt;short|full&gt;</code></td>
+<td>Also write SPDX license headers into source files — <code>short</code> (tag lines) or <code>full</code> (the standard notice).</td>
+</tr>
+<tr>
+<td><code>--headers-ignore &lt;glob&gt;</code></td>
+<td>Extra gitignore-style pattern to skip when writing headers, on top of the defaults and <code>.gitignore</code> (repeatable).</td>
+</tr>
+<tr>
+<td><code>--remove-headers</code></td>
+<td>Strip License Wizard&#39;s headers and drop the saved headers preference. Standalone; takes priority over <code>--headers</code>; honors <code>--headers-ignore</code> and <code>--dry-run</code>.</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Preview the license (and, with <code>--headers</code>, a sample block and the files it would touch) and skip every write.</td>
+</tr>
+</tbody></table>
+</article>
+        <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/scripting-agents/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Scripting & agents</span></a><span></span></nav>
+      </main>
+    </div>
+  </body>
+</html>

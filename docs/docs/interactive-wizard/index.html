@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/license-wizard/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive wizard — License Wizard docs</title>
+    <meta name="description" content="License Wizard documentation: Interactive wizard." />
+    <meta name="theme-color" content="#f6f8fc" />
+    <!-- Plain-Markdown version of the full documentation, for agents and scripts. -->
+    <link rel="alternate" type="text/markdown" href="/license-wizard/documentation.md" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/license-wizard/assets/index-5HrARb-a.css" />
+  </head>
+  <body class="page-canvas">
+    <header class="docs-topbar">
+      <div class="docs-topbar-inner">
+        <div class="docs-brand">
+          <a href="/license-wizard/" class="docs-brand-link" aria-label="License Wizard home">
+            <img src="/license-wizard/logo-mark.png" alt="" class="docs-brand-logo" />
+            <span class="docs-brand-name">license <span class="t-brand">wizard</span></span>
+          </a>
+          <span class="docs-brand-badge">Docs</span>
+        </div>
+        <div class="docs-topbar-links">
+          <a href="/license-wizard/" class="nav-link">Home</a>
+          <a href="https://www.npmjs.com/package/license-wizard" class="nav-link" target="_blank" rel="noopener">npm</a>
+          <a href="https://github.com/erdembircan/license-wizard" class="btn-ghost docs-star" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="16" height="16"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z" /></svg>
+            Star
+          </a>
+        </div>
+      </div>
+    </header>
+    <div class="docs-shell">
+      <nav class="docs-side" aria-label="Documentation sections">
+    <p class="docs-side-title">Documentation</p>
+    <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link is-active" aria-current="page">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link">Flags reference</a></li></ul>
+  </nav>
+      <main class="docs-main">
+        <article class="doc-prose"><h2>Interactive wizard</h2>
+<p>Run the command from the root of the project you want to license and you&#39;ll be guided through a short flow:</p>
+<pre><code class="language-bash">npx license-wizard
+</code></pre>
+<ul>
+<li><strong>Choose a license.</strong> Start typing to search the full SPDX catalog (e.g. <code>MIT</code>, <code>Apache-2.0</code>, <code>GPL-3.0-or-later</code>) and select one. If your project already declares a license, it&#39;s offered as the default.</li>
+<li><strong>Standard or customized.</strong> If the license has fillable copyright fields, keep the official text verbatim or fill in each field — typically the copyright holder and year.</li>
+<li><strong>Save your settings.</strong> Choose whether to remember your selection for next time.</li>
+</ul>
+<p>When you&#39;re done, License Wizard writes the <code>LICENSE</code> file and records the selected identifier in every manifest it finds. If you opted in, it also offers to stamp <a href="/license-wizard/docs/source-file-headers/">source-file headers</a>.</p>
+<blockquote>
+<p>Prefer to skip the prompts? Every step has a flag equivalent — see <a href="/license-wizard/docs/one-shot-generation/">one-shot generation</a> and <a href="/license-wizard/docs/scripting-agents/">scripting &amp; agents</a>.</p>
+</blockquote>
+</article>
+        <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/getting-started/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Getting started</span></a><a href="/license-wizard/docs/one-shot-generation/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">One-shot generation</span></a></nav>
+      </main>
+    </div>
+  </body>
+</html>
