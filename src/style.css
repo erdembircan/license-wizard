@@ -196,6 +196,27 @@
     box-shadow: 0 22px 40px -26px rgba(22, 34, 61, 0.4);
   }
 
+  /* The feature cards: a centered, wrapping row rather than a grid, so an odd
+     final card (7 cards across 3 columns) sits centered instead of stranded at
+     the left. Full rows fit exactly — the widths plus 1.25rem (gap-5) gutters
+     sum to 100% — so centering only ever shifts a lone trailing card. */
+  .features-grid {
+    @apply flex flex-wrap justify-center gap-5;
+  }
+  .features-grid > .card {
+    width: 100%;
+  }
+  @media (min-width: 40rem) {
+    .features-grid > .card {
+      width: calc((100% - 1.25rem) / 2);
+    }
+  }
+  @media (min-width: 64rem) {
+    .features-grid > .card {
+      width: calc((100% - 2.5rem) / 3);
+    }
+  }
+
   .card-icon {
     @apply mb-5 inline-flex size-11 items-center justify-center rounded-xl text-brand;
     background: var(--color-brand-soft);
