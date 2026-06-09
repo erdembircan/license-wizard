@@ -37,7 +37,7 @@ export default function CopyButton({
   };
 
   const buttonClass = [
-    "shrink-0 rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-paper hover:text-brand",
+    "shrink-0 cursor-pointer rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-paper hover:text-brand",
     copied ? "text-brand" : "",
     className ?? "",
   ]
