@@ -96,6 +96,13 @@ export default function Usage() {
               </span>
               <CopyButton text="yarn dlx license-wizard" label="Copy command" />
             </div>
+            <div className="copy-field">
+              <span>
+                <span style={{ color: "var(--color-brand)" }}>$</span> bunx
+                license-wizard
+              </span>
+              <CopyButton text="bunx license-wizard" label="Copy command" />
+            </div>
             <p className="px-1 pt-2 text-sm text-ink-faint">
               Writes{" "}
               <code className="font-mono text-[0.85em] text-ink-soft">
