@@ -64,8 +64,10 @@ export abstract class SpdxTemplate {
    * Matches supplied field/value entries against this template's copyright slots
    * and partitions the outcome. A field matches a slot by its label
    * (case-insensitively, e.g. `year`) or by its exact bracket token (e.g.
-   * `<year>`). Returns the resolved values keyed by token, the slots still
-   * awaiting a value, and any supplied fields that match no slot.
+   * `<year>`). A field whose value is empty or whitespace-only is treated as
+   * unfilled and reported among the missing slots. Returns the resolved values
+   * keyed by token, the slots still awaiting a value, and any supplied fields
+   * that match no slot.
    *
    * @param entries - The supplied fields keyed as typed, mapped to their values.
    */
@@ -76,10 +78,15 @@ export abstract class SpdxTemplate {
 
     for (const [field, value] of entries) {
       const slot = this.#matchSlot(slots, field);
-      if (slot) {
-        values[slot.token] = value;
-      } else {
+      if (!slot) {
         unknown.push(field);
+        continue;
+      }
+      // An empty or whitespace-only value is not a value: leaving it out keeps
+      // the slot in `missing`, so a customized license is never written with a
+      // blank copyright line that silently passed the "field is present" check.
+      if (value.trim() !== "") {
+        values[slot.token] = value;
       }
     }
 

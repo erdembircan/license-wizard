@@ -95,6 +95,7 @@ classDiagram
     +exists(reader: IFileSystemReader) Promise~boolean~
     +readLicense(reader: IFileSystemReader) Promise~string | null~
     +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
+    +assertWritable(reader: IFileSystemReader) Promise~void~
   }
 
   class JsonManifest {
@@ -104,6 +105,7 @@ classDiagram
     +exists(reader: IFileSystemReader) Promise~boolean~
     +readLicense(reader: IFileSystemReader) Promise~string | null~
     +writeLicense(reader: IFileSystemReader, writer: IFileSystemWriter, licenseId: string) Promise~void~
+    +assertWritable(reader: IFileSystemReader) Promise~void~
     #extractLicenseId(value: unknown)* string | null
   }
 
@@ -119,6 +121,7 @@ classDiagram
     +ProjectManifestRepository(manifests: IProjectManifest[], reader: IFileSystemReader, writer: IFileSystemWriter)
     +readLicense() Promise~string | null~
     +writeLicense(licenseId: string) Promise~void~
+    +assertWritable() Promise~void~
     +declaredLicenses() Promise~ManifestLicense[]~
     +writeLicenseTo(name: string, licenseId: string) Promise~void~
   }

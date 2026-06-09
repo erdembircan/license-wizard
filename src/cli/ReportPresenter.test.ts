@@ -331,9 +331,28 @@ describe("ReportPresenter wording (plain text)", () => {
         total: 30,
         written: 25,
         unchanged: 5,
+        skipped: 0,
       }),
     ).toMatchInlineSnapshot(`
       "Inscribed the MIT short header across 25 of 30 source file(s). 5 already bore the mark.
+      "
+    `);
+  });
+
+  it("notes files skipped for already declaring a license", () => {
+    expect(
+      present({
+        kind: "headersGenerated",
+        channel: "out",
+        licenseId: "MIT",
+        style: "short",
+        total: 30,
+        written: 23,
+        unchanged: 5,
+        skipped: 2,
+      }),
+    ).toMatchInlineSnapshot(`
+      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark. Skipped 2 that already declare a license.
       "
     `);
   });
@@ -348,6 +367,7 @@ describe("ReportPresenter wording (plain text)", () => {
         total: 25,
         written: 25,
         unchanged: 0,
+        skipped: 0,
       }),
     ).toMatchInlineSnapshot(`
       "Inscribed the MIT short header across 25 of 25 source file(s).

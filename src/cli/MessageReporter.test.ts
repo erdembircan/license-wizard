@@ -217,6 +217,7 @@ describe("MessageReporter", () => {
       total: 30,
       written: 25,
       unchanged: 5,
+      skipped: 0,
     });
 
     expect(sink.messages).toEqual([
@@ -228,6 +229,7 @@ describe("MessageReporter", () => {
         total: 30,
         written: 25,
         unchanged: 5,
+        skipped: 0,
       },
     ]);
   });

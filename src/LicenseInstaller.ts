@@ -58,9 +58,15 @@ export class LicenseInstaller {
    * customized copyright otherwise), and records the identifier in every present
    * manifest.
    *
+   * Every present manifest is validated before anything is written, so a
+   * malformed or non-object manifest aborts the run before the `LICENSE` file is
+   * created — leaving the project untouched rather than half-updated, with the
+   * declared license and the file on disk in agreement either way.
+   *
    * @param selection - The resolved license, copyright tokens, and save instruction.
    */
   async install(selection: LicenseSelection): Promise<void> {
+    await this.#manifests.assertWritable();
     await this.#persist(selection);
     await this.#generator.generate(selection.licenseId, selection.tokens);
     await this.#manifests.writeLicense(selection.licenseId);

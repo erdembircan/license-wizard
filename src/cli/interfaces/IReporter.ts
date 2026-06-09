@@ -18,6 +18,7 @@ export type HeaderGenerateReport = {
   total: number;
   written: number;
   unchanged: number;
+  skipped: number;
 };
 
 export type HeaderDryRunReport = {

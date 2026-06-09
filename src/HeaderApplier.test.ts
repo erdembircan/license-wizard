@@ -82,6 +82,7 @@ describe("HeaderApplier", () => {
         total: 1,
         written: 1,
         unchanged: 0,
+        skipped: 0,
       });
       expect(writes[0].path).toBe("a.ts");
       expect(writes[0].content).toContain("SPDX-License-Identifier: MIT");
@@ -99,6 +100,7 @@ describe("HeaderApplier", () => {
         total: 0,
         written: 0,
         unchanged: 0,
+        skipped: 0,
       });
       expect(writes).toEqual([]);
     });

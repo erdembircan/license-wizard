@@ -64,7 +64,7 @@ export class RcConfigStore implements IConfigStore {
     config: WizardConfig,
   ): Promise<void> {
     try {
-      await writer.write(RC_FILE, JSON.stringify(config, null, 2));
+      await writer.write(RC_FILE, `${JSON.stringify(config, null, 2)}\n`);
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;

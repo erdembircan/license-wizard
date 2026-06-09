@@ -47,6 +47,7 @@ export class LicenseWizard {
   readonly #reader: IFileSystemReader;
   readonly #writer: IFileSystemWriter;
   readonly #reporter: IReporter;
+  readonly #args: string[];
   readonly #flags: WizardFlags;
   // Maps each save flag to the target id of the config store it writes to,
   // read back from the store instances so the ids are not duplicated here.
@@ -69,6 +70,7 @@ export class LicenseWizard {
    * @param args - The raw argument list (e.g. `process.argv.slice(2)`).
    */
   constructor(args: string[]) {
+    this.#args = args;
     this.#flags = this.#parseFlags(args);
 
     const reader = new NodeFileSystemReader();
@@ -329,6 +331,36 @@ export class LicenseWizard {
       return [];
     }
 
+    // Reject typo'd or malformed flags before dispatching: an unknown flag must
+    // not silently fall through to the interactive prompt, and a value-accepting
+    // flag with no value must not crash the run it would otherwise drive.
+    const usageErrors = this.#createFlagParser().validate(this.#args);
+    if (usageErrors.length > 0) {
+      this.#reporter.error(usageErrors[0]);
+      process.exitCode = 1;
+      return [];
+    }
+
+    try {
+      return await this.#dispatch();
+    } catch (error) {
+      // Last line of defense: any failure that the modes did not handle (a
+      // network or file-system error) is reported as a single readable line
+      // with a non-zero exit code, never as a stack trace and bundle dump.
+      this.#reporter.error(this.#describeError(error));
+      process.exitCode = 1;
+      return [];
+    }
+  }
+
+  /**
+   * Routes the resolved flags to the matching mode, in priority order: header
+   * removal and other flag-driven flows run in the non-interactive mode
+   * (`--remove-headers` and `--apply-config` take priority over the selection
+   * flags), `--verify` runs the verify mode, and an invocation with no selection
+   * flags runs the interactive mode.
+   */
+  #dispatch(): Promise<Answer[]> {
     // --remove-headers is a standalone flow and takes priority over everything
     // else, including --verify: when both are given, the headers are removed.
     if (this.#flags["remove-headers"]) {
@@ -348,5 +380,23 @@ export class LicenseWizard {
     }
 
     return this.#interactiveMode.run();
+  }
+
+  /**
+   * Reduces a caught failure to a single readable line for the user. Prefers the
+   * error's own message and appends its underlying cause's message when one adds
+   * detail (e.g. the network reason behind a license fetch failure).
+   *
+   * @param error - The value thrown by the failed run.
+   */
+  #describeError(error: unknown): string {
+    if (!(error instanceof Error)) {
+      return String(error);
+    }
+    const cause =
+      error.cause instanceof Error ? error.cause.message : undefined;
+    return cause && cause !== error.message
+      ? `${error.message} (${cause})`
+      : error.message;
   }
 }

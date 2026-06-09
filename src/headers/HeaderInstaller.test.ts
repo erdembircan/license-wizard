@@ -58,6 +58,21 @@ describe("HeaderInstaller", () => {
     expect(fs.files.get("b.php")!.startsWith("<?php\n\n/*")).toBe(true);
   });
 
+  it("skips a file that already carries a foreign license notice instead of stacking", async () => {
+    const foreign =
+      "// SPDX-License-Identifier: GPL-2.0-only\nexport const x = 1;\n";
+    const fs = new FakeFs({ "a.ts": foreign, "b.ts": "export const y = 1;\n" });
+    const installer = new HeaderInstaller(fs, fs);
+
+    const summary = await installer.install(["a.ts", "b.ts"], plan);
+
+    expect(summary.skipped).toEqual(["a.ts"]);
+    expect(summary.written).toEqual(["b.ts"]);
+    // The foreign-notice file is left exactly as it was — no second SPDX line.
+    expect(fs.files.get("a.ts")).toBe(foreign);
+    expect(fs.files.get("b.ts")).toContain("SPDX-License-Identifier: MIT");
+  });
+
   it("leaves already-headed files untouched on a second run", async () => {
     const fs = new FakeFs({ "a.ts": "export const x = 1;\n" });
     const installer = new HeaderInstaller(fs, fs);

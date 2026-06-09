@@ -90,7 +90,7 @@ export abstract class JsonManifest implements IProjectManifest {
       }
 
       const raw = await reader.read(this.#fileName);
-      const manifest = JSON.parse(raw) as Record<string, unknown>;
+      const manifest = this.#parseObject(raw);
       manifest[LICENSE_FIELD] = licenseId;
       await writer.write(
         this.#fileName,
@@ -105,6 +105,55 @@ export abstract class JsonManifest implements IProjectManifest {
         cause,
       );
     }
+  }
+
+  /**
+   * Verifies the manifest can be updated without corrupting it, throwing when it
+   * exists but cannot be parsed as a JSON object. Callers run this before any
+   * write so a malformed or non-object manifest aborts the whole operation up
+   * front — rather than after the `LICENSE` file has already been written, which
+   * would leave the declared license and the file on disk disagreeing. An absent
+   * manifest is fine: it is simply skipped at write time.
+   *
+   * @param reader - Used to check for and read the manifest.
+   * @throws {FileSystemWriterError} When the manifest exists but is not a JSON object.
+   */
+  async assertWritable(reader: IFileSystemReader): Promise<void> {
+    if (!(await this.exists(reader))) {
+      return;
+    }
+    this.#parseObject(await reader.read(this.#fileName));
+  }
+
+  /**
+   * Parses the manifest body and confirms it is a JSON object — the only shape a
+   * `"license"` field can be written into. A JSON array, string, number, or
+   * `null` would silently lose the field on reserialization (`JSON.stringify`
+   * drops own properties set on an array, for one), so those are rejected
+   * outright instead of being reported as a false success.
+   *
+   * @param raw - The raw manifest file contents.
+   */
+  #parseObject(raw: string): Record<string, unknown> {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (cause) {
+      throw new FileSystemWriterError(
+        `Cannot update ${this.#fileName}: it is not valid JSON.`,
+        cause,
+      );
+    }
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      throw new FileSystemWriterError(
+        `Cannot update ${this.#fileName}: its top level is not a JSON object.`,
+      );
+    }
+    return parsed as Record<string, unknown>;
   }
 
   /**

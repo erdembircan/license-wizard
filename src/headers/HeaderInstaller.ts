@@ -2,6 +2,7 @@ import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemRea
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import type { HeaderPlan } from "@headers/HeaderPlan.js";
+import { SourceFile } from "@headers/SourceFile.js";
 
 export type HeaderProgress = {
   /** The number of files processed so far, including this one. */
@@ -17,6 +18,11 @@ export type HeaderInstallSummary = {
   written: string[];
   /** Files whose header was already correct and were left untouched. */
   unchanged: string[];
+  /**
+   * Files left untouched because they already carry a foreign (non-wizard)
+   * license notice, which the wizard will not prepend a second header over.
+   */
+  skipped: string[];
 };
 
 /**
@@ -59,11 +65,27 @@ export class HeaderInstaller {
     onProgress?: (progress: HeaderProgress) => void,
   ): Promise<HeaderInstallSummary> {
     const composer = new HeaderComposer(plan);
-    const summary: HeaderInstallSummary = { written: [], unchanged: [] };
+    const summary: HeaderInstallSummary = {
+      written: [],
+      unchanged: [],
+      skipped: [],
+    };
 
     let done = 0;
     for (const file of files) {
       const existing = await this.#reader.read(file);
+
+      // Never prepend a second declaration over a file that already carries a
+      // foreign license notice — that would leave it self-contradicting. The
+      // wizard's own blocks are excluded by this test, so re-heading a file it
+      // wrote (or switching its license) still goes through below.
+      if (new SourceFile(existing, file).hasForeignLicenseNotice()) {
+        summary.skipped.push(file);
+        done += 1;
+        onProgress?.({ done, total: files.length, file });
+        continue;
+      }
+
       const updated = composer.apply(existing, file);
 
       if (updated === existing) {

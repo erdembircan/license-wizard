@@ -46,4 +46,14 @@ export interface IProjectManifest {
     writer: IFileSystemWriter,
     licenseId: string,
   ): Promise<void>;
+
+  /**
+   * Verifies the manifest can be updated, throwing when it exists but cannot be
+   * parsed as a JSON object. Run before any write so a malformed or non-object
+   * manifest aborts the operation up front, leaving nothing half-written. An
+   * absent manifest passes (it is skipped at write time).
+   *
+   * @param reader - Used to check for and read the manifest.
+   */
+  assertWritable(reader: IFileSystemReader): Promise<void>;
 }
