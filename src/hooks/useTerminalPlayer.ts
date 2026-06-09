@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from "react";
-import { scenes, type TerminalScene, type TerminalLine } from "../data/scenes";
+import { type TerminalScene, type TerminalLine } from "../data/scenes";
 import { runTypewriter } from "../lib/typewriter";
 import { classifyTreeLine, lineMarker } from "../lib/terminalLine";
 import {
@@ -18,16 +18,18 @@ const toneClass: Record<NonNullable<TerminalLine["tone"]>, string> = {
 };
 
 /**
- * Runs the interactive hero terminal engine against the given tabs container and
- * body elements: builds the scene tabs, types each prompt, plays back the shell
- * scenes line-by-line, streams the agent turn with the thinking spinner, and
- * auto-advances between scenes. The whole engine lives inside a single useEffect
- * whose cleanup clears every pending timeout/interval so nothing leaks on unmount
- * or a StrictMode double-invoke.
+ * Runs the interactive terminal engine for the given `scenes` against the tabs
+ * container and body elements: builds the scene tabs, types each prompt, plays
+ * back the shell scenes line-by-line, streams the agent turn with the thinking
+ * spinner, and auto-advances between scenes. The whole engine lives inside a
+ * single useEffect whose cleanup clears every pending timeout/interval so
+ * nothing leaks on unmount or a StrictMode double-invoke. `scenes` should be a
+ * stable reference (a module constant) so the effect doesn't re-run each render.
  */
 export function useTerminalPlayer(
   tabsRef: RefObject<HTMLDivElement | null>,
   bodyRef: RefObject<HTMLDivElement | null>,
+  scenes: TerminalScene[],
 ): void {
   useEffect(() => {
     if (typeof window === "undefined" || typeof document === "undefined") {
@@ -366,5 +368,5 @@ export function useTerminalPlayer(
       bodyEl.innerHTML = "";
       bodyEl.classList.remove("is-agent");
     };
-  }, [tabsRef, bodyRef]);
+  }, [tabsRef, bodyRef, scenes]);
 }

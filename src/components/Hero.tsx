@@ -1,5 +1,6 @@
 import InstallTabs from "./InstallTabs";
 import Terminal from "./Terminal";
+import { scenes } from "../data/scenes";
 
 /**
  * The landing-page hero: the headline copy, install command, primary call to
@@ -133,7 +134,11 @@ export default function Hero() {
 
         {/* terminal */}
         <div className="hero-rise" style={{ animationDelay: "0.22s" }}>
-          <Terminal />
+          <Terminal
+            scenes={scenes}
+            ariaLabel="License Wizard examples"
+            id="terminal"
+          />
           <p className="mt-3 text-center text-xs text-ink-faint">
             A real run: interactive, one-shot, or CI verification.
           </p>
