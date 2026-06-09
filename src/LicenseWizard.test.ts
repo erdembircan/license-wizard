@@ -249,20 +249,42 @@ vi.mock("@headers/NodeFileTreeWalker.js", () => ({
   }),
 }));
 
+// Holds the per-test recording sink so the CliReporter stub below and the test
+// body share one instance. Set fresh in `beforeEach`.
+const recorder = vi.hoisted(() => ({ sink: null as RecordingSink | null }));
+
+// The wizard builds its own terminal reporter (`CliReporter`); stand it in with
+// the real `MessageReporter` wired to the recording sink, so tests assert
+// against the view-model messages the reporter emits rather than parsing
+// terminal prose. The production terminal wiring is covered by the CLI unit
+// tests (`CliReporter.test.ts`, `StreamSink.test.ts`).
+vi.mock("@cli/CliReporter.js", async () => {
+  const { MessageReporter } = await vi.importActual<
+    typeof import("@cli/MessageReporter.js")
+  >("@cli/MessageReporter.js");
+  return {
+    CliReporter: class extends MessageReporter {
+      constructor() {
+        super(recorder.sink as RecordingSink);
+      }
+    },
+  };
+});
+
 const { LicenseWizard } = await import("./LicenseWizard.js");
 
-// Every wizard construction in this file goes through `lw`, which injects a
-// per-test RecordingSink so tests assert against the view-model messages the
-// reporter emits rather than parsing terminal prose. The production wiring (the
-// terminal reporter) is covered by the CLI unit tests.
+// Every test reads its emitted output through `sink`, the recording sink the
+// stubbed CliReporter (see the mock above) writes into. A fresh sink per test
+// keeps the captured messages isolated.
 let sink: RecordingSink;
 
 beforeEach(() => {
   sink = new RecordingSink();
+  recorder.sink = sink;
 });
 
 const lw = (args: string[]): InstanceType<typeof LicenseWizard> =>
-  new LicenseWizard(args, sink);
+  new LicenseWizard(args);
 
 /**
  * Runs the wizard with the given args and returns the defaultValue the renderer

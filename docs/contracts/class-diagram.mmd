@@ -6,7 +6,7 @@ classDiagram
   direction TB
 
   class LicenseWizard {
-    +LicenseWizard(args: string[], sink?: IOutputSink)
+    +LicenseWizard(args: string[])
     +run() Promise~Answer[]~
   }
 
@@ -659,7 +659,6 @@ classDiagram
   LicenseWizard ..> FlagParser : uses
   LicenseWizard ..> WizardFlags : parses
   LicenseWizard ..> CliReporter : creates
-  LicenseWizard ..> IOutputSink : reports through (injectable)
   LicenseWizard ..> IReporter : reports usage through
   LicenseWizard ..> ClackRenderer : creates
   LicenseWizard ..> SpdxLicenseSource : creates
