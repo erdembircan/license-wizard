@@ -25,7 +25,7 @@
     "type": "git",
     "url": "git+https://github.com/erdembircan/license-wizard.git"
   },
-  "homepage": "https://github.com/erdembircan/license-wizard#readme",
+  "homepage": "https://erdembircan.github.io/license-wizard/",
   "bugs": "https://github.com/erdembircan/license-wizard/issues",
   "bin": {
     "license-wizard": "bin/license-wizard.js"
