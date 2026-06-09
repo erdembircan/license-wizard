@@ -9,7 +9,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.13-brightgreen.svg)](https://nodejs.org)
 
-**[🪄 Visit the website →](https://erdembircan.github.io/license-wizard/)**
+**[Visit the website →](https://erdembircan.github.io/license-wizard/)**
 
 </div>
 
