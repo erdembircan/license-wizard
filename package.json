@@ -2,6 +2,18 @@
   "name": "license-wizard",
   "version": "1.0.0-dev",
   "description": "An interactive CLI for generating license files",
+  "keywords": [
+    "license",
+    "spdx",
+    "license-generator",
+    "license-file",
+    "cli",
+    "open-source",
+    "mit",
+    "apache",
+    "npx",
+    "compliance"
+  ],
   "type": "module",
   "packageManager": "pnpm@11.2.2",
   "engines": {
@@ -26,6 +38,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.js",
+    "prepack": "pnpm run build",
     "dev:start": "pnpm run build && chmod +x bin/license-wizard.js && bin/license-wizard.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
