@@ -34,7 +34,7 @@ License Wizard closes that gap. It walks you through choosing a license, pulls t
 ## Requirements
 
 - **Node.js** `>= 22.13.0`
-- Network access (license data is fetched from the official SPDX list)
+- Network access
 
 ## Quick Start
 
