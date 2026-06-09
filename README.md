@@ -38,10 +38,13 @@ License Wizard closes that gap. It walks you through choosing a license, pulls t
 
 ## Quick Start
 
-Run it directly — no install required:
+Run it directly — no install required. Use whichever package manager you have:
 
 ```bash
-npx license-wizard
+npx license-wizard       # npm
+pnpm dlx license-wizard  # pnpm
+yarn dlx license-wizard  # yarn
+bunx license-wizard      # bun
 ```
 
 Or install it globally:
