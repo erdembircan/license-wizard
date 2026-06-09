@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Answer } from "@cli/Answer.js";
 import type { CompletionSummary } from "@cli/interfaces/IRenderer.js";
 import type { Question } from "@cli/Question.js";
+import { RecordingSink } from "@cli/RecordingSink.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
@@ -248,14 +249,49 @@ vi.mock("@headers/NodeFileTreeWalker.js", () => ({
   }),
 }));
 
+// Holds the per-test recording sink so the CliReporter stub below and the test
+// body share one instance. Set fresh in `beforeEach`.
+const recorder = vi.hoisted(() => ({ sink: null as RecordingSink | null }));
+
+// The wizard builds its own terminal reporter (`CliReporter`); stand it in with
+// the real `MessageReporter` wired to the recording sink, so tests assert
+// against the view-model messages the reporter emits rather than parsing
+// terminal prose. The production terminal wiring is covered by the CLI unit
+// tests (`CliReporter.test.ts`, `StreamSink.test.ts`).
+vi.mock("@cli/CliReporter.js", async () => {
+  const { MessageReporter } = await vi.importActual<
+    typeof import("@cli/MessageReporter.js")
+  >("@cli/MessageReporter.js");
+  return {
+    CliReporter: class extends MessageReporter {
+      constructor() {
+        super(recorder.sink as RecordingSink);
+      }
+    },
+  };
+});
+
 const { LicenseWizard } = await import("./LicenseWizard.js");
+
+// Every test reads its emitted output through `sink`, the recording sink the
+// stubbed CliReporter (see the mock above) writes into. A fresh sink per test
+// keeps the captured messages isolated.
+let sink: RecordingSink;
+
+beforeEach(() => {
+  sink = new RecordingSink();
+  recorder.sink = sink;
+});
+
+const lw = (args: string[]): InstanceType<typeof LicenseWizard> =>
+  new LicenseWizard(args);
 
 /**
  * Runs the wizard with the given args and returns the defaultValue the renderer
  * received for the license question.
  */
 async function licenseDefaultFor(args: string[]): Promise<string | undefined> {
-  await new LicenseWizard(args).run();
+  await lw(args).run();
   const licenseQuestion = state.rendered.find((q) => q.id === "license");
   return licenseQuestion?.defaultValue as string | undefined;
 }
@@ -290,7 +326,7 @@ describe("LicenseWizard customization flow", () => {
 
   it("does not offer Standard/Customize when the license has no customizable slots", async () => {
     // Default detail has an empty template, so there are no slots.
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.rendered.some((q) => q.id === "generationMode")).toBe(false);
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
@@ -305,7 +341,7 @@ describe("LicenseWizard customization flow", () => {
     };
     // The default answer for a select is "standard".
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.rendered.some((q) => q.id === "generationMode")).toBe(true);
     // No slot text questions are asked on the standard path.
@@ -328,7 +364,7 @@ describe("LicenseWizard customization flow", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     const slotQuestions = state.rendered.filter(
       (q) => q.id === "<year>" || q.id === "<copyright holders>",
@@ -368,7 +404,7 @@ describe("LicenseWizard customization flow", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     const slotQuestions = state.rendered.filter(
       (q) => q.id === "<year>" || q.id === "<copyright holders>",
@@ -403,7 +439,7 @@ describe("LicenseWizard config write-back", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.writtenConfig).toEqual({
       licenseId: "MIT",
@@ -428,7 +464,7 @@ describe("LicenseWizard config write-back", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
   });
@@ -440,7 +476,7 @@ describe("LicenseWizard config write-back", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.writtenConfig).toBeNull();
     expect(state.configCleared).toBe(true);
@@ -453,7 +489,7 @@ describe("LicenseWizard project manifest license write-back", () => {
   });
 
   it("records the selected license in the project manifests at the end of the run", async () => {
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.writtenProjectLicense).toBe("MIT");
   });
@@ -466,7 +502,7 @@ describe("LicenseWizard project manifest license write-back", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.completion).toEqual({
       licenseId: "MIT",
@@ -488,7 +524,7 @@ describe("LicenseWizard config save", () => {
       { id: "package.json", label: "package.json" },
     ];
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     const saveQuestion = state.rendered.find((q) => q.id === "saveConfig");
     expect(saveQuestion?.type).toBe("select");
@@ -507,7 +543,7 @@ describe("LicenseWizard config save", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.saveTarget).toBe("package.json");
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
@@ -521,7 +557,7 @@ describe("LicenseWizard config save", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.saveTarget).toBeNull();
     expect(state.writtenConfig).toBeNull();
@@ -551,7 +587,7 @@ describe("LicenseWizard interactive header flow", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.rendered.some((q) => q.id === "addHeaders")).toBe(true);
     expect(state.rendered.some((q) => q.id === "headerStyle")).toBe(false);
@@ -568,7 +604,7 @@ describe("LicenseWizard interactive header flow", () => {
       return "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     // MIT publishes no standard header, so the short/full choice is skipped.
     expect(state.rendered.some((q) => q.id === "headerStyle")).toBe(false);
@@ -596,7 +632,7 @@ describe("LicenseWizard interactive header flow", () => {
       return "Apache-2.0";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.rendered.some((q) => q.id === "headerStyle")).toBe(true);
     expect(state.headerWrites).toHaveLength(1);
@@ -616,49 +652,31 @@ describe("LicenseWizard non-interactive mode", () => {
   };
 
   const originalExitCode = process.exitCode;
-  let stdout: string;
-  let stderr: string;
-  let stdoutSpy: ReturnType<typeof vi.spyOn>;
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     state.reset();
-    stdout = "";
-    stderr = "";
-    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stdout += String(chunk);
-      return true;
-    }) as typeof process.stdout.write);
-    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stderr += String(chunk);
-      return true;
-    }) as typeof process.stderr.write);
   });
 
   afterEach(() => {
-    stdoutSpy.mockRestore();
-    stderrSpy.mockRestore();
     process.exitCode = originalExitCode;
   });
 
   it("generates the standard license without rendering any prompt for --license", async () => {
-    await new LicenseWizard(["--license", "MIT"]).run();
+    await lw(["--license", "MIT"]).run();
 
     expect(state.rendered).toEqual([]);
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
     expect(state.writtenProjectLicense).toBe("MIT");
-    expect(stdout).toContain("Conjured your LICENSE (MIT)");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "generated", licenseId: "MIT" }),
+    );
   });
 
   it("uses the flag's license directly, ignoring manifest and saved config", async () => {
     state.projectLicense = "ISC";
     state.config = { licenseId: "Apache-2.0" };
 
-    await new LicenseWizard(["--license", "MIT"]).run();
+    await lw(["--license", "MIT"]).run();
 
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
   });
@@ -666,7 +684,7 @@ describe("LicenseWizard non-interactive mode", () => {
   it("generates standard text when the license has fields but no --set is given", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard(["--license", "MIT"]).run();
+    await lw(["--license", "MIT"]).run();
 
     expect(state.rendered).toEqual([]);
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
@@ -675,7 +693,7 @@ describe("LicenseWizard non-interactive mode", () => {
   it("generates a customized license when every field is supplied via --set", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard([
+    await lw([
       "--license",
       "MIT",
       "--set",
@@ -699,7 +717,7 @@ describe("LicenseWizard non-interactive mode", () => {
   it("matches supplied fields case-insensitively and by bracket token", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard([
+    await lw([
       "--license",
       "MIT",
       "--set",
@@ -722,7 +740,7 @@ describe("LicenseWizard non-interactive mode", () => {
   it("preserves '=' characters in a field value", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard([
+    await lw([
       "--license",
       "MIT",
       "--set",
@@ -739,66 +757,100 @@ describe("LicenseWizard non-interactive mode", () => {
   it("lists the required fields and does not generate when --set is incomplete", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard(["--license", "MIT", "--set", "year=2026"]).run();
+    await lw(["--license", "MIT", "--set", "year=2026"]).run();
 
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
-    expect(stderr).toContain("missing required field");
-    expect(stderr).toContain("copyright holders");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "missingFields",
+        licenseId: "MIT",
+        missing: [expect.objectContaining({ label: "copyright holders" })],
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
   it("reports unknown fields and does not generate", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard(["--license", "MIT", "--set", "author=x"]).run();
+    await lw(["--license", "MIT", "--set", "author=x"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stderr).toContain("Unknown copyright field");
-    expect(stderr).toContain("author");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "unknownFields",
+        licenseId: "MIT",
+        unknown: ["author"],
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
   it("rejects a malformed --set value lacking '='", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard(["--license", "MIT", "--set", "year"]).run();
+    await lw(["--license", "MIT", "--set", "year"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stderr).toContain("Invalid --set");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("Invalid --set"),
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
   it("--get-tokens lists the fields and does not generate", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard(["--license", "MIT", "--get-tokens"]).run();
+    await lw(["--license", "MIT", "--get-tokens"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stdout).toContain("year");
-    expect(stdout).toContain("copyright holders");
-    expect(stdout).toContain("--set");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "tokens",
+        licenseId: "MIT",
+        slots: expect.arrayContaining([
+          expect.objectContaining({ label: "year" }),
+          expect.objectContaining({ label: "copyright holders" }),
+        ]),
+      }),
+    );
   });
 
   it("--get-tokens reports no fields for a license without customizable copyright", async () => {
-    await new LicenseWizard(["--license", "MIT", "--get-tokens"]).run();
+    await lw(["--license", "MIT", "--get-tokens"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stdout).toContain("no customizable copyright fields");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "tokens", licenseId: "MIT", slots: [] }),
+    );
   });
 
   it("errors when --set is given without --license", async () => {
-    await new LicenseWizard(["--set", "year=2026"]).run();
+    await lw(["--set", "year=2026"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stderr).toContain("--license");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("--license"),
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
   it("errors when --get-tokens is given without --license", async () => {
-    await new LicenseWizard(["--get-tokens"]).run();
+    await lw(["--get-tokens"]).run();
 
-    expect(stderr).toContain("--license");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("--license"),
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -807,7 +859,7 @@ describe("LicenseWizard non-interactive mode", () => {
       { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
     ];
 
-    await new LicenseWizard(["--license", "MIT"]).run();
+    await lw(["--license", "MIT"]).run();
 
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
     expect(state.writtenConfig).toBeNull();
@@ -819,19 +871,25 @@ describe("LicenseWizard non-interactive mode", () => {
       { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
     ];
 
-    await new LicenseWizard(["--license", "MIT", "--save-rc"]).run();
+    await lw(["--license", "MIT", "--save-rc"]).run();
 
     expect(state.saveTarget).toBe(".licensewizardrc.json");
     expect(state.writtenConfig).toEqual({ licenseId: "MIT" });
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
-    expect(stdout).toContain("Spellbook saved to .licensewizardrc.json");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "generated",
+        licenseId: "MIT",
+        savedTo: ".licensewizardrc.json",
+      }),
+    );
   });
 
   it("persists collected tokens when saving a customized license", async () => {
     state.detail = TEMPLATE_DETAIL;
     state.configTargets = [{ id: "package.json", label: "package.json" }];
 
-    await new LicenseWizard([
+    await lw([
       "--license",
       "MIT",
       "--set",
@@ -857,11 +915,16 @@ describe("LicenseWizard non-interactive mode", () => {
       { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
     ];
 
-    await new LicenseWizard(["--license", "MIT", "--save-composer"]).run();
+    await lw(["--license", "MIT", "--save-composer"]).run();
 
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenConfig).toBeNull();
-    expect(stderr).toContain("composer.json");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("composer.json"),
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -871,24 +934,29 @@ describe("LicenseWizard non-interactive mode", () => {
       { id: "package.json", label: "package.json" },
     ];
 
-    await new LicenseWizard([
-      "--license",
-      "MIT",
-      "--save-rc",
-      "--save-npm",
-    ]).run();
+    await lw(["--license", "MIT", "--save-rc", "--save-npm"]).run();
 
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenConfig).toBeNull();
-    expect(stderr).toContain("at most one");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("at most one"),
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
   it("errors when a --save-* flag is given without --license", async () => {
-    await new LicenseWizard(["--save-rc"]).run();
+    await lw(["--save-rc"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stderr).toContain("--license");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("--license"),
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -899,13 +967,20 @@ describe("LicenseWizard non-interactive mode", () => {
       { licenseId: "Apache-1.1", name: "Apache Software License 1.1" },
     ];
 
-    await new LicenseWizard(["--license", "apache-2-0"]).run();
+    await lw(["--license", "apache-2-0"]).run();
 
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
-    expect(stderr).toContain('No license matches "apache-2-0"');
-    expect(stderr).toContain("Apache-2.0");
-    expect(stderr).toContain("Apache-1.1");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "licenseNotFound",
+        licenseId: "apache-2-0",
+        suggestions: [
+          expect.objectContaining({ licenseId: "Apache-2.0" }),
+          expect.objectContaining({ licenseId: "Apache-1.1" }),
+        ],
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -913,42 +988,28 @@ describe("LicenseWizard non-interactive mode", () => {
     state.notFoundLicenseId = "zzzz";
     state.suggestions = [];
 
-    await new LicenseWizard(["--license", "zzzz"]).run();
+    await lw(["--license", "zzzz"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stderr).toContain('No license matches "zzzz"');
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "licenseNotFound",
+        licenseId: "zzzz",
+        suggestions: [],
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 });
 
 describe("LicenseWizard verify mode", () => {
   const originalExitCode = process.exitCode;
-  let stdout: string;
-  let stderr: string;
-  let stdoutSpy: ReturnType<typeof vi.spyOn>;
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     state.reset();
-    stdout = "";
-    stderr = "";
-    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stdout += String(chunk);
-      return true;
-    }) as typeof process.stdout.write);
-    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stderr += String(chunk);
-      return true;
-    }) as typeof process.stderr.write);
   });
 
   afterEach(() => {
-    stdoutSpy.mockRestore();
-    stderrSpy.mockRestore();
     process.exitCode = originalExitCode;
   });
 
@@ -957,9 +1018,15 @@ describe("LicenseWizard verify mode", () => {
     state.licenseFile = "RENDERED LICENSE";
     state.renderedContent = "RENDERED LICENSE";
 
-    await new LicenseWizard(["--verify"]).run();
+    await lw(["--verify"]).run();
 
-    expect(stdout).toContain("LICENSE is up to date");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyMatch",
+        licenseId: "MIT",
+        manifestsChecked: false,
+      }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(process.exitCode).toBe(originalExitCode);
   });
@@ -969,10 +1036,15 @@ describe("LicenseWizard verify mode", () => {
     state.licenseFile = "STALE LICENSE";
     state.renderedContent = "FRESH LICENSE";
 
-    await new LicenseWizard(["--verify"]).run();
+    await lw(["--verify"]).run();
 
-    expect(stdout).toContain("Realigned the project");
-    expect(stdout).toContain("LICENSE regenerated");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyFixed",
+        licenseId: "MIT",
+        licenseRegenerated: true,
+      }),
+    );
     expect(state.generateCalls).toEqual([
       { licenseId: "MIT", slotValues: { "<year>": "2026" } },
     ]);
@@ -983,9 +1055,11 @@ describe("LicenseWizard verify mode", () => {
     state.licenseFile = "STALE LICENSE";
     state.renderedContent = "FRESH LICENSE";
 
-    await new LicenseWizard(["--verify", "--strict"]).run();
+    await lw(["--verify", "--strict"]).run();
 
-    expect(stderr).toContain("out of sync");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "verifyMismatch", licenseId: "MIT" }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(process.exitCode).toBe(1);
   });
@@ -994,9 +1068,14 @@ describe("LicenseWizard verify mode", () => {
     state.config = { licenseId: "MIT" };
     state.licenseFile = null;
 
-    await new LicenseWizard(["--verify"]).run();
+    await lw(["--verify"]).run();
 
-    expect(stderr).toContain("no LICENSE file");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("no LICENSE file"),
+      }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(process.exitCode).toBe(1);
   });
@@ -1005,9 +1084,14 @@ describe("LicenseWizard verify mode", () => {
     state.config = null;
     state.licenseFile = "SOME LICENSE";
 
-    await new LicenseWizard(["--verify"]).run();
+    await lw(["--verify"]).run();
 
-    expect(stderr).toContain("no saved configuration");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("no saved configuration"),
+      }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(process.exitCode).toBe(1);
   });
@@ -1017,16 +1101,17 @@ describe("LicenseWizard verify mode", () => {
     state.licenseFile = "RENDERED LICENSE";
     state.renderedContent = "RENDERED LICENSE";
 
-    await new LicenseWizard([
-      "--verify",
-      "--license",
-      "Apache-2.0",
-      "--save-rc",
-    ]).run();
+    await lw(["--verify", "--license", "Apache-2.0", "--save-rc"]).run();
 
     // No prompts, no non-interactive generation — just the verify confirmation.
     expect(state.rendered).toEqual([]);
-    expect(stdout).toContain("LICENSE is up to date");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyMatch",
+        licenseId: "MIT",
+        manifestsChecked: false,
+      }),
+    );
     expect(state.writtenConfig).toBeNull();
   });
 
@@ -1036,9 +1121,15 @@ describe("LicenseWizard verify mode", () => {
     state.renderedContent = "RENDERED LICENSE";
     state.declaredLicenses = [{ name: "package.json", licenseId: "MIT" }];
 
-    await new LicenseWizard(["--verify"]).run();
+    await lw(["--verify"]).run();
 
-    expect(stdout).toContain("LICENSE and project manifests are up to date");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyMatch",
+        licenseId: "MIT",
+        manifestsChecked: true,
+      }),
+    );
     expect(state.manifestWrites).toEqual([]);
     expect(process.exitCode).toBe(originalExitCode);
   });
@@ -1051,10 +1142,14 @@ describe("LicenseWizard verify mode", () => {
       { name: "package.json", licenseId: "Apache-2.0" },
     ];
 
-    await new LicenseWizard(["--verify"]).run();
+    await lw(["--verify"]).run();
 
-    expect(stdout).toContain(
-      "package.json license updated to MIT (was Apache-2.0)",
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyFixed",
+        licenseId: "MIT",
+        manifests: [{ name: "package.json", was: "Apache-2.0" }],
+      }),
     );
     expect(state.manifestWrites).toEqual([
       { name: "package.json", licenseId: "MIT" },
@@ -1072,11 +1167,14 @@ describe("LicenseWizard verify mode", () => {
       { name: "package.json", licenseId: "Apache-2.0" },
     ];
 
-    await new LicenseWizard(["--verify", "--strict"]).run();
+    await lw(["--verify", "--strict"]).run();
 
-    expect(stderr).toContain("out of sync");
-    expect(stderr).toContain(
-      "package.json license declares Apache-2.0 (expected MIT)",
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyMismatch",
+        licenseId: "MIT",
+        manifests: [{ name: "package.json", declared: "Apache-2.0" }],
+      }),
     );
     expect(state.manifestWrites).toEqual([]);
     expect(process.exitCode).toBe(1);
@@ -1092,46 +1190,28 @@ describe("LicenseWizard dry-run mode", () => {
   };
 
   const originalExitCode = process.exitCode;
-  let stdout: string;
-  let stderr: string;
-  let stdoutSpy: ReturnType<typeof vi.spyOn>;
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     state.reset();
-    stdout = "";
-    stderr = "";
-    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stdout += String(chunk);
-      return true;
-    }) as typeof process.stdout.write);
-    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stderr += String(chunk);
-      return true;
-    }) as typeof process.stderr.write);
   });
 
   afterEach(() => {
-    stdoutSpy.mockRestore();
-    stderrSpy.mockRestore();
     process.exitCode = originalExitCode;
   });
 
   it("prints the rendered license and writes nothing for a non-interactive dry run", async () => {
     state.declaredLicenses = [{ name: "package.json", licenseId: null }];
 
-    await new LicenseWizard(["--license", "MIT", "--dry-run"]).run();
+    await lw(["--license", "MIT", "--dry-run"]).run();
 
-    expect(stdout).toContain(
-      "Dry run — the spell was only rehearsed; no files were written.",
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "dryRun",
+        licenseId: "MIT",
+        content: expect.stringContaining("RENDERED LICENSE"),
+        manifests: ["package.json"],
+      }),
     );
-    expect(stdout).toContain("Would conjure LICENSE (MIT):");
-    expect(stdout).toContain("RENDERED LICENSE");
-    expect(stdout).toContain("Inscribe MIT in manifests: package.json");
     // No write of any kind happened.
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
@@ -1143,7 +1223,7 @@ describe("LicenseWizard dry-run mode", () => {
   it("renders the customized license under --dry-run without writing", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard([
+    await lw([
       "--license",
       "MIT",
       "--set",
@@ -1153,7 +1233,12 @@ describe("LicenseWizard dry-run mode", () => {
       "--dry-run",
     ]).run();
 
-    expect(stdout).toContain("RENDERED LICENSE");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "dryRun",
+        content: expect.stringContaining("RENDERED LICENSE"),
+      }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
   });
@@ -1163,14 +1248,14 @@ describe("LicenseWizard dry-run mode", () => {
       { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
     ];
 
-    await new LicenseWizard([
-      "--license",
-      "MIT",
-      "--save-rc",
-      "--dry-run",
-    ]).run();
+    await lw(["--license", "MIT", "--save-rc", "--dry-run"]).run();
 
-    expect(stdout).toContain("Save your spellbook to .licensewizardrc.json");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "dryRun",
+        save: { action: "save", target: ".licensewizardrc.json" },
+      }),
+    );
     expect(state.writtenConfig).toBeNull();
     expect(state.saveTarget).toBeNull();
     expect(state.generateCalls).toEqual([]);
@@ -1179,16 +1264,14 @@ describe("LicenseWizard dry-run mode", () => {
   it("still reports incomplete --set fields under --dry-run without rendering", async () => {
     state.detail = TEMPLATE_DETAIL;
 
-    await new LicenseWizard([
-      "--license",
-      "MIT",
-      "--set",
-      "year=2026",
-      "--dry-run",
-    ]).run();
+    await lw(["--license", "MIT", "--set", "year=2026", "--dry-run"]).run();
 
-    expect(stdout).not.toContain("Dry run");
-    expect(stderr).toContain("missing required field");
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "dryRun" }),
+    );
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "missingFields" }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -1199,14 +1282,16 @@ describe("LicenseWizard dry-run mode", () => {
       return "MIT";
     };
 
-    await new LicenseWizard(["--dry-run"]).run();
+    await lw(["--dry-run"]).run();
 
     // The prompt flow still ran.
     expect(state.rendered.some((q) => q.id === "license")).toBe(true);
-    expect(stdout).toContain(
-      "Dry run — the spell was only rehearsed; no files were written.",
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "dryRun",
+        content: expect.stringContaining("RENDERED LICENSE"),
+      }),
     );
-    expect(stdout).toContain("RENDERED LICENSE");
     // Nothing was written or cleared.
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
@@ -1234,7 +1319,7 @@ describe("LicenseWizard header removal", () => {
       "b.ts": "export const b = 2;\n",
     };
 
-    await new LicenseWizard(["--remove-headers"]).run();
+    await lw(["--remove-headers"]).run();
 
     // The headed file was rewritten without its header; the bare file was not.
     const write = state.headerWrites.find((w) => w.path === "a.ts");
@@ -1248,7 +1333,7 @@ describe("LicenseWizard header removal", () => {
     state.config = { licenseId: "MIT", headers: { style: "short" } };
     state.sourceFiles = { "a.ts": headed("export const a = 1;\n", "a.ts") };
 
-    await new LicenseWizard(["--remove-headers", "--headers", "full"]).run();
+    await lw(["--remove-headers", "--headers", "full"]).run();
 
     expect(state.headerWrites[0]?.content).toBe("export const a = 1;\n");
     expect(state.generateCalls).toEqual([]);
@@ -1263,7 +1348,7 @@ describe("LicenseWizard header removal", () => {
       return q.type === "confirm" ? false : "MIT";
     };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     // The mode prompt was shown, removal ran, and the preference was cleared.
     expect(state.rendered.some((q) => q.id === "mode")).toBe(true);
@@ -1274,7 +1359,7 @@ describe("LicenseWizard header removal", () => {
   it("does not show the mode prompt when no headers are configured", async () => {
     state.config = { licenseId: "MIT" };
 
-    await new LicenseWizard([]).run();
+    await lw([]).run();
 
     expect(state.rendered.some((q) => q.id === "mode")).toBe(false);
     expect(state.rendered.some((q) => q.id === "license")).toBe(true);
@@ -1283,52 +1368,34 @@ describe("LicenseWizard header removal", () => {
 
 describe("LicenseWizard apply-config mode", () => {
   const originalExitCode = process.exitCode;
-  let stdout: string;
-  let stderr: string;
-  let stdoutSpy: ReturnType<typeof vi.spyOn>;
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     state.reset();
-    stdout = "";
-    stderr = "";
-    stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stdout += String(chunk);
-      return true;
-    }) as typeof process.stdout.write);
-    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((
-      chunk: unknown,
-    ) => {
-      stderr += String(chunk);
-      return true;
-    }) as typeof process.stderr.write);
   });
 
   afterEach(() => {
-    stdoutSpy.mockRestore();
-    stderrSpy.mockRestore();
     process.exitCode = originalExitCode;
   });
 
   it("generates from the saved config without rendering any prompt", async () => {
     state.config = { licenseId: "MIT", tokens: { "<year>": "2026" } };
 
-    await new LicenseWizard(["--apply-config"]).run();
+    await lw(["--apply-config"]).run();
 
     expect(state.rendered).toEqual([]);
     expect(state.generateCalls).toEqual([
       { licenseId: "MIT", slotValues: { "<year>": "2026" } },
     ]);
     expect(state.writtenProjectLicense).toBe("MIT");
-    expect(stdout).toContain("Conjured your LICENSE (MIT)");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "generated", licenseId: "MIT" }),
+    );
   });
 
   it("leaves the saved config in place, persisting nowhere new", async () => {
     state.config = { licenseId: "MIT" };
 
-    await new LicenseWizard(["--apply-config"]).run();
+    await lw(["--apply-config"]).run();
 
     // The config is the source of truth, not a write target: nothing is saved
     // or cleared.
@@ -1341,7 +1408,7 @@ describe("LicenseWizard apply-config mode", () => {
     state.config = { licenseId: "MIT", headers: { style: "short" } };
     state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
 
-    await new LicenseWizard(["--apply-config"]).run();
+    await lw(["--apply-config"]).run();
 
     expect(state.headerWrites).toHaveLength(1);
     expect(state.headerWrites[0].path).toBe("src/a.ts");
@@ -1352,7 +1419,7 @@ describe("LicenseWizard apply-config mode", () => {
     state.config = { licenseId: "MIT" };
     state.sourceFiles = { "src/a.ts": "export const x = 1;\n" };
 
-    await new LicenseWizard(["--apply-config"]).run();
+    await lw(["--apply-config"]).run();
 
     expect(state.headerWrites).toEqual([]);
   });
@@ -1360,9 +1427,14 @@ describe("LicenseWizard apply-config mode", () => {
   it("fails when no saved configuration exists to apply", async () => {
     state.config = null;
 
-    await new LicenseWizard(["--apply-config"]).run();
+    await lw(["--apply-config"]).run();
 
-    expect(stderr).toContain("no saved configuration found");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("no saved configuration found"),
+      }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
     expect(process.exitCode).toBe(1);
@@ -1371,7 +1443,7 @@ describe("LicenseWizard apply-config mode", () => {
   it("takes priority over the selection flags, applying the saved config instead", async () => {
     state.config = { licenseId: "MIT" };
 
-    await new LicenseWizard([
+    await lw([
       "--apply-config",
       "--license",
       "Apache-2.0",
@@ -1392,9 +1464,11 @@ describe("LicenseWizard apply-config mode", () => {
     state.config = { licenseId: "MIT" };
     state.declaredLicenses = [{ name: "package.json", licenseId: null }];
 
-    await new LicenseWizard(["--apply-config", "--dry-run"]).run();
+    await lw(["--apply-config", "--dry-run"]).run();
 
-    expect(stdout).toContain("Would conjure LICENSE (MIT):");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "dryRun", licenseId: "MIT" }),
+    );
     expect(state.generateCalls).toEqual([]);
     expect(state.writtenProjectLicense).toBeNull();
     expect(state.writtenConfig).toBeNull();
@@ -1408,11 +1482,16 @@ describe("LicenseWizard apply-config mode", () => {
       { licenseId: "Apache-2.0", name: "Apache License 2.0" },
     ];
 
-    await new LicenseWizard(["--apply-config"]).run();
+    await lw(["--apply-config"]).run();
 
     expect(state.generateCalls).toEqual([]);
-    expect(stderr).toContain('No license matches "apache-2-0"');
-    expect(stderr).toContain("Apache-2.0");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "licenseNotFound",
+        licenseId: "apache-2-0",
+        suggestions: [expect.objectContaining({ licenseId: "Apache-2.0" })],
+      }),
+    );
     expect(process.exitCode).toBe(1);
   });
 });

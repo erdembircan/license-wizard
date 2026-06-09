@@ -107,8 +107,37 @@ classDiagram
     +manifests: string[]
   }
 
+  class MessageReporter {
+    +MessageReporter(sink: IOutputSink)
+  }
+
   class CliReporter {
     +CliReporter(programName: string, out?: object, err?: object)
+  }
+
+  class IOutputSink {
+    <<interface>>
+    +emit(message: OutputMessage) void
+  }
+
+  class StreamSink {
+    +StreamSink(presenter: ReportPresenter, out?: object, err?: object)
+    +emit(message: OutputMessage) void
+  }
+
+  class RecordingSink {
+    +RecordingSink()
+    +emit(message: OutputMessage) void
+    +messages: OutputMessage[]
+  }
+
+  class ReportPresenter {
+    +ReportPresenter(programName: string)
+    +present(message: OutputMessage, options: object) string
+  }
+
+  class OutputMessage {
+    <<union>>
   }
 
   class Banner {
@@ -206,10 +235,19 @@ classDiagram
   ClackRenderer ..> CompletionHeaders : renders
   IRenderer ..> CompletionSummary : renders
   CompletionSummary ..> CompletionHeaders : carries
-  CliReporter ..|> IReporter : implements
-  CliReporter ..> DryRunReport : renders
-  CliReporter ..> HeaderGenerateReport : renders
-  CliReporter ..> HeaderDryRunReport : renders
-  CliReporter ..> HeaderRemoveReport : renders
+  MessageReporter ..|> IReporter : implements
+  CliReporter --|> MessageReporter : terminal wiring
+  MessageReporter ..> IOutputSink : emits to
+  MessageReporter ..> OutputMessage : builds
+  MessageReporter ..> DryRunReport : reads
+  MessageReporter ..> HeaderGenerateReport : reads
+  MessageReporter ..> HeaderDryRunReport : reads
+  MessageReporter ..> HeaderRemoveReport : reads
+  StreamSink ..|> IOutputSink : implements
+  RecordingSink ..|> IOutputSink : implements
+  StreamSink ..> ReportPresenter : renders with
+  ReportPresenter ..> OutputMessage : renders
+  CliReporter ..> StreamSink : wires
+  CliReporter ..> ReportPresenter : wires
   QuestionRepository ..> Question : produces
   AutocompleteQuestion ..> AutocompleteOption : search produces
