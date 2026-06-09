@@ -1,5 +1,6 @@
-import CopyButton from "./CopyButton";
+import InstallTabs from "./InstallTabs";
 import Terminal from "./Terminal";
+import { scenes } from "../data/scenes";
 
 /**
  * The landing-page hero: the headline copy, install command, primary call to
@@ -62,24 +63,10 @@ export default function Hero() {
 
           {/* install */}
           <div
-            className="hero-rise mt-8 flex max-w-xl flex-col gap-3 sm:flex-row"
+            className="hero-rise mt-8 max-w-xl"
             style={{ animationDelay: "0.28s" }}
           >
-            <div className="copy-field flex-1">
-              <span className="truncate">
-                <span
-                  className="t-accent select-none"
-                  style={{ color: "var(--color-brand)" }}
-                >
-                  $
-                </span>{" "}
-                npx license-wizard
-              </span>
-              <CopyButton
-                text="npx license-wizard"
-                label="Copy install command"
-              />
-            </div>
+            <InstallTabs />
           </div>
 
           <div
@@ -147,7 +134,11 @@ export default function Hero() {
 
         {/* terminal */}
         <div className="hero-rise" style={{ animationDelay: "0.22s" }}>
-          <Terminal />
+          <Terminal
+            scenes={scenes}
+            ariaLabel="License Wizard examples"
+            id="terminal"
+          />
           <p className="mt-3 text-center text-xs text-ink-faint">
             A real run: interactive, one-shot, or CI verification.
           </p>

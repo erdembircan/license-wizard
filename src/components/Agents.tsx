@@ -1,6 +1,10 @@
+import Terminal from "./Terminal";
+import { agentScenes } from "../data/agentScenes";
+
 /**
  * The "Built for AI agents" section: copy on the agent-friendly workflow beside
- * a static terminal mockup showing the --get-tokens / --set agent flow.
+ * a live Claude Code-style terminal that streams real agent transcripts — the
+ * same emulation as the hero, driven here by the `agentScenes` set.
  */
 export default function Agents() {
   return (
@@ -60,62 +64,10 @@ export default function Agents() {
             </a>
           </div>
 
-          <div className="font-mono text-[13px] leading-relaxed">
-            <div className="terminal">
-              <div className="terminal-bar">
-                <span className="term-dot bg-term-red"></span>
-                <span className="term-dot bg-term-amber"></span>
-                <span className="term-dot bg-term-green"></span>
-                <span className="ml-2 font-mono text-xs text-term-dim">
-                  agent · license-wizard
-                </span>
-              </div>
-              <div className="px-5 py-4 text-term-text">
-                <p className="text-term-dim">
-                  # 1. the agent asks what the license needs
-                </p>
-                <p className="mt-2 text-term-text">
-                  <span className="text-term-accent">$</span> npx license-wizard
-                  --license MIT --get-tokens
-                </p>
-                <p className="mt-2 text-term-text">
-                  MIT accepts the following copyright field(s):
-                </p>
-                <p className="pl-4 text-term-accent">year</p>
-                <p className="pl-4 text-term-accent">copyright holders</p>
-                <p className="mt-3 text-term-dim">
-                  # 2. it fills them in and generates
-                </p>
-                <p className="mt-1 text-term-text">
-                  <span className="text-term-accent">$</span> npx license-wizard
-                  --license MIT \
-                </p>
-                <p className="pl-4 text-term-text">
-                  --set <span className="text-term-amber">"year=2026"</span> \
-                </p>
-                <p className="pl-4 text-term-text">
-                  --set{" "}
-                  <span className="text-term-amber">
-                    "copyright holders=Acme Corporation"
-                  </span>
-                </p>
-                <p className="mt-3 text-term-green">
-                  ✦ Conjured your LICENSE (MIT) and inscribed it across the
-                  project manifests.
-                </p>
-                <p className="mt-3 text-term-dim">
-                  # miss a field? it writes nothing and says what's wrong
-                </p>
-                <p className="mt-1 text-term-red">
-                  ✗ Cannot conjure a customized MIT license — missing required
-                  field(s): year
-                </p>
-                <p className="text-term-dim">
-                  exit 1 — the agent knows exactly what to fix
-                </p>
-              </div>
-            </div>
-          </div>
+          <Terminal
+            scenes={agentScenes}
+            ariaLabel="How an agent uses License Wizard"
+          />
         </div>
       </div>
     </section>
