@@ -16,6 +16,7 @@ export type HeaderApplyReport = {
   total: number;
   written: number;
   unchanged: number;
+  skipped: number;
 };
 
 export type HeaderPreview = {
@@ -117,7 +118,14 @@ export class HeaderApplier {
     const files = await this.#scanner.scan({ extraIgnores });
 
     if (files.length === 0) {
-      return { licenseId, style, total: 0, written: 0, unchanged: 0 };
+      return {
+        licenseId,
+        style,
+        total: 0,
+        written: 0,
+        unchanged: 0,
+        skipped: 0,
+      };
     }
 
     const plan: HeaderPlan = { detail, style, tokens };
@@ -134,6 +142,7 @@ export class HeaderApplier {
       total: files.length,
       written: summary.written.length,
       unchanged: summary.unchanged.length,
+      skipped: summary.skipped.length,
     };
   }
 

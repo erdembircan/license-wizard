@@ -1,7 +1,67 @@
 import { describe, it, expect } from "vitest";
 import { FlagParser } from "@cli/FlagParser.js";
 
+const SELECTION_FLAGS = {
+  license: { type: "string" as const, default: "", description: "License." },
+  set: { type: "list" as const, default: [] as string[], description: "Set." },
+  "save-rc": {
+    type: "boolean" as const,
+    default: false,
+    description: "Save.",
+  },
+};
+
 describe("FlagParser", () => {
+  describe("value coercion", () => {
+    it("drops a value-less string flag to its default rather than a boolean", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      // `--license` with no value parses (non-strict) as boolean true; coercion
+      // keeps the resolved value a string so callers never crash on it.
+      expect(parser.parse(["--license"]).license).toBe("");
+    });
+
+    it("drops a value-less list element rather than collecting a boolean", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      expect(parser.parse(["--license", "MIT", "--set"]).set).toEqual([]);
+    });
+  });
+
+  describe("validate", () => {
+    it("reports an unknown flag", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      const errors = parser.validate(["--licens", "MIT"]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toContain("Unknown flag: --licens");
+    });
+
+    it("reports each unknown flag once", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      expect(parser.validate(["--nope", "--nope"])).toHaveLength(1);
+    });
+
+    it("reports a value-accepting flag given with no value", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      expect(parser.validate(["--license"])[0]).toBe(
+        "The --license flag requires a value.",
+      );
+    });
+
+    it("reports a value flag that swallowed the following flag", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      const errors = parser.validate(["--license", "--save-rc"]);
+      expect(errors[0]).toContain("looks like another flag");
+    });
+
+    it("accepts well-formed arguments", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      expect(parser.validate(["--license", "MIT", "--save-rc"])).toEqual([]);
+    });
+
+    it("accepts an inline value", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      expect(parser.validate(["--license=MIT"])).toEqual([]);
+    });
+  });
   describe("boolean flags", () => {
     it("returns the default value for a flag that is not present in args", () => {
       const parser = new FlagParser({

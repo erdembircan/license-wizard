@@ -33,6 +33,8 @@ const makeRepository = (
  */
 class FakeManifest implements IProjectManifest {
   written: string | null = null;
+  /** When true, the manifest exists but cannot be parsed as a JSON object. */
+  malformed = false;
   readonly name: string;
   readonly #present: boolean;
   readonly #license: string | null;
@@ -62,6 +64,12 @@ class FakeManifest implements IProjectManifest {
   ): Promise<void> {
     if (this.#present) {
       this.written = licenseId;
+    }
+  }
+
+  async assertWritable(): Promise<void> {
+    if (this.#present && this.malformed) {
+      throw new Error(`${this.name} is not a JSON object`);
     }
   }
 }

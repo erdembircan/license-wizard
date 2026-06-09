@@ -110,6 +110,7 @@ export type OutputMessage =
       total: number;
       written: number;
       unchanged: number;
+      skipped: number;
     }
   | {
       kind: "headersDryRun";

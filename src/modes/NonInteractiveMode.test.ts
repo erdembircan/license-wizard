@@ -211,4 +211,38 @@ describe("NonInteractiveMode routing", () => {
     expect(d.installer.install).not.toHaveBeenCalled();
     expect(callsOf(d)).toContain("tokens");
   });
+
+  it("records the canonical SPDX id even when the flag casing differs", async () => {
+    const d = makeDeps();
+    // The flag is lowercase, but the source resolves canonical MIT; the canonical
+    // id is what gets installed and persisted, not the typed casing.
+    await build(d, flags({ license: "mit" })).run();
+
+    expect(d.installer.install.mock.calls[0][0]).toMatchObject({
+      licenseId: "MIT",
+    });
+  });
+
+  it("refuses --headers full when the notice has placeholders no field can fill", async () => {
+    const d = makeDeps();
+    const gpl: LicenseDetail = {
+      licenseId: "GPL-3.0-only",
+      name: "GNU GPL v3.0 only",
+      licenseText: "GPL text",
+      standardLicenseTemplate: "",
+      standardLicenseHeader: "Copyright (C) <year> <name of author>\nThis...",
+      standardLicenseHeaderTemplate:
+        '<<var;name="copyright";original="Copyright (C) <year> <name of author>";match=".+">>\nThis...',
+    };
+    d.licenses = {
+      getLicense: async () => gpl,
+      suggest: async () => [],
+    } as unknown as LicenseRepository;
+
+    await build(d, flags({ license: "GPL-3.0-only", headers: "full" })).run();
+
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(process.exitCode).toBe(1);
+  });
 });

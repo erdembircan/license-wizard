@@ -147,6 +147,7 @@ vi.mock("@configuration/ProjectManifestRepository.js", () => ({
   ProjectManifestRepository: vi.fn(function (this: {
     readLicense: () => Promise<string | null>;
     writeLicense: (licenseId: string) => Promise<void>;
+    assertWritable: () => Promise<void>;
     declaredLicenses: () => Promise<
       { name: string; licenseId: string | null }[]
     >;
@@ -156,6 +157,7 @@ vi.mock("@configuration/ProjectManifestRepository.js", () => ({
     this.writeLicense = async (licenseId: string) => {
       state.writtenProjectLicense = licenseId;
     };
+    this.assertWritable = async () => {};
     this.declaredLicenses = async () => state.declaredLicenses;
     this.writeLicenseTo = async (name: string, licenseId: string) => {
       state.manifestWrites.push({ name, licenseId });
@@ -1493,5 +1495,52 @@ describe("LicenseWizard apply-config mode", () => {
       }),
     );
     expect(process.exitCode).toBe(1);
+  });
+});
+
+describe("LicenseWizard argument validation", () => {
+  const originalExitCode = process.exitCode;
+
+  beforeEach(() => {
+    state.reset();
+  });
+
+  afterEach(() => {
+    process.exitCode = originalExitCode;
+  });
+
+  it("rejects an unknown flag with an error instead of falling through to the prompt", async () => {
+    await lw(["--licens", "MIT"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("Unknown flag: --licens"),
+      }),
+    );
+    expect(state.rendered).toEqual([]);
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects a value-accepting flag given with no value", async () => {
+    await lw(["--license"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("--license flag requires a value"),
+      }),
+    );
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("still shows help even alongside an unknown flag", async () => {
+    await lw(["--help", "--bogus"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "usage" }),
+    );
   });
 });
