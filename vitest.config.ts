@@ -1,9 +1,15 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
   test: {
     environment: "node",
+    // Keep the default ignores but also skip `.claude/` — git worktrees are
+    // parked under `.claude/worktrees/` (e.g. the gh-pages app), and without
+    // this a root-level `pnpm test` would walk into them and run another
+    // project's suite under the wrong environment. CI is unaffected (it tests a
+    // clean checkout with no worktrees); this only scopes local runs.
+    exclude: [...configDefaults.exclude, "**/.claude/**"],
   },
   resolve: {
     alias: {
