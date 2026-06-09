@@ -106,7 +106,28 @@ export class LicenseGenerator {
     }
 
     return detail.standardLicenseTemplate
-      ? new LicenseTemplate(detail.standardLicenseTemplate).render(slotValues)
+      ? this.#tidyTemplateOutput(
+          new LicenseTemplate(detail.standardLicenseTemplate).render(
+            slotValues,
+          ),
+        )
       : detail.licenseText;
+  }
+
+  /**
+   * Cleans the stray whitespace the SPDX matching-template leaves when rendered
+   * as display text: the padding spaces a variable's `original` carries at the
+   * end of a line, and the single leading space a stripped optional marker leaves
+   * before the copyright. Real indentation — two or more leading spaces, such as
+   * a license's numbered conditions — is preserved. Only the template-fallback
+   * path needs this; the canonical-text path is already clean.
+   *
+   * @param text - The template-rendered license body.
+   */
+  #tidyTemplateOutput(text: string): string {
+    return text
+      .split("\n")
+      .map((line) => line.replace(/[ \t]+$/, "").replace(/^ (?=\S)/, ""))
+      .join("\n");
   }
 }

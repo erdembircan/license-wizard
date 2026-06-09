@@ -328,4 +328,35 @@ describe("LicenseGenerator", () => {
 
     expect(content).toBe("Copyright (c) 2026 Acme");
   });
+
+  it("strips the matching-template's padding spaces on the fallback path but keeps real indentation", async () => {
+    // Mirrors the Zlib shape: the copyright var's `original` carries the leading
+    // space a stripped optional marker leaves and the trailing padding spaces,
+    // while the numbered conditions are genuinely indented and must survive.
+    const detail: LicenseDetail = {
+      licenseId: "Zlib",
+      name: "zlib License",
+      licenseText: "zlib License\n\nThis software is provided 'as-is'...",
+      standardLicenseTemplate:
+        '<<beginOptional>>zlib License\n\n<<endOptional>> <<var;name="copyright";original="Copyright (c) <year> <holder>  ";match=".{0,5000}">>\n   <<var;name="bullet";original="1.";match=".{0,20}">> The origin...',
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      new FakeWriter(),
+    );
+
+    const content = await generator.render("Zlib", {
+      "<year>": "2026",
+      "<holder>": "Acme",
+    });
+
+    // No leading space before the copyright and no trailing padding after it...
+    expect(content).toContain("\nCopyright (c) 2026 Acme\n");
+    expect(content).not.toMatch(/ Copyright/);
+    expect(content).not.toMatch(/Acme +\n/);
+    // ...but the numbered condition keeps its indentation.
+    expect(content).toContain("   1. The origin");
+  });
 });
