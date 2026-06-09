@@ -1,6 +1,7 @@
 /**
- * Fixed top navigation bar with the logo, in-page section links, and the npm
- * and GitHub star links.
+ * Fixed top navigation bar: the logo, the in-page section links, and a
+ * right-side group of off-page links — Docs (a separate page), npm, and the
+ * GitHub star — kept apart from the section anchors they don't belong with.
  */
 export default function Nav() {
   return (
@@ -40,12 +41,15 @@ export default function Nav() {
           <a href="#ci" className="nav-link">
             CI
           </a>
-          <a href={`${import.meta.env.BASE_URL}docs/`} className="nav-link">
-            Docs
-          </a>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-5">
+          <a
+            href={`${import.meta.env.BASE_URL}docs/`}
+            className="nav-link hidden sm:inline"
+          >
+            Docs
+          </a>
           <a
             href="https://www.npmjs.com/package/license-wizard"
             className="nav-link hidden sm:inline"
