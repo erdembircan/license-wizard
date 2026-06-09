@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBanner } from "@cli/Banner.js";
+import { buildAgentHint, buildBanner } from "@cli/Banner.js";
 
 // Arbitrary metadata: the banner must relay whatever it is given, not any
 // particular application's values.
@@ -36,5 +36,27 @@ describe("buildBanner", () => {
     expect(colored).toContain(META.description);
     expect(colored).toContain(META.version);
     expect(colored).not.toBe(buildBanner(META, { color: false }));
+  });
+});
+
+describe("buildAgentHint", () => {
+  it("steers automated callers toward the non-interactive flags", () => {
+    const hint = buildAgentHint({ color: false });
+
+    expect(hint.toLowerCase()).toContain("non-interactive");
+  });
+
+  it("links to the published plain-Markdown docs", () => {
+    expect(buildAgentHint({ color: false })).toContain(
+      "https://erdembircan.github.io/license-wizard/documentation.md",
+    );
+  });
+
+  it("emits no ANSI styling when color is disabled", () => {
+    expect(buildAgentHint({ color: false }).includes(ESC)).toBe(false);
+  });
+
+  it("emits ANSI styling when color is enabled", () => {
+    expect(buildAgentHint({ color: true }).includes(ESC)).toBe(true);
   });
 });
