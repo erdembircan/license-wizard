@@ -469,6 +469,8 @@
 }
 .term-input-prompt {
   color: var(--color-term-accent);
+  /* breathing room between the › chevron and what the user types */
+  margin-right: 0.5ch;
 }
 .term-cursor {
   display: inline-block;
