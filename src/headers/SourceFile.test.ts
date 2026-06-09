@@ -143,5 +143,53 @@ describe("SourceFile", () => {
 
       expect(result).toContain('const T = "license-wizard managed-header";');
     });
+
+    it("preserves CRLF line endings throughout the file", () => {
+      const result = new SourceFile("const x = 1;\r\nconst y = 2;\r\n", "a.ts")
+        .withManagedHeader(block("a.ts"))
+        .toString();
+
+      // Every line — the inserted header included — ends with CRLF, leaving no
+      // mixed endings for a linter or git to flag.
+      const lines = result.split("\n");
+      for (const line of lines.slice(0, -1)) {
+        expect(line.endsWith("\r")).toBe(true);
+      }
+      expect(result).toContain("SPDX-License-Identifier: MIT\r\n");
+    });
+
+    it("round-trips a CRLF file byte-for-byte through add then remove", () => {
+      const original = "const x = 1;\r\nconst y = 2;\r\n";
+      const headedSource = new SourceFile(original, "a.ts")
+        .withManagedHeader(block("a.ts"))
+        .toString();
+      const restored = new SourceFile(headedSource, "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(restored).toBe(original);
+    });
+  });
+
+  describe("hasForeignLicenseNotice", () => {
+    it("is true for a file carrying a non-wizard SPDX tag", () => {
+      const source = "// SPDX-License-Identifier: GPL-2.0-only\nconst x = 1;\n";
+      expect(new SourceFile(source, "a.ts").hasForeignLicenseNotice()).toBe(
+        true,
+      );
+    });
+
+    it("is false for a plain file", () => {
+      expect(
+        new SourceFile("const x = 1;\n", "a.ts").hasForeignLicenseNotice(),
+      ).toBe(false);
+    });
+
+    it("ignores the wizard's own managed header", () => {
+      const headedSource = headed("const x = 1;\n", "a.ts");
+      expect(
+        new SourceFile(headedSource, "a.ts").hasForeignLicenseNotice(),
+      ).toBe(false);
+    });
   });
 });

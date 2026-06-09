@@ -31,6 +31,7 @@ const STYLE_BY_EXTENSION: Record<string, CommentStyle> = {};
 export class SourceFile {
   readonly #content: string;
   readonly #path: string;
+  readonly #eol: string;
 
   /**
    * Creates a SourceFile over the given content and path.
@@ -41,6 +42,11 @@ export class SourceFile {
   constructor(content: string, path: string) {
     this.#content = content;
     this.#path = path;
+    // Capture the file's own line ending so adding or removing a header keeps it:
+    // a CRLF file stays CRLF rather than gaining LF-only header lines. (A final
+    // newline is always written, normalising a missing one — a deliberate, lint-
+    // friendly convention rather than a byte-for-byte round trip.)
+    this.#eol = content.includes("\r\n") ? "\r\n" : "\n";
   }
 
   /**
@@ -82,6 +88,22 @@ export class SourceFile {
   }
 
   /**
+   * Reports whether the file already declares a license that the wizard did not
+   * write — an `SPDX-License-Identifier` tag sitting outside any of its own
+   * managed blocks. Prepending a header to such a file would leave it with two
+   * contradictory license declarations, so callers skip it instead. The wizard's
+   * own managed blocks are excluded before the test, so a file it previously
+   * headed (or is re-heading with a different license) is never mistaken for a
+   * foreign notice.
+   */
+  hasForeignLicenseNotice(): boolean {
+    const { head, body } = this.#split();
+    return [...head, ...body].some((line) =>
+      /SPDX-License-Identifier\s*:/i.test(line),
+    );
+  }
+
+  /**
    * Returns a copy with every managed header removed, wherever it sits, along
    * with the blank line it was written with. The preamble (a shebang or PHP open
    * tag) is preserved; a file with no managed header is returned unchanged.
@@ -92,18 +114,15 @@ export class SourceFile {
     }
     const { head, body } = this.#split();
     const out = [...head, ...body];
-    return new SourceFile(
-      out.length === 0 ? "" : `${out.join("\n")}\n`,
-      this.#path,
-    );
+    return new SourceFile(this.#assemble(out), this.#path);
   }
 
   /**
    * Returns a copy with `block` placed as the managed header: any existing
    * managed block is replaced, the new block is inserted below the preamble, and
    * a single blank line separates it from the preamble above and the code below.
-   * Hand-written comments without the marker are left in place. The result always
-   * ends with a trailing newline.
+   * Hand-written comments without the marker are left in place. The file's line
+   * ending is preserved and the result always ends with a trailing newline.
    *
    * @param block - The fully comment-wrapped managed block to place.
    */
@@ -120,7 +139,16 @@ export class SourceFile {
       out.push(...body);
     }
 
-    return new SourceFile(`${out.join("\n")}\n`, this.#path);
+    return new SourceFile(this.#assemble(out), this.#path);
+  }
+
+  /**
+   * Joins reconstructed lines back into file content using the file's own line
+   * ending, so a CRLF file stays CRLF, terminating with a trailing newline.
+   * Empty input yields the empty string.
+   */
+  #assemble(lines: readonly string[]): string {
+    return lines.length === 0 ? "" : lines.join(this.#eol) + this.#eol;
   }
 
   /**
@@ -175,12 +203,18 @@ function preambleLength(lines: readonly string[], extension: string): number {
 }
 
 /**
- * Splits content into lines, dropping a single trailing newline so a file with
- * or without a final newline yields the same array; empty content yields `[]`.
+ * Splits content into lines, dropping a single trailing newline (LF or CRLF) so
+ * a file with or without a final newline yields the same array, and stripping a
+ * carriage return from each line so CRLF and LF files produce identical lines to
+ * reason over. Empty content yields `[]`.
  */
 function splitToLines(content: string): string[] {
-  const trimmed = content.endsWith("\n") ? content.slice(0, -1) : content;
-  return trimmed === "" ? [] : trimmed.split("\n");
+  const trimmed = content.endsWith("\r\n")
+    ? content.slice(0, -2)
+    : content.endsWith("\n")
+      ? content.slice(0, -1)
+      : content;
+  return trimmed === "" ? [] : trimmed.split(/\r?\n/);
 }
 
 /**

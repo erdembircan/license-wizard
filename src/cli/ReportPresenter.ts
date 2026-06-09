@@ -374,7 +374,11 @@ export class ReportPresenter {
       message.unchanged > 0
         ? ` ${message.unchanged} already bore the mark.`
         : "";
-    return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}\n`;
+    const skipped =
+      message.skipped > 0
+        ? ` Skipped ${message.skipped} that already declare a license.`
+        : "";
+    return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}${skipped}\n`;
   }
 
   #headersDryRun(

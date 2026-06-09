@@ -222,5 +222,51 @@ describe("NpmManifest", () => {
 
       expect(error.cause).toBe(cause);
     });
+
+    it("rejects a non-object manifest instead of silently dropping the field", async () => {
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: '["not","an","object"]',
+      });
+      const writer = new FakeWriter();
+
+      await expect(
+        new NpmManifest().writeLicense(reader, writer, "MIT"),
+      ).rejects.toThrow(FileSystemWriterError);
+      expect(writer.written.has(PACKAGE_JSON)).toBe(false);
+    });
+  });
+
+  describe("assertWritable", () => {
+    it("passes for a present JSON-object manifest", async () => {
+      const reader = new FakeReader({
+        [PACKAGE_JSON]: JSON.stringify({ name: "my-app" }),
+      });
+
+      await expect(
+        new NpmManifest().assertWritable(reader),
+      ).resolves.toBeUndefined();
+    });
+
+    it("passes when the manifest is absent", async () => {
+      await expect(
+        new NpmManifest().assertWritable(new FakeReader()),
+      ).resolves.toBeUndefined();
+    });
+
+    it("throws when the manifest is malformed JSON", async () => {
+      const reader = new FakeReader({ [PACKAGE_JSON]: "{ invalid" });
+
+      await expect(new NpmManifest().assertWritable(reader)).rejects.toThrow(
+        FileSystemWriterError,
+      );
+    });
+
+    it("throws when the manifest is a JSON array", async () => {
+      const reader = new FakeReader({ [PACKAGE_JSON]: "[1, 2, 3]" });
+
+      await expect(new NpmManifest().assertWritable(reader)).rejects.toThrow(
+        FileSystemWriterError,
+      );
+    });
   });
 });

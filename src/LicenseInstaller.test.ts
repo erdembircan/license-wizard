@@ -26,6 +26,15 @@ class FakeConfig {
 
 class FakeManifests {
   written: string[] = [];
+  assertWritableCalls = 0;
+  failAssertWritable = false;
+
+  async assertWritable(): Promise<void> {
+    this.assertWritableCalls += 1;
+    if (this.failAssertWritable) {
+      throw new Error("package.json is not a JSON object");
+    }
+  }
 
   async writeLicense(licenseId: string): Promise<void> {
     this.written.push(licenseId);
@@ -71,6 +80,25 @@ describe("LicenseInstaller", () => {
 
     expect(generator.calls).toEqual([{ licenseId: "MIT", tokens: {} }]);
     expect(manifests.written).toEqual(["MIT"]);
+  });
+
+  it("validates the manifests before writing anything", async () => {
+    manifests.failAssertWritable = true;
+
+    await expect(
+      installer.install({
+        licenseId: "MIT",
+        tokens: {},
+        save: { action: "save", target: "package.json" },
+      }),
+    ).rejects.toThrow();
+
+    // A manifest that cannot be updated aborts the whole install up front: no
+    // LICENSE is generated and no configuration is persisted, so the project is
+    // left untouched rather than half-written.
+    expect(generator.calls).toEqual([]);
+    expect(config.writes).toEqual([]);
+    expect(manifests.written).toEqual([]);
   });
 
   it("leaves the configuration untouched for the 'none' save action", async () => {

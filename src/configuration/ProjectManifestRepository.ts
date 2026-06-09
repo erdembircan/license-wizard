@@ -67,6 +67,20 @@ export class ProjectManifestRepository {
   }
 
   /**
+   * Verifies every present manifest can be updated, throwing if any exists but
+   * is malformed or not a JSON object. Callers run this before writing anything
+   * else so a manifest that {@link writeLicense} could not update aborts the
+   * operation up front, rather than after the `LICENSE` file is already on disk.
+   *
+   * @throws {FileSystemWriterError} When a present manifest is not a JSON object.
+   */
+  async assertWritable(): Promise<void> {
+    for (const manifest of this.#manifests) {
+      await manifest.assertWritable(this.#reader);
+    }
+  }
+
+  /**
    * Returns the license declared by each manifest present in the working
    * directory, in priority order, paired with its file name. Absent manifests
    * are omitted; a present manifest that declares no usable license maps to a

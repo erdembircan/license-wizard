@@ -146,6 +146,22 @@ describe("LicenseTemplate", () => {
       expect(result.unknown).toEqual([]);
     });
 
+    it("treats an empty or whitespace-only value as a missing field, not a filled one", () => {
+      const result = new LicenseTemplate(MIT_TEMPLATE).resolveSlots(
+        new Map([
+          ["year", ""],
+          ["copyright holders", "   "],
+        ]),
+      );
+
+      expect(result.values).toEqual({});
+      expect(result.missing).toEqual([
+        { token: "<year>", label: "year" },
+        { token: "<copyright holders>", label: "copyright holders" },
+      ]);
+      expect(result.unknown).toEqual([]);
+    });
+
     it("collects supplied fields that match no slot as unknown", () => {
       const result = new LicenseTemplate(MIT_TEMPLATE).resolveSlots(
         new Map([

@@ -139,6 +139,7 @@ export class MessageReporter implements IReporter {
       total: report.total,
       written: report.written,
       unchanged: report.unchanged,
+      skipped: report.skipped,
     });
   }
 

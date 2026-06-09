@@ -275,4 +275,57 @@ describe("LicenseGenerator", () => {
 
     expect(content).toBe("Copyright (c) 2026 Erdem Bircan");
   });
+
+  it("substitutes every occurrence of a token in the canonical text, not just the copyright line", async () => {
+    // BSD-3-Clause-Clear repeats the owner placeholder in a clause body; the
+    // matchable SPDX template would smear stray spaces and leave the body copy
+    // unfilled, so substitution must target the canonical licenseText directly.
+    const detail: LicenseDetail = {
+      licenseId: "BSD-3-Clause-Clear",
+      name: "The Clear BSD License",
+      licenseText:
+        "Copyright (c) [xxxx] [Owner Organization]\n\nNeither the name of [Owner Organization] nor the names...",
+      standardLicenseTemplate:
+        '<<var;name="copyright";original="Copyright (c) [xxxx] [Owner Organization]";match=".{0,5000}">>',
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      new FakeWriter(),
+    );
+
+    const content = await generator.render("BSD-3-Clause-Clear", {
+      "[xxxx]": "2026",
+      "[Owner Organization]": "Acme",
+    });
+
+    expect(content).not.toContain("[Owner Organization]");
+    expect(content).toContain("Copyright (c) 2026 Acme");
+    expect(content).toContain("Neither the name of Acme nor");
+  });
+
+  it("renders the SPDX template only when the canonical text lacks the tokens", async () => {
+    // ISC's canonical text ships a pre-filled example, not the placeholder, so
+    // the substitution path can't apply; the template fallback fills the slot.
+    const detail: LicenseDetail = {
+      licenseId: "ISC",
+      name: "ISC License",
+      licenseText: "Copyright (c) 1995 Example Author",
+      standardLicenseTemplate:
+        '<<var;name="copyright";original="<copyright notice>";match=".{0,5000}">>',
+    };
+    const source = makeSource();
+    vi.mocked(source.fetchLicense).mockResolvedValueOnce(detail);
+    const generator = new LicenseGenerator(
+      new LicenseRepository(source),
+      new FakeWriter(),
+    );
+
+    const content = await generator.render("ISC", {
+      "<copyright notice>": "Copyright (c) 2026 Acme",
+    });
+
+    expect(content).toBe("Copyright (c) 2026 Acme");
+  });
 });

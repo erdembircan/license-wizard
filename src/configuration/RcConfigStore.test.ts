@@ -126,6 +126,15 @@ describe("RcConfigStore", () => {
       });
     });
 
+    it("ends the dot-file with a trailing newline, like the manifests", async () => {
+      const writer = new FakeWriter();
+      const store = new RcConfigStore();
+
+      await store.write(new FakeReader(), writer, { licenseId: "MIT" });
+
+      expect(writer.written.get(RC_FILE)!.endsWith("\n")).toBe(true);
+    });
+
     it("serializes token values so they survive a write/read round-trip", async () => {
       const writer = new FakeWriter();
       const config: WizardConfig = {

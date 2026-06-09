@@ -3,6 +3,7 @@ import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
+import { HeaderTemplate } from "@headers/HeaderTemplate.js";
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -116,10 +117,14 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
+    // From here on use the canonical identifier the source resolved, not the
+    // (possibly differently-cased) text the user typed, so the LICENSE, config,
+    // and manifest fields all record the official SPDX id (e.g. `MIT`, not `mit`).
+    const canonicalId = detail.licenseId;
     const template = new LicenseTemplate(detail.standardLicenseTemplate ?? "");
 
     if (this.#flags["get-tokens"]) {
-      this.#reporter.tokens(licenseId, template.slots());
+      this.#reporter.tokens(canonicalId, template.slots());
       return;
     }
 
@@ -141,29 +146,98 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    // No --set values: generate the official text unchanged.
-    if (setEntries.size === 0) {
-      await this.#generateLicense(licenseId, {}, saveTarget, headerStyle);
+    // Resolve the supplied fields against the license's copyright slots. With no
+    // --set values this is empty and the official text is generated unchanged.
+    let values: Record<string, string> = {};
+    if (setEntries.size > 0) {
+      const resolution = template.resolveSlots(setEntries);
+
+      if (resolution.unknown.length > 0) {
+        this.#reporter.unknownFields(
+          canonicalId,
+          resolution.unknown,
+          template.slots(),
+        );
+        this.#exitWithError();
+        return;
+      }
+
+      if (resolution.missing.length > 0) {
+        this.#reporter.missingFields(canonicalId, resolution.missing);
+        this.#exitWithError();
+        return;
+      }
+
+      values = resolution.values;
+    }
+
+    // A `full` header must not be stamped with copyright placeholders the
+    // selection can't fill (e.g. the GPL family exposes no copyright fields, so
+    // its notice's `<year>`/`<name of author>` could never be substituted).
+    if (
+      headerStyle === "full" &&
+      this.#fullHeaderHasUnfilledPlaceholders(detail, values)
+    ) {
+      this.#failUnfillableFullHeader(canonicalId, template);
       return;
     }
 
-    // --set values present: the user wants a customized license. Resolve each
-    // provided field against the license's copyright slots.
-    const { values, missing, unknown } = template.resolveSlots(setEntries);
+    await this.#generateLicense(canonicalId, values, saveTarget, headerStyle);
+  }
 
-    if (unknown.length > 0) {
-      this.#reporter.unknownFields(licenseId, unknown, template.slots());
-      this.#exitWithError();
-      return;
+  /**
+   * Reports whether rendering the license's `full` header notice with the given
+   * copyright values would leave one of the header's own placeholder tokens
+   * unsubstituted — the signal that the notice can't be completed and would ship
+   * a literal `<year>` / `[name of copyright owner]` into every file.
+   *
+   * @param detail - The resolved detail of the license being generated.
+   * @param values - The resolved copyright slot values keyed by token.
+   */
+  #fullHeaderHasUnfilledPlaceholders(
+    detail: LicenseDetail,
+    values: Record<string, string>,
+  ): boolean {
+    if (!detail.standardLicenseHeaderTemplate) {
+      return false;
     }
-
-    if (missing.length > 0) {
-      this.#reporter.missingFields(licenseId, missing);
-      this.#exitWithError();
-      return;
+    const headerSlots = new HeaderTemplate(
+      detail.standardLicenseHeaderTemplate,
+    ).slots();
+    if (headerSlots.length === 0) {
+      return false;
     }
+    const body = new HeaderRenderer({
+      detail,
+      style: "full",
+      tokens: values,
+    }).body();
+    return headerSlots.some((slot) => body.includes(slot.token));
+  }
 
-    await this.#generateLicense(licenseId, values, saveTarget, headerStyle);
+  /**
+   * Reports the failure for a `full` header whose copyright placeholders can't be
+   * filled, steering the user to the route that works: supplying the fields when
+   * the license exposes them, or `--headers short` when it does not.
+   *
+   * @param licenseId - The canonical SPDX identifier being generated.
+   * @param template - The license's body template, whose slots are the fillable fields.
+   */
+  #failUnfillableFullHeader(
+    licenseId: string,
+    template: LicenseTemplate,
+  ): void {
+    const slots = template.slots();
+    if (slots.length > 0) {
+      const fields = slots.map((slot) => slot.label).join(", ");
+      this.#fail(
+        `${licenseId}'s full header notice needs copyright values. Supply them with --set (${fields}), or use --headers short.`,
+      );
+    } else {
+      this.#fail(
+        `${licenseId} exposes no copyright fields, so its full header notice would ship unfilled placeholders. Use --headers short instead.`,
+      );
+    }
   }
 
   /**
@@ -422,9 +496,11 @@ export class NonInteractiveMode implements IWizardMode {
 
   /**
    * Parses raw `--set` arguments of the form `field=value` into a map keyed by
-   * the field as typed. Splits on the first `=` so values may contain `=`.
-   * Returns null after reporting an error when any entry is missing a `=` or has
-   * an empty field name.
+   * the field as typed. Splits on the first `=` so values may contain `=`. Both
+   * the field and the value are trimmed of surrounding whitespace, so a stray
+   * space around either does not leak into the copyright line. Returns null after
+   * reporting an error when any entry is missing a `=` or has an empty field name;
+   * an empty value is left for slot resolution to reject as a missing field.
    *
    * @param raw - The raw `--set` argument values, each expected to be `field=value`.
    */
@@ -442,7 +518,7 @@ export class NonInteractiveMode implements IWizardMode {
         return null;
       }
 
-      entries.set(field, item.slice(separator + 1));
+      entries.set(field, item.slice(separator + 1).trim());
     }
 
     return entries;

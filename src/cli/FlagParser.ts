@@ -76,11 +76,99 @@ export class FlagParser<T extends FlagDefinitions> {
     const result = {} as ParsedFlags<T>;
     for (const name of definedNames) {
       (result as Record<string, boolean | string | string[]>)[name] =
-        (values[name] as boolean | string | string[] | undefined) ??
-        this.#flags[name].default;
+        this.#coerce(this.#flags[name], values[name]);
     }
 
     return result;
+  }
+
+  /**
+   * Coerces a raw parsed value to the type its flag declares, falling back to
+   * the flag's default when the raw value is the wrong shape. A value-accepting
+   * flag given with no value parses (in non-strict mode) as the boolean `true`,
+   * and a `list` flag can collect such a `true` among its strings; dropping those
+   * here keeps the resolved flags well-typed, so a bare `--license` or `--set`
+   * can never reach the application as a non-string and crash. The mistake itself
+   * is surfaced to the user by {@link validate}.
+   *
+   * @param def - The definition of the flag being coerced.
+   * @param raw - The raw value the parser produced for it.
+   */
+  #coerce(def: FlagDefinition, raw: unknown): boolean | string | string[] {
+    if (def.type === "boolean") {
+      return typeof raw === "boolean" ? raw : (def.default as boolean);
+    }
+    if (def.type === "list") {
+      return Array.isArray(raw)
+        ? raw.filter((value): value is string => typeof value === "string")
+        : (def.default as string[]);
+    }
+    return typeof raw === "string" ? raw : (def.default as string);
+  }
+
+  /**
+   * Inspects the raw arguments and returns the usage errors they contain, empty
+   * when they are well-formed. Catches two mistakes the permissive parser would
+   * otherwise swallow: an unrecognized flag (a typo that must not silently fall
+   * through to the interactive prompt), and a value-accepting flag given with no
+   * value — at the end of the line, or immediately followed by another `--flag`,
+   * which the parser would otherwise consume as the value.
+   *
+   * @param args - The raw argument list to validate (e.g. `process.argv.slice(2)`).
+   */
+  validate(args: string[]): string[] {
+    const options: Record<
+      string,
+      { type: "boolean" | "string"; multiple?: boolean }
+    > = {};
+    for (const [name, config] of Object.entries(this.#flags)) {
+      options[name] =
+        config.type === "list"
+          ? { type: "string", multiple: true }
+          : { type: config.type };
+    }
+
+    const { tokens } = parseArgs({
+      args,
+      options,
+      allowPositionals: true,
+      strict: false,
+      tokens: true,
+    });
+
+    const errors: string[] = [];
+    const reportedUnknown = new Set<string>();
+
+    for (const token of tokens) {
+      if (token.kind !== "option") {
+        continue;
+      }
+
+      const def = this.#flags[token.name];
+      if (def === undefined) {
+        if (!reportedUnknown.has(token.name)) {
+          reportedUnknown.add(token.name);
+          errors.push(
+            `Unknown flag: --${token.name}. Run --help to see the available flags.`,
+          );
+        }
+        continue;
+      }
+
+      if (def.type === "boolean") {
+        continue;
+      }
+
+      if (token.value === undefined) {
+        errors.push(`The --${token.name} flag requires a value.`);
+      } else if (token.value.startsWith("--")) {
+        errors.push(
+          `The --${token.name} flag requires a value, but got "${token.value}", which looks like another flag.`,
+        );
+      }
+    }
+
+    return errors;
   }
 
   /**
