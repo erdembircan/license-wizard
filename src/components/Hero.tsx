@@ -1,4 +1,4 @@
-import CopyButton from "./CopyButton";
+import InstallTabs from "./InstallTabs";
 import Terminal from "./Terminal";
 
 /**
@@ -62,24 +62,10 @@ export default function Hero() {
 
           {/* install */}
           <div
-            className="hero-rise mt-8 flex max-w-xl flex-col gap-3 sm:flex-row"
+            className="hero-rise mt-8 max-w-xl"
             style={{ animationDelay: "0.28s" }}
           >
-            <div className="copy-field flex-1">
-              <span className="truncate">
-                <span
-                  className="t-accent select-none"
-                  style={{ color: "var(--color-brand)" }}
-                >
-                  $
-                </span>{" "}
-                npx license-wizard
-              </span>
-              <CopyButton
-                text="npx license-wizard"
-                label="Copy install command"
-              />
-            </div>
+            <InstallTabs />
           </div>
 
           <div

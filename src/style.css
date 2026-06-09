@@ -865,28 +865,128 @@
   color: var(--color-ink-faint);
 }
 
-/* the code editor body — same deep-navy as the terminal, fixed height + scroll */
+/* ----------------------------------------------------------------------------
+   Hero install tabs — a package-manager picker (npm · pnpm · yarn · bun) over
+   one copy-field. Visually a sibling of the header-style segmented control.
+---------------------------------------------------------------------------- */
+.install-tabs-row {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-bottom: 0.6rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  border: 1px solid var(--color-line);
+  background: var(--color-paper);
+}
+.install-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-ink-faint);
+  cursor: pointer;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    box-shadow 0.18s;
+}
+.install-tab:hover {
+  color: var(--color-ink);
+}
+.install-tab[aria-selected="true"] {
+  background: var(--color-paper-raised);
+  color: var(--color-brand-strong);
+  box-shadow:
+    0 1px 2px rgba(22, 34, 61, 0.08),
+    0 0 0 1px var(--color-brand-soft);
+}
+.install-tab-icon {
+  height: 16px;
+  width: auto;
+  opacity: 0.7;
+  transition: opacity 0.18s;
+}
+.install-tab:hover .install-tab-icon,
+.install-tab[aria-selected="true"] .install-tab-icon {
+  opacity: 1;
+}
+
+/* ----------------------------------------------------------------------------
+   Guided flow — the Usage section's three steps as a connected timeline: an
+   icon node per step, threaded to the next by a vertical gradient line.
+---------------------------------------------------------------------------- */
+.guided-flow {
+  display: flex;
+  flex-direction: column;
+}
+.guided-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.1rem;
+  padding-bottom: 2.25rem;
+}
+.guided-step:last-child {
+  padding-bottom: 0;
+}
+/* the thread linking one node to the next; centred under the 2.75rem node */
+.guided-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: calc(1.375rem - 1px);
+  top: 3.1rem;
+  bottom: 0.35rem;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    var(--color-brand-glow),
+    var(--color-brand-soft)
+  );
+}
+.guided-step-node {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  border: 1px solid #d4e2ff;
+}
+.guided-step-body {
+  padding-top: 0.3rem;
+}
+.guided-step-ordinal {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-brand-strong);
+}
+
+/* the code editor body — same deep-navy as the terminal. Unlike the hero/agent
+   terminals (which keep a fixed height and scroll because real runs hide lines
+   below the fold), this panel shows every line of the header and the few lines
+   of source around it, so it grows to fit instead of becoming an inner scroll
+   container. That keeps it from swallowing the page's wheel scroll as a visitor
+   passes over it. The min-height stops the short, few-line styles from
+   collapsing the panel. */
 .hdr-code {
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.55;
-  height: 25rem;
-  overflow: auto;
-  overscroll-behavior: contain;
+  min-height: 22rem;
   padding: 1rem 1.1rem;
   color: var(--color-term-text);
   background: var(--color-term-bg);
-}
-.hdr-code::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.hdr-code::-webkit-scrollbar-thumb {
-  background: var(--color-term-line);
-  border-radius: 999px;
-}
-.hdr-code::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 .hdr-ln {

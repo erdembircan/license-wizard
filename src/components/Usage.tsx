@@ -1,8 +1,98 @@
-import CopyButton from "./CopyButton";
+import type { ReactNode } from "react";
+
+interface Step {
+  ordinal: string;
+  title: string;
+  body: ReactNode;
+  icon: ReactNode;
+}
+
+/** The three steps of the run, each carrying the glyph drawn into its node. */
+const STEPS: Step[] = [
+  {
+    ordinal: "01",
+    title: "Choose a license",
+    body: (
+      <>
+        Start typing to search the SPDX catalog. If your project already
+        declares one, it&apos;s offered as the default.
+      </>
+    ),
+    icon: (
+      <svg
+        className="size-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="m21 21-4.3-4.3" />
+      </svg>
+    ),
+  },
+  {
+    ordinal: "02",
+    title: "Standard or customized",
+    body: (
+      <>
+        Keep the official text verbatim, or fill in fillable fields like the
+        copyright holder and year.
+      </>
+    ),
+    icon: (
+      <svg
+        className="size-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        aria-hidden="true"
+      >
+        <path d="M4 6h8M16 6h4" />
+        <circle cx="14" cy="6" r="2" />
+        <path d="M4 12h4M12 12h8" />
+        <circle cx="10" cy="12" r="2" />
+        <path d="M4 18h10M18 18h2" />
+        <circle cx="16" cy="18" r="2" />
+      </svg>
+    ),
+  },
+  {
+    ordinal: "03",
+    title: "Save your settings",
+    body: (
+      <>
+        Choose whether to remember your selection, then the{" "}
+        <code className="font-mono text-[0.85em]">LICENSE</code> file is written
+        and your manifests updated.
+      </>
+    ),
+    icon: (
+      <svg
+        className="size-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
+        <path d="M17 21v-8H7v8" />
+        <path d="M7 3v5h7" />
+      </svg>
+    ),
+  },
+];
 
 /**
- * Usage section: a guided three-step walkthrough paired with three install
- * command boxes, each fronted by a copy-to-clipboard button.
+ * Usage section: a short, guided flow shown as a connected three-step timeline.
+ * Each step is an icon node linked to the next by a vertical thread, so the
+ * sequence reads as a single path from picking a license to a written file.
  */
 export default function Usage() {
   return (
@@ -21,97 +111,33 @@ export default function Usage() {
               A short, guided flow
             </h2>
             <p className="mt-4 text-lg text-ink-soft">
-              Run it from the root of the project you want to license.
+              Run it from the root of the project you want to license — three
+              prompts, then it writes the file.
             </p>
-
-            <ol className="mt-9 space-y-7">
-              <li className="flex gap-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-sm font-semibold text-brand-strong">
-                  1
-                </span>
-                <div>
-                  <h3 className="font-display font-semibold text-ink">
-                    Choose a license
-                  </h3>
-                  <p className="mt-1 text-sm text-ink-soft">
-                    Start typing to search the SPDX catalog. If your project
-                    already declares one, it's offered as the default.
-                  </p>
-                </div>
-              </li>
-              <li className="flex gap-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-sm font-semibold text-brand-strong">
-                  2
-                </span>
-                <div>
-                  <h3 className="font-display font-semibold text-ink">
-                    Standard or customized
-                  </h3>
-                  <p className="mt-1 text-sm text-ink-soft">
-                    Keep the official text verbatim, or fill in fillable fields
-                    like the copyright holder and year.
-                  </p>
-                </div>
-              </li>
-              <li className="flex gap-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft font-mono text-sm font-semibold text-brand-strong">
-                  3
-                </span>
-                <div>
-                  <h3 className="font-display font-semibold text-ink">
-                    Save your settings
-                  </h3>
-                  <p className="mt-1 text-sm text-ink-soft">
-                    Choose whether to remember your selection, then the{" "}
-                    <code className="font-mono text-[0.85em]">LICENSE</code>{" "}
-                    file is written and your manifests updated.
-                  </p>
-                </div>
-              </li>
-            </ol>
-          </div>
-
-          <div className="space-y-4" data-reveal>
-            <div className="copy-field">
-              <span>
-                <span style={{ color: "var(--color-brand)" }}>$</span> npm
-                install -g license-wizard
-              </span>
-              <CopyButton
-                text="npm install -g license-wizard"
-                label="Copy command"
-              />
-            </div>
-            <div className="copy-field">
-              <span>
-                <span style={{ color: "var(--color-brand)" }}>$</span> pnpm dlx
-                license-wizard
-              </span>
-              <CopyButton text="pnpm dlx license-wizard" label="Copy command" />
-            </div>
-            <div className="copy-field">
-              <span>
-                <span style={{ color: "var(--color-brand)" }}>$</span> yarn dlx
-                license-wizard
-              </span>
-              <CopyButton text="yarn dlx license-wizard" label="Copy command" />
-            </div>
-            <div className="copy-field">
-              <span>
-                <span style={{ color: "var(--color-brand)" }}>$</span> bunx
-                license-wizard
-              </span>
-              <CopyButton text="bunx license-wizard" label="Copy command" />
-            </div>
-            <p className="px-1 pt-2 text-sm text-ink-faint">
-              Writes{" "}
+            <p className="mt-6 max-w-md text-sm text-ink-faint">
+              The{" "}
               <code className="font-mono text-[0.85em] text-ink-soft">
                 LICENSE
               </code>{" "}
-              to the current directory and records the SPDX id in every manifest
-              present.
+              lands in the current directory and the SPDX id is recorded in
+              every manifest present.
             </p>
           </div>
+
+          <ol className="guided-flow" data-reveal>
+            {STEPS.map((step) => (
+              <li key={step.ordinal} className="guided-step">
+                <span className="guided-step-node">{step.icon}</span>
+                <div className="guided-step-body">
+                  <span className="guided-step-ordinal">{step.ordinal}</span>
+                  <h3 className="font-display font-semibold text-ink">
+                    {step.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-ink-soft">{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>
