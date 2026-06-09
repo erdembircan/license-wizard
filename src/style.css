@@ -448,6 +448,15 @@
   color: var(--color-term-text);
 }
 
+/* Blank separator lines in an agent transcript are empty divs, which generate
+   no line box and collapse to zero height — so the agent's turns would run
+   together. Give them a real line of height so each ⏺ action (and the gap after
+   the user's prompt) reads as its own block, the way a real terminal spaces
+   command output. */
+.term-transcript .term-line:empty {
+  min-height: 1.35em;
+}
+
 .term-inputbox {
   flex: 0 0 auto;
   margin: 0 0.85rem;

@@ -28,18 +28,23 @@ describe("agent scenes", () => {
     expect(all).toContain("--verify --strict");
   });
 
-  it("the setup scene shows the real Apache-2.0 token + generation output", () => {
+  it("the setup scene shows Apache-2.0's real fields + generation output", () => {
     const text = transcript("agent-setup");
-    // Apache-2.0 has no fillable fields — quoted from the CLI verbatim.
-    expect(text).toContain("has no customizable copyright");
+    // Apache-2.0's two fillable fields, quoted from `--get-tokens` verbatim.
+    expect(text).toContain("Apache-2.0 accepts the following copyright");
+    expect(text).toContain("yyyy");
+    expect(text).toContain("name of copyright owner");
     expect(text).toContain("Conjured your LICENSE (Apache-2.0)");
     expect(text).toContain("Spellbook saved to .licensewizardrc.json");
+    expect(text).toContain("Inscribed the Apache-2.0 full header");
   });
 
   it("the self-heal scene shows the drift report, exit code, and reconcile", () => {
     const text = transcript("agent-heal");
-    expect(text).toContain("Project is out of sync with your saved MIT");
+    expect(text).toContain("Project is out of sync with your saved");
     expect(text).toContain("exit 1");
-    expect(text).toContain("LICENSE and project manifests are up to date");
+    // The reconcile path prints "Realigned…", not the clean-verify message.
+    expect(text).toContain("Realigned the project with your saved");
+    expect(text).toContain("package.json license updated to");
   });
 });

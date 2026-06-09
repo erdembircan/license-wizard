@@ -325,13 +325,19 @@ export function useTerminalPlayer(
         },
         onDone: () => {
           if (token !== runToken) return;
-          const userMsg = document.createElement("div");
-          userMsg.className = "term-line term-user";
-          userMsg.textContent = `> ${scene.command}`;
-          transcript.appendChild(userMsg);
-          inputText.textContent = "";
-          scrollTargetToEnd();
-          void streamAgentTurn(scene, token, transcript);
+          // Beat between finishing the prompt and "pressing enter" — the input
+          // cursor keeps blinking, so it reads as a human pause, not an instant
+          // submit the moment the last character lands.
+          later(() => {
+            if (token !== runToken) return;
+            const userMsg = document.createElement("div");
+            userMsg.className = "term-line term-user";
+            userMsg.textContent = `> ${scene.command}`;
+            transcript.appendChild(userMsg);
+            inputText.textContent = "";
+            scrollTargetToEnd();
+            void streamAgentTurn(scene, token, transcript);
+          }, 750);
         },
       });
     }
