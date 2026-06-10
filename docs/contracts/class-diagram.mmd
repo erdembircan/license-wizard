@@ -38,6 +38,7 @@ classDiagram
     +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader, writer: IFileSystemWriter)
     +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
     +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
+    +forceApply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
     +remove(extraIgnores: string[]) Promise~HeaderRemovalReport~
     +previewRemoval(extraIgnores: string[]) Promise~HeaderRemovalReport~
   }
@@ -48,11 +49,20 @@ classDiagram
     +total: number
     +written: number
     +unchanged: number
+    +skipped: string[]
   }
 
   class HeaderPreview {
     +files: string[]
+    +skipped: string[]
     +sample: string
+  }
+
+  class HeaderForceReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +file: string
+    +outcome: "written" | "unchanged" | "missing"
   }
 
   class HeaderRemovalReport {
@@ -136,6 +146,7 @@ classDiagram
       +style: HeaderStyle
       +written: number
       +total: number
+      +skipped: string[]
     }
 
     class ProgressBar {
@@ -164,6 +175,7 @@ classDiagram
       +headersNoFiles(licenseId: string) void
       +headersGenerated(report: HeaderGenerateReport) void
       +headersDryRun(report: HeaderDryRunReport) void
+      +headersForceApplied(report: HeaderForceApplyReport) void
       +headersRemoved(report: HeaderRemoveReport) void
       +headersRemoveDryRun(report: HeaderRemoveReport) void
       +headersVerifyMatch(report: HeaderVerifyReport) void
@@ -178,13 +190,23 @@ classDiagram
       +total: number
       +written: number
       +unchanged: number
+      +skipped: string[]
     }
 
     class HeaderDryRunReport {
       +licenseId: string
       +style: HeaderStyle
       +files: string[]
+      +skipped: string[]
       +sample: string
+    }
+
+    class HeaderForceApplyReport {
+      +licenseId: string
+      +style: HeaderStyle
+      +file: string
+      +outcome: "written" | "unchanged"
+      +dryRun: boolean
     }
 
     class HeaderRemoveReport {
@@ -833,9 +855,11 @@ classDiagram
   HeaderApplier ..> LicenseRepository : fetches header detail through
   HeaderApplier ..> HeaderApplyReport : produces
   HeaderApplier ..> HeaderPreview : produces
+  HeaderApplier ..> HeaderForceReport : produces
   HeaderApplier ..> HeaderRemovalReport : produces
   MessageReporter ..> HeaderGenerateReport : reads
   MessageReporter ..> HeaderDryRunReport : reads
+  MessageReporter ..> HeaderForceApplyReport : reads
   MessageReporter ..> HeaderRemoveReport : reads
   MessageReporter ..> HeaderVerifyReport : reads
   MessageReporter ..> HeaderDrift : reduces drift from

@@ -116,7 +116,7 @@ export type OutputMessage =
       total: number;
       written: number;
       unchanged: number;
-      skipped: number;
+      skipped: string[];
     }
   | {
       kind: "headersDryRun";
@@ -124,7 +124,17 @@ export type OutputMessage =
       licenseId: string;
       style: HeaderStyle;
       files: string[];
+      skipped: string[];
       sample: string;
+    }
+  | {
+      kind: "headersForceApplied";
+      channel: "out";
+      licenseId: string;
+      style: HeaderStyle;
+      file: string;
+      outcome: "written" | "unchanged";
+      dryRun: boolean;
     }
   | {
       kind: "headersRemoved";
@@ -144,7 +154,7 @@ export type OutputMessage =
       licenseId: string;
       style: HeaderStyle;
       total: number;
-      skipped: number;
+      skipped: string[];
     }
   | {
       kind: "headersVerifyFixed";
@@ -153,7 +163,7 @@ export type OutputMessage =
       style: HeaderStyle;
       added: number;
       rewritten: number;
-      skipped: number;
+      skipped: string[];
     }
   | {
       kind: "headersVerifyMismatch";

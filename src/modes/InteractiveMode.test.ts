@@ -117,6 +117,7 @@ const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
   "get-tokens": false,
   headers: "",
   "headers-ignore": [],
+  "force-apply": "",
   "remove-headers": false,
   "dry-run": false,
   ...over,

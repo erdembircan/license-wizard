@@ -82,10 +82,26 @@ describe("HeaderApplier", () => {
         total: 1,
         written: 1,
         unchanged: 0,
-        skipped: 0,
+        skipped: [],
       });
       expect(writes[0].path).toBe("a.ts");
       expect(writes[0].content).toContain("SPDX-License-Identifier: MIT");
+    });
+
+    it("collects the paths of files the guard skips", async () => {
+      state.files = {
+        "a.ts": "export const a = 1;\n",
+        "foreign.ts":
+          "// SPDX-License-Identifier: GPL-3.0-only\nexport const b = 2;\n",
+      };
+      const { writer, writes } = makeWriter();
+      const applier = new HeaderApplier(licenses, reader, writer);
+
+      const report = await applier.apply("MIT", "short", {}, []);
+
+      expect(report.written).toBe(1);
+      expect(report.skipped).toEqual(["foreign.ts"]);
+      expect(writes.some((w) => w.path === "foreign.ts")).toBe(false);
     });
 
     it("reports a zero tally and writes nothing when no files are found", async () => {
@@ -100,7 +116,7 @@ describe("HeaderApplier", () => {
         total: 0,
         written: 0,
         unchanged: 0,
-        skipped: 0,
+        skipped: [],
       });
       expect(writes).toEqual([]);
     });
@@ -115,7 +131,24 @@ describe("HeaderApplier", () => {
       const preview = await applier.preview("MIT", "short", {}, []);
 
       expect(preview?.files).toEqual(["a.ts"]);
+      expect(preview?.skipped).toEqual([]);
       expect(preview?.sample).toContain("SPDX-License-Identifier: MIT");
+      expect(writes).toEqual([]);
+    });
+
+    it("partitions would-be-skipped files out of the target list", async () => {
+      state.files = {
+        "a.ts": "export const a = 1;\n",
+        "foreign.ts":
+          "// SPDX-License-Identifier: GPL-3.0-only\nexport const b = 2;\n",
+      };
+      const { writer, writes } = makeWriter();
+      const applier = new HeaderApplier(licenses, reader, writer);
+
+      const preview = await applier.preview("MIT", "short", {}, []);
+
+      expect(preview?.files).toEqual(["a.ts"]);
+      expect(preview?.skipped).toEqual(["foreign.ts"]);
       expect(writes).toEqual([]);
     });
 
@@ -124,6 +157,68 @@ describe("HeaderApplier", () => {
       const applier = new HeaderApplier(licenses, reader, writer);
 
       expect(await applier.preview("MIT", "short", {}, [])).toBeNull();
+    });
+  });
+
+  describe("forceApply", () => {
+    it("forces a header into a file the guard would skip", async () => {
+      state.files = {
+        "foreign.ts":
+          "// SPDX-License-Identifier: GPL-3.0-only\nexport const b = 2;\n",
+      };
+      const { writer, writes } = makeWriter();
+      const applier = new HeaderApplier(licenses, reader, writer);
+
+      const report = await applier.forceApply("MIT", "short", {}, "foreign.ts");
+
+      expect(report.outcome).toBe("written");
+      expect(report.file).toBe("foreign.ts");
+      expect(writes[0].content).toContain("SPDX-License-Identifier: MIT");
+    });
+
+    it("reports an unchanged file when it already bears the exact header", async () => {
+      state.files = {
+        "a.ts": headed("export const a = 1;\n", "a.ts"),
+      };
+      const { writer, writes } = makeWriter();
+      const applier = new HeaderApplier(licenses, reader, writer);
+
+      const report = await applier.forceApply("MIT", "short", {}, "a.ts");
+
+      expect(report.outcome).toBe("unchanged");
+      expect(writes).toEqual([]);
+    });
+
+    it("reports a missing file without writing", async () => {
+      const { writer, writes } = makeWriter();
+      const applier = new HeaderApplier(licenses, reader, writer);
+
+      const report = await applier.forceApply("MIT", "short", {}, "nope.ts");
+
+      expect(report.outcome).toBe("missing");
+      expect(writes).toEqual([]);
+    });
+
+    it("computes the outcome without writing under dryRun", async () => {
+      state.files = {
+        "foreign.ts":
+          "// SPDX-License-Identifier: GPL-3.0-only\nexport const b = 2;\n",
+      };
+      const { writer, writes } = makeWriter();
+      const applier = new HeaderApplier(licenses, reader, writer);
+
+      const report = await applier.forceApply(
+        "MIT",
+        "short",
+        {},
+        "foreign.ts",
+        {
+          dryRun: true,
+        },
+      );
+
+      expect(report.outcome).toBe("written");
+      expect(writes).toEqual([]);
     });
   });
 

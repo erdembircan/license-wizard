@@ -53,6 +53,7 @@ classDiagram
     +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader, writer: IFileSystemWriter)
     +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
     +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
+    +forceApply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
     +remove(extraIgnores: string[]) Promise~HeaderRemovalReport~
     +previewRemoval(extraIgnores: string[]) Promise~HeaderRemovalReport~
   }
@@ -63,11 +64,20 @@ classDiagram
     +total: number
     +written: number
     +unchanged: number
+    +skipped: string[]
   }
 
   class HeaderPreview {
     +files: string[]
+    +skipped: string[]
     +sample: string
+  }
+
+  class HeaderForceReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +file: string
+    +outcome: "written" | "unchanged" | "missing"
   }
 
   class HeaderRemovalReport {
@@ -111,4 +121,5 @@ classDiagram
   LicenseSelection ..> ConfigSave : has
   HeaderApplier ..> HeaderApplyReport : produces
   HeaderApplier ..> HeaderPreview : produces
+  HeaderApplier ..> HeaderForceReport : produces
   HeaderApplier ..> HeaderRemovalReport : produces

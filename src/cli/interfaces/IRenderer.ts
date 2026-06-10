@@ -12,6 +12,8 @@ export type CompletionHeaders = {
   style: HeaderStyle;
   written: number;
   total: number;
+  /** Paths the header could not be safely written into. */
+  skipped: string[];
 };
 
 export type CompletionSummary = {

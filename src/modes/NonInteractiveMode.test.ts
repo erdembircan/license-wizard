@@ -44,6 +44,7 @@ const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
   "get-tokens": false,
   headers: "",
   "headers-ignore": [],
+  "force-apply": "",
   "remove-headers": false,
   "dry-run": false,
   ...over,
@@ -71,6 +72,7 @@ type Deps = {
   headers: {
     apply: ReturnType<typeof vi.fn>;
     preview: ReturnType<typeof vi.fn>;
+    forceApply: ReturnType<typeof vi.fn>;
     remove: ReturnType<typeof vi.fn>;
     previewRemoval: ReturnType<typeof vi.fn>;
   };
@@ -95,8 +97,19 @@ function makeDeps(over: { savedConfig?: unknown } = {}): Deps {
       total: 1,
       written: 1,
       unchanged: 0,
+      skipped: [],
     })),
-    preview: vi.fn(async () => ({ files: ["a.ts"], sample: "SAMPLE" })),
+    preview: vi.fn(async () => ({
+      files: ["a.ts"],
+      skipped: [],
+      sample: "SAMPLE",
+    })),
+    forceApply: vi.fn(async () => ({
+      licenseId: "MIT",
+      style: "short",
+      file: "page.php",
+      outcome: "written",
+    })),
     remove: vi.fn(async () => ({ removed: ["a.ts"], total: 1 })),
     previewRemoval: vi.fn(async () => ({ removed: ["a.ts"], total: 1 })),
   };
@@ -188,6 +201,93 @@ describe("NonInteractiveMode routing", () => {
     expect(d.installer.install).not.toHaveBeenCalled();
     expect(callsOf(d)).toContain("error");
     expect(process.exitCode).toBe(1);
+  });
+
+  it("forces a header into the named file when --force-apply is set and headers are enabled", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    await build(d, flags({ "force-apply": "src/skipped.ts" })).run();
+
+    expect(d.headers.forceApply).toHaveBeenCalledOnce();
+    expect(d.headers.forceApply.mock.calls[0]).toEqual([
+      "MIT",
+      "short",
+      {},
+      "src/skipped.ts",
+      { dryRun: false },
+    ]);
+    expect(callsOf(d)).toContain("headersForceApplied");
+    expect(d.installer.install).not.toHaveBeenCalled();
+  });
+
+  it("silently disregards --force-apply when the config has no headers enabled", async () => {
+    const d = makeDeps({ savedConfig: { licenseId: "MIT" } });
+    await build(d, flags({ "force-apply": "src/skipped.ts" })).run();
+
+    expect(d.headers.forceApply).not.toHaveBeenCalled();
+    expect(callsOf(d)).toEqual([]);
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it("silently disregards --force-apply when no config is saved", async () => {
+    const d = makeDeps({ savedConfig: null });
+    await build(d, flags({ "force-apply": "src/skipped.ts" })).run();
+
+    expect(d.headers.forceApply).not.toHaveBeenCalled();
+    expect(callsOf(d)).toEqual([]);
+  });
+
+  it("rejects an absolute --force-apply path as outside the project", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    await build(d, flags({ "force-apply": "/etc/passwd" })).run();
+
+    expect(d.headers.forceApply).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects a --force-apply path that climbs out of the project", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    await build(d, flags({ "force-apply": "../outside.ts" })).run();
+
+    expect(d.headers.forceApply).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("fails when the --force-apply target does not exist", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    d.headers.forceApply.mockResolvedValueOnce({
+      licenseId: "MIT",
+      style: "short",
+      file: "src/gone.ts",
+      outcome: "missing",
+    });
+    await build(d, flags({ "force-apply": "src/gone.ts" })).run();
+
+    expect(callsOf(d)).toContain("error");
+    expect(callsOf(d)).not.toContain("headersForceApplied");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("previews the forced write without writing under --dry-run", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    await build(
+      d,
+      flags({ "force-apply": "src/skipped.ts", "dry-run": true }),
+    ).run();
+
+    expect(d.headers.forceApply.mock.calls[0][4]).toEqual({ dryRun: true });
+    expect(callsOf(d)).toContain("headersForceApplied");
   });
 
   it("routes to flag-driven generation for --license", async () => {

@@ -101,6 +101,8 @@ export class ReportPresenter {
         return this.#headersGenerated(message, c);
       case "headersDryRun":
         return this.#headersDryRun(message, c);
+      case "headersForceApplied":
+        return this.#headersForceApplied(message, c);
       case "headersRemoved":
         return this.#headersRemoved(message.removed, message.total, c);
       case "headersRemoveDryRun":
@@ -390,7 +392,7 @@ export class ReportPresenter {
       message.unchanged > 0
         ? ` ${message.unchanged} already bore the mark.`
         : "";
-    return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}${this.#skippedNote(message.skipped)}\n`;
+    return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}${this.#skippedNote(message.skipped, c)}\n`;
   }
 
   #headersDryRun(
@@ -412,8 +414,34 @@ export class ReportPresenter {
     return (
       `${mark}${heading}\n\n` +
       `Would inscribe the ${id} ${style} header into ${message.files.length} file(s):\n\n` +
-      `${message.sample}\n\n${list}\n`
+      `${message.sample}\n\n${list}${this.#skippedNote(message.skipped, c, true)}\n`
     );
+  }
+
+  #headersForceApplied(
+    message: Extract<OutputMessage, { kind: "headersForceApplied" }>,
+    c: boolean,
+  ): string {
+    const id = this.#paint(c, "bold", message.licenseId);
+    const style = this.#paint(c, "cyan", message.style);
+    const file = this.#paint(c, "cyan", message.file);
+
+    if (message.dryRun) {
+      const mark = this.#mark(c, GLIMMER, "yellow");
+      const heading = this.#paint(
+        c,
+        ["bold", "yellow"],
+        "Dry run — no source file was touched.",
+      );
+      return message.outcome === "written"
+        ? `${mark}${heading} Would force the ${id} ${style} header into ${file}.\n`
+        : `${mark}${heading} ${file} already bears the ${id} ${style} header.\n`;
+    }
+
+    const mark = this.#mark(c, SPARK, "green");
+    return message.outcome === "written"
+      ? `${mark}Forced the ${id} ${style} header into ${file}.\n`
+      : `${mark}${file} already bears the ${id} ${style} header; nothing to change.\n`;
   }
 
   #headersRemoved(removed: string[], total: number, c: boolean): string {
@@ -456,7 +484,7 @@ export class ReportPresenter {
     licenseId: string,
     style: string,
     total: number,
-    skipped: number,
+    skipped: string[],
     c: boolean,
   ): string {
     const mark = this.#mark(c, SPARK, "green");
@@ -464,8 +492,8 @@ export class ReportPresenter {
     // The success claim covers only the files that can carry the header; skipped
     // files (foreign notice, unplaceable PHP) are reported separately and must
     // not be counted among those that "bear" it.
-    const bearing = total - skipped;
-    return `${mark}All ${bearing} source file(s) bear the expected ${id} ${style} header.${this.#skippedNote(skipped)}\n`;
+    const bearing = total - skipped.length;
+    return `${mark}All ${bearing} source file(s) bear the expected ${id} ${style} header.${this.#skippedNote(skipped, c)}\n`;
   }
 
   #headersVerifyFixed(
@@ -478,18 +506,42 @@ export class ReportPresenter {
       `${mark}Realigned the ${id} ${message.style} header: ` +
       `${this.#paint(c, "cyan", String(message.added))} added, ` +
       `${this.#paint(c, "cyan", String(message.rewritten))} rewritten.` +
-      `${this.#skippedNote(message.skipped)}\n`
+      `${this.#skippedNote(message.skipped, c)}\n`
     );
   }
 
   /**
-   * Renders the trailing note about files a header could not be safely written
-   * into, or the empty string when none were skipped.
+   * Renders the trailing note listing the files a header could not be safely
+   * written into, followed by a copy-pasteable `--force-apply` example so a
+   * caller (especially an agent reading non-interactive output) can override the
+   * guard for a path it knows is safe. Returns the empty string when none were
+   * skipped. `future` words it for a dry run ("Would skip …").
+   *
+   * @param skipped - The skipped file paths.
+   * @param color - Whether ANSI styling is wanted.
+   * @param future - Word it as a dry-run prediction rather than a past result.
    */
-  #skippedNote(skipped: number): string {
-    return skipped > 0
-      ? ` Skipped ${skipped} file(s) the header couldn't be safely written into.`
-      : "";
+  #skippedNote(skipped: string[], color: boolean, future = false): string {
+    if (skipped.length === 0) {
+      return "";
+    }
+
+    const lead = future
+      ? `Would skip ${skipped.length} file(s) the header can't be safely written into:`
+      : `Skipped ${skipped.length} file(s) the header couldn't be safely written into:`;
+    const list = skipped
+      .map((file) => `  ${this.#paint(color, "cyan", file)}`)
+      .join("\n");
+    const example = this.#paint(
+      color,
+      "dim",
+      `${this.#programName} --force-apply "${skipped[0]}"`,
+    );
+
+    return (
+      `\n\n${lead}\n${list}\n\n` +
+      `If one is safe to head, force it in (non-interactive):\n  ${example}`
+    );
   }
 
   #headersVerifyMismatch(

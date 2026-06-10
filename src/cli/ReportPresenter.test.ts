@@ -356,7 +356,7 @@ describe("ReportPresenter wording (plain text)", () => {
         total: 30,
         written: 25,
         unchanged: 5,
-        skipped: 0,
+        skipped: [],
       }),
     ).toMatchInlineSnapshot(`
       "Inscribed the MIT short header across 25 of 30 source file(s). 5 already bore the mark.
@@ -364,7 +364,7 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
-  it("notes files skipped because the header could not be safely written", () => {
+  it("lists files skipped because the header could not be safely written, with a force-apply example", () => {
     expect(
       present({
         kind: "headersGenerated",
@@ -374,10 +374,17 @@ describe("ReportPresenter wording (plain text)", () => {
         total: 30,
         written: 23,
         unchanged: 5,
-        skipped: 2,
+        skipped: ["test/fixture.ts", "page.php"],
       }),
     ).toMatchInlineSnapshot(`
-      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark. Skipped 2 file(s) the header couldn't be safely written into.
+      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark.
+
+      Skipped 2 file(s) the header couldn't be safely written into:
+        test/fixture.ts
+        page.php
+
+      If one is safe to head, force it in (non-interactive):
+        license-wizard --force-apply "test/fixture.ts"
       "
     `);
   });
@@ -392,7 +399,7 @@ describe("ReportPresenter wording (plain text)", () => {
         total: 25,
         written: 25,
         unchanged: 0,
-        skipped: 0,
+        skipped: [],
       }),
     ).toMatchInlineSnapshot(`
       "Inscribed the MIT short header across 25 of 25 source file(s).
@@ -408,6 +415,7 @@ describe("ReportPresenter wording (plain text)", () => {
         licenseId: "MIT",
         style: "short",
         files: ["a.ts", "b.ts"],
+        skipped: [],
         sample: "// SAMPLE HEADER",
       }),
     ).toMatchInlineSnapshot(`
@@ -419,6 +427,70 @@ describe("ReportPresenter wording (plain text)", () => {
 
         a.ts
         b.ts
+      "
+    `);
+  });
+
+  it("lists the would-be-skipped files in a header dry-run preview", () => {
+    expect(
+      present({
+        kind: "headersDryRun",
+        channel: "out",
+        licenseId: "MIT",
+        style: "short",
+        files: ["a.ts"],
+        skipped: ["test/fixture.ts", "page.php"],
+        sample: "// SAMPLE HEADER",
+      }),
+    ).toMatchInlineSnapshot(`
+      "Dry run — no source file was touched.
+
+      Would inscribe the MIT short header into 1 file(s):
+
+      // SAMPLE HEADER
+
+        a.ts
+
+      Would skip 2 file(s) the header can't be safely written into:
+        test/fixture.ts
+        page.php
+
+      If one is safe to head, force it in (non-interactive):
+        license-wizard --force-apply "test/fixture.ts"
+      "
+    `);
+  });
+
+  it("renders a force-apply confirmation", () => {
+    expect(
+      present({
+        kind: "headersForceApplied",
+        channel: "out",
+        licenseId: "MIT",
+        style: "short",
+        file: "page.php",
+        outcome: "written",
+        dryRun: false,
+      }),
+    ).toMatchInlineSnapshot(`
+      "Forced the MIT short header into page.php.
+      "
+    `);
+  });
+
+  it("renders a force-apply dry-run", () => {
+    expect(
+      present({
+        kind: "headersForceApplied",
+        channel: "out",
+        licenseId: "MIT",
+        style: "short",
+        file: "page.php",
+        outcome: "written",
+        dryRun: true,
+      }),
+    ).toMatchInlineSnapshot(`
+      "Dry run — no source file was touched. Would force the MIT short header into page.php.
       "
     `);
   });
@@ -493,7 +565,7 @@ describe("ReportPresenter wording (plain text)", () => {
         licenseId: "MIT",
         style: "short",
         total: 4,
-        skipped: 0,
+        skipped: [],
       }),
     ).toMatchInlineSnapshot(`
       "All 4 source file(s) bear the expected MIT short header.
@@ -510,7 +582,7 @@ describe("ReportPresenter wording (plain text)", () => {
         style: "short",
         added: 2,
         rewritten: 3,
-        skipped: 0,
+        skipped: [],
       }),
     ).toMatchInlineSnapshot(`
       "Realigned the MIT short header: 2 added, 3 rewritten.
@@ -518,7 +590,7 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
-  it("notes files skipped during a header verify match and counts only those that bear it", () => {
+  it("lists files skipped during a header verify match and counts only those that bear it", () => {
     expect(
       present({
         kind: "headersVerifyMatch",
@@ -526,10 +598,17 @@ describe("ReportPresenter wording (plain text)", () => {
         licenseId: "MIT",
         style: "short",
         total: 4,
-        skipped: 2,
+        skipped: ["test/fixture.ts", "page.php"],
       }),
     ).toMatchInlineSnapshot(`
-      "All 2 source file(s) bear the expected MIT short header. Skipped 2 file(s) the header couldn't be safely written into.
+      "All 2 source file(s) bear the expected MIT short header.
+
+      Skipped 2 file(s) the header couldn't be safely written into:
+        test/fixture.ts
+        page.php
+
+      If one is safe to head, force it in (non-interactive):
+        license-wizard --force-apply "test/fixture.ts"
       "
     `);
   });

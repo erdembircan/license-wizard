@@ -289,6 +289,13 @@ export class LicenseWizard {
           "Extra gitignore-style pattern to skip when writing headers (repeatable).",
         placeholder: "<glob>",
       },
+      "force-apply": {
+        type: "string",
+        default: "",
+        description:
+          "Force the configured header into a single file the safety guard skipped, by path (relative to the working directory; non-interactive; requires headers enabled in config).",
+        placeholder: "<path>",
+      },
       "remove-headers": {
         type: "boolean",
         default: false,
@@ -379,9 +386,14 @@ export class LicenseWizard {
       return this.#verifyMode.run();
     }
 
-    // --apply-config and the selection flags both run non-interactively;
-    // --apply-config takes priority over the selection flags it overrides.
-    if (this.#flags["apply-config"] || this.#isNonInteractive()) {
+    // --apply-config, --force-apply, and the selection flags all run
+    // non-interactively; --apply-config takes priority over the selection flags
+    // it overrides, and --force-apply is a standalone single-file override.
+    if (
+      this.#flags["apply-config"] ||
+      this.#flags["force-apply"] !== "" ||
+      this.#isNonInteractive()
+    ) {
       return this.#nonInteractiveMode.run();
     }
 
