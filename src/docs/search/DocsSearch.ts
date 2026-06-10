@@ -17,6 +17,14 @@ import {
 
 const MAX_RESULTS = 8;
 
+// Don't run the ranking until the query is at least this long — a single
+// character matches almost everything and isn't a meaningful search.
+const MIN_QUERY_LENGTH = 2;
+
+// Coalesce bursts of keystrokes into one search this many milliseconds after
+// the last keypress, so holding/typing fast doesn't re-rank on every key.
+const DEBOUNCE_MS = 120;
+
 /**
  * Drives the documentation search palette: state, DOM, and all interaction
  * wiring. A single instance is created per page from the topbar trigger.
@@ -31,6 +39,7 @@ class DocsSearch {
   private results: SearchEntry[] = [];
   private activeIndex = 0;
   private isOpen = false;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   private overlay!: HTMLDivElement;
   private input!: HTMLInputElement;
@@ -82,7 +91,7 @@ class DocsSearch {
     this.input.setAttribute("aria-autocomplete", "list");
     this.input.autocomplete = "off";
     this.input.spellcheck = false;
-    this.input.addEventListener("input", () => this.render());
+    this.input.addEventListener("input", () => this.onInput());
 
     const escHint = document.createElement("kbd");
     escHint.className = "docs-search-esc";
@@ -161,6 +170,7 @@ class DocsSearch {
   private close(): void {
     if (!this.isOpen) return;
     this.isOpen = false;
+    this.cancelScheduledRender();
     this.overlay.classList.remove("is-visible");
     document.documentElement.classList.remove("docs-search-open");
     const hide = (): void => {
@@ -169,6 +179,35 @@ class DocsSearch {
     this.overlay.addEventListener("transitionend", hide, { once: true });
     this.input.value = "";
     this.trigger.focus();
+  }
+
+  /**
+   * Handles each keystroke. Short queries (and clearing the field) drop back to
+   * the cheap browse list immediately; a real query is debounced so a burst of
+   * keystrokes triggers only one ranking pass.
+   */
+  private onInput(): void {
+    if (this.input.value.trim().length < MIN_QUERY_LENGTH) {
+      this.cancelScheduledRender();
+      this.render();
+    } else {
+      this.scheduleRender();
+    }
+  }
+
+  private scheduleRender(): void {
+    this.cancelScheduledRender();
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = null;
+      this.render();
+    }, DEBOUNCE_MS);
+  }
+
+  private cancelScheduledRender(): void {
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
   }
 
   /** Fetches the search index once and caches it for the page's lifetime. */
@@ -205,7 +244,10 @@ class DocsSearch {
       return;
     }
 
-    this.results = query
+    // Below the minimum length (including an empty field) we show the section
+    // list rather than running the ranking.
+    const isSearch = query.length >= MIN_QUERY_LENGTH;
+    this.results = isSearch
       ? rankEntries(this.entries, query, MAX_RESULTS)
       : this.entries.filter((e) => !e.subsection);
     this.activeIndex = 0;
@@ -217,8 +259,8 @@ class DocsSearch {
     }
 
     this.status.textContent = "";
-    const terms = tokenize(query);
-    const heading = query ? null : "Browse the docs";
+    const terms = isSearch ? tokenize(query) : [];
+    const heading = isSearch ? null : "Browse the docs";
     this.list.replaceChildren(
       ...(heading ? [this.renderGroupLabel(heading)] : []),
       ...this.results.map((entry, i) => this.renderResult(entry, i, terms)),

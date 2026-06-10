@@ -54,6 +54,14 @@ async function open(): Promise<void> {
   await flush();
 }
 
+/** Types into the field and waits out the input debounce so results settle. */
+async function type(value: string): Promise<void> {
+  const input = document.querySelector<HTMLInputElement>(".docs-search-input")!;
+  input.value = value;
+  input.dispatchEvent(new Event("input"));
+  await new Promise((resolve) => setTimeout(resolve, 160));
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
@@ -93,11 +101,7 @@ describe("DocsSearch palette", () => {
 
   it("filters as you type and highlights the matched term", async () => {
     await open();
-
-    const input =
-      document.querySelector<HTMLInputElement>(".docs-search-input")!;
-    input.value = "headers";
-    input.dispatchEvent(new Event("input"));
+    await type("headers");
 
     const results = document.querySelectorAll<HTMLAnchorElement>(
       ".docs-search-result",
@@ -117,11 +121,7 @@ describe("DocsSearch palette", () => {
 
   it("arrow keys move the active result and build a deep-link href", async () => {
     await open();
-
-    const input =
-      document.querySelector<HTMLInputElement>(".docs-search-input")!;
-    input.value = "two";
-    input.dispatchEvent(new Event("input"));
+    await type("two");
 
     const overlay = document.querySelector<HTMLElement>(
       ".docs-search-overlay",
@@ -137,13 +137,53 @@ describe("DocsSearch palette", () => {
     );
   });
 
-  it("reports an empty state when nothing matches", async () => {
+  it("does not search below the minimum query length", async () => {
+    await open();
+    await type("g");
+
+    // A single character keeps the browse list rather than ranking.
+    expect(document.querySelector(".docs-search-group")?.textContent).toBe(
+      "Browse the docs",
+    );
+    const titles = [
+      ...document.querySelectorAll(".docs-search-result-title"),
+    ].map((n) => n.textContent);
+    expect(titles).toEqual(["Getting started", "Source-file headers"]);
+
+    // Two characters cross the threshold and filter down.
+    await type("ge");
+    const filtered = [
+      ...document.querySelectorAll(".docs-search-result-title"),
+    ].map((n) => n.textContent);
+    expect(filtered).toEqual(["Getting started"]);
+  });
+
+  it("debounces a real query so results update only after the pause", async () => {
     await open();
 
     const input =
       document.querySelector<HTMLInputElement>(".docs-search-input")!;
-    input.value = "zzzznotfound";
+    input.value = "headers";
     input.dispatchEvent(new Event("input"));
+
+    // Synchronously after typing, the ranking has not run yet — the browse
+    // list from opening is still in place.
+    expect(document.querySelector(".docs-search-group")?.textContent).toBe(
+      "Browse the docs",
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 160));
+
+    // Once the debounce elapses, the search has run.
+    expect(document.querySelector(".docs-search-group")).toBeNull();
+    expect(
+      document.querySelector(".docs-search-result-title")?.textContent,
+    ).toBe("Source-file headers");
+  });
+
+  it("reports an empty state when nothing matches", async () => {
+    await open();
+    await type("zzzznotfound");
 
     expect(document.querySelectorAll(".docs-search-result")).toHaveLength(0);
     expect(
