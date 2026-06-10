@@ -1283,41 +1283,60 @@
   }
 }
 
+/*
+ * Below 1024px the sidebar has no column of its own, so it renders as a
+ * self-contained "section switcher" card: a labelled panel whose links wrap
+ * into a chip cloud. Every section stays visible and tappable — replacing the
+ * old single-row horizontal scroll that hid most links off-screen. At 1024px+
+ * it unwraps into the sticky vertical list (overrides at the end of this block).
+ */
+.docs-side {
+  border: 1px solid var(--color-line);
+  border-radius: 0.9rem;
+  background: var(--color-paper-raised);
+  padding: 1rem 1rem 0.85rem;
+}
 .docs-side-title {
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-ink-faint);
-  padding: 0 0.75rem 0.5rem;
+  margin: 0;
+  padding: 0 0.25rem 0.7rem;
 }
 .docs-side-list {
   list-style: none;
   margin: 0;
-  padding: 0 0 0.5rem;
+  padding: 0;
   display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 .docs-side-link {
   display: block;
+  border: 1px solid var(--color-line);
   border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
+  background: var(--color-paper);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
   font-weight: 500;
   white-space: nowrap;
   color: var(--color-ink-soft);
   text-decoration: none;
   transition:
     background 0.18s,
+    border-color 0.18s,
     color 0.18s;
 }
 .docs-side-link:hover {
   background: var(--color-paper-raised);
+  border-color: var(--color-line-strong);
   color: var(--color-ink);
 }
 .docs-side-link.is-active {
   background: var(--color-brand-soft);
+  border-color: color-mix(in srgb, var(--color-brand) 35%, transparent);
   color: var(--color-brand-strong);
 }
 @media (min-width: 1024px) {
@@ -1325,12 +1344,32 @@
     position: sticky;
     top: 6rem;
     align-self: start;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+  }
+  .docs-side-title {
+    padding: 0 0.75rem 0.5rem;
   }
   .docs-side-list {
     flex-direction: column;
+    flex-wrap: nowrap;
     gap: 0.15rem;
-    overflow: visible;
-    padding-bottom: 0;
+  }
+  .docs-side-link {
+    border-color: transparent;
+    background: transparent;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  .docs-side-link:hover {
+    background: var(--color-paper-raised);
+    border-color: transparent;
+  }
+  .docs-side-link.is-active {
+    background: var(--color-brand-soft);
+    border-color: transparent;
   }
 }
 
