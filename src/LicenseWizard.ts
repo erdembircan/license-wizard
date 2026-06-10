@@ -15,6 +15,7 @@ import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IPathResolver } from "@configuration/interfaces/IPathResolver.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
@@ -50,7 +51,7 @@ export class LicenseWizard {
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #generator: LicenseGenerator;
-  readonly #reader: IFileSystemReader;
+  readonly #reader: IFileSystemReader & IPathResolver;
   readonly #writer: IFileSystemWriter;
   readonly #reporter: IReporter;
   readonly #args: string[];

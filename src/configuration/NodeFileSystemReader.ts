@@ -7,13 +7,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IPathResolver } from "@configuration/interfaces/IPathResolver.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 
 /**
  * File system reader backed by native Node.js `fs/promises`.
  * All paths are resolved relative to the current working directory.
  */
-export class NodeFileSystemReader implements IFileSystemReader {
+export class NodeFileSystemReader implements IFileSystemReader, IPathResolver {
   /**
    * Reads the contents of the file at the given path.
    * The path is resolved relative to the current working directory.
@@ -52,6 +53,25 @@ export class NodeFileSystemReader implements IFileSystemReader {
       }
       throw new FileSystemReaderError(
         `Failed to check existence of file: ${resolved}`,
+        cause,
+      );
+    }
+  }
+
+  /**
+   * Resolves the path to its canonical location with every symlink followed.
+   * The path is first resolved relative to the current working directory.
+   *
+   * @param filePath - The path to resolve.
+   * @throws {FileSystemReaderError} When the path cannot be resolved.
+   */
+  async realPath(filePath: string): Promise<string> {
+    const resolved = path.resolve(process.cwd(), filePath);
+    try {
+      return await fs.realpath(resolved);
+    } catch (cause) {
+      throw new FileSystemReaderError(
+        `Failed to resolve path: ${resolved}`,
         cause,
       );
     }

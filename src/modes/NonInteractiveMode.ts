@@ -11,6 +11,7 @@ import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
+import { SUPPORTED_EXTENSIONS } from "@headers/SourceFileScanner.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
@@ -376,6 +377,18 @@ export class NonInteractiveMode implements IWizardMode {
       );
       return;
     }
+    if (report.outcome === "unsupported") {
+      this.#fail(
+        `Cannot force a header into "${target}": it is not a source file the wizard heads (${SUPPORTED_EXTENSIONS.join(", ")}).`,
+      );
+      return;
+    }
+    if (report.outcome === "outside") {
+      this.#fail(
+        `Cannot force a header into "${target}": it resolves outside the project (a symlinked directory leads out of it).`,
+      );
+      return;
+    }
 
     this.#reporter.headersForceApplied({
       licenseId: report.licenseId,
@@ -401,7 +414,8 @@ export class NonInteractiveMode implements IWizardMode {
     const relativeToCwd = path.relative(cwd, path.resolve(cwd, requested));
     const escapes =
       relativeToCwd === "" ||
-      relativeToCwd.startsWith("..") ||
+      relativeToCwd === ".." ||
+      relativeToCwd.startsWith(`..${path.sep}`) ||
       path.isAbsolute(relativeToCwd);
 
     if (path.isAbsolute(requested) || escapes) {

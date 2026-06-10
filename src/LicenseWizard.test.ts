@@ -211,6 +211,7 @@ vi.mock("@configuration/NodeFileSystemReader.js", () => ({
   NodeFileSystemReader: vi.fn(function (this: {
     exists: (path: string) => Promise<boolean>;
     read: (path: string) => Promise<string>;
+    realPath: (path: string) => Promise<string>;
   }) {
     this.exists = async (path: string) =>
       path === "LICENSE"
@@ -225,6 +226,11 @@ vi.mock("@configuration/NodeFileSystemReader.js", () => ({
       }
       throw new Error(`no such file: ${path}`);
     };
+    // No symlinks in the controlled tree: every path resolves under one fixed
+    // project root, so force-header's containment check passes for in-project
+    // paths (absolute/`..` paths are rejected lexically before reaching here).
+    this.realPath = async (p: string) =>
+      p === "." ? "/project" : `/project/${p}`;
   }),
 }));
 

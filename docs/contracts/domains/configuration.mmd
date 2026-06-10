@@ -20,6 +20,11 @@ classDiagram
     +exists(path: string) Promise~boolean~
   }
 
+  class IPathResolver {
+    <<interface>>
+    +realPath(path: string) Promise~string~
+  }
+
   class IFileSystemWriter {
     <<interface>>
     +write(path: string, content: string) Promise~void~
@@ -141,6 +146,7 @@ classDiagram
   }
 
   NodeFileSystemReader ..|> IFileSystemReader : implements
+  NodeFileSystemReader ..|> IPathResolver : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
   NodeFileSystemReader ..> FileSystemReaderError : throws
   NodeFileSystemWriter ..> FileSystemWriterError : throws

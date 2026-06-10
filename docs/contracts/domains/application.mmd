@@ -50,7 +50,7 @@ classDiagram
   }
 
   class HeaderApplier {
-    +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader, writer: IFileSystemWriter)
+    +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader & IPathResolver, writer: IFileSystemWriter)
     +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
     +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
     +forceApply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
@@ -77,7 +77,7 @@ classDiagram
     +licenseId: string
     +style: HeaderStyle
     +file: string
-    +outcome: "written" | "unchanged" | "missing"
+    +outcome: "written" | "unchanged" | "missing" | "unsupported" | "outside"
   }
 
   class HeaderRemovalReport {

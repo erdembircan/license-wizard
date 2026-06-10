@@ -4,8 +4,10 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
+import path from "node:path";
 import { ProgressBar } from "@cli/ProgressBar.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IPathResolver } from "@configuration/interfaces/IPathResolver.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import { HeaderInstaller } from "@headers/HeaderInstaller.js";
@@ -13,8 +15,25 @@ import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
 import { HeaderRemover } from "@headers/HeaderRemover.js";
 import { NodeFileTreeWalker } from "@headers/NodeFileTreeWalker.js";
 import { SourceFile } from "@headers/SourceFile.js";
-import { SourceFileScanner } from "@headers/SourceFileScanner.js";
+import {
+  SourceFileScanner,
+  SUPPORTED_EXTENSIONS,
+} from "@headers/SourceFileScanner.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
+
+/**
+ * Reports whether `target` resolves to a location inside `base`. Both are
+ * expected to be absolute, real (symlink-resolved) paths; the target is inside
+ * when the relative step from base to it neither climbs out (`..`) nor jumps to
+ * another root (absolute).
+ */
+function isWithin(base: string, target: string): boolean {
+  const rel = path.relative(base, target);
+  return (
+    rel === "" ||
+    (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel))
+  );
+}
 
 export type HeaderApplyReport = {
   licenseId: string;
@@ -52,8 +71,12 @@ export type HeaderForceReport = {
    * - `written` — the header was placed (or rewritten) into the file.
    * - `unchanged` — the file already carried the exact header.
    * - `missing` — no file exists at the given path.
+   * - `unsupported` — the file's extension is not one the wizard heads, so a
+   *   header would be wrapped in a comment style that doesn't fit it.
+   * - `outside` — the path resolves (through a symlinked directory) to a
+   *   location outside the project, so writing it is refused.
    */
-  outcome: "written" | "unchanged" | "missing";
+  outcome: "written" | "unchanged" | "missing" | "unsupported" | "outside";
 };
 
 export type HeaderRemovalReport = {
@@ -75,7 +98,7 @@ export type HeaderRemovalReport = {
  */
 export class HeaderApplier {
   readonly #licenses: LicenseRepository;
-  readonly #reader: IFileSystemReader;
+  readonly #reader: IFileSystemReader & IPathResolver;
   readonly #writer: IFileSystemWriter;
   #scannerInstance: SourceFileScanner | null = null;
   #installerInstance: HeaderInstaller | null = null;
@@ -85,12 +108,14 @@ export class HeaderApplier {
    * Creates a new HeaderApplier.
    *
    * @param licenses - Fetches the license detail whose header is rendered.
-   * @param reader - Reads source files (and `.gitignore`) during scans.
+   * @param reader - Reads source files (and `.gitignore`) during scans, and
+   *   resolves real paths so the force-apply override can confine its write to
+   *   the project.
    * @param writer - Writes headers into, and strips them from, source files.
    */
   constructor(
     licenses: LicenseRepository,
-    reader: IFileSystemReader,
+    reader: IFileSystemReader & IPathResolver,
     writer: IFileSystemWriter,
   ) {
     this.#licenses = licenses;
@@ -201,6 +226,7 @@ export class HeaderApplier {
       return null;
     }
 
+    const composer = new HeaderComposer({ detail, style, tokens });
     const writable: string[] = [];
     const skipped: string[] = [];
     for (const file of files) {
@@ -208,8 +234,13 @@ export class HeaderApplier {
       const source = new SourceFile(content, file);
       // Mirror the writer's guard (see HeaderInstaller.install): a file carrying
       // a foreign notice, or a PHP template the header can't be placed inside, is
-      // skipped rather than corrupted.
-      if (!source.canPlaceHeader() || source.hasForeignLicenseNotice()) {
+      // skipped rather than corrupted — unless it already carries our managed
+      // block (e.g. one forced in earlier), which we keep current rather than
+      // perpetually re-skipping.
+      if (
+        !composer.hasManaged(content) &&
+        (!source.canPlaceHeader() || source.hasForeignLicenseNotice())
+      ) {
         skipped.push(file);
       } else {
         writable.push(file);
@@ -220,9 +251,7 @@ export class HeaderApplier {
     // actually be headed, but falling back to a skipped one when every file would
     // be skipped, so the preview still shows the block.
     const sampleFrom = writable[0] ?? skipped[0];
-    const sample = new HeaderComposer({ detail, style, tokens }).block(
-      SourceFile.extensionOf(sampleFrom),
-    );
+    const sample = composer.block(SourceFile.extensionOf(sampleFrom));
     return { files: writable, skipped, sample };
   }
 
@@ -233,6 +262,14 @@ export class HeaderApplier {
    * and bypasses the foreign-notice / unplaceable-PHP guard. Writing stays
    * idempotent: a file that already carries the exact header is left untouched.
    * Under `dryRun` the outcome is computed without writing.
+   *
+   * The override still refuses targets it can't head safely: a file whose
+   * extension is not a supported source extension (its content would be wrapped
+   * in a comment style that doesn't fit), and a path that resolves — through a
+   * symlinked directory — to a location outside the project, which a purely
+   * lexical caller-side check cannot see. Resolving the target's parent directory
+   * to its real path and confining it to the working directory keeps the write
+   * inside the project the wizard was invoked in.
    *
    * @param licenseId - The SPDX identifier whose header is written.
    * @param style - The header style (`short` or `full`).
@@ -247,8 +284,23 @@ export class HeaderApplier {
     file: string,
     options: { dryRun?: boolean } = {},
   ): Promise<HeaderForceReport> {
+    if (!SUPPORTED_EXTENSIONS.includes(SourceFile.extensionOf(file))) {
+      return { licenseId, style, file, outcome: "unsupported" };
+    }
+
     if (!(await this.#reader.exists(file))) {
       return { licenseId, style, file, outcome: "missing" };
+    }
+
+    // The write lands in the target's parent directory (temp file + rename), so
+    // resolve that directory's real path and require it to stay inside the
+    // project: a symlinked intermediate directory would otherwise let a
+    // lexically-inside path escape — the boundary a caller-side string check
+    // cannot enforce.
+    const projectRoot = await this.#reader.realPath(".");
+    const parent = await this.#reader.realPath(path.dirname(file));
+    if (!isWithin(projectRoot, parent)) {
+      return { licenseId, style, file, outcome: "outside" };
     }
 
     const detail = await this.#licenses.getLicense(licenseId);

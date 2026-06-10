@@ -277,6 +277,40 @@ describe("NonInteractiveMode routing", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("fails when --force-header targets an unsupported file type", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    d.headers.forceApply.mockResolvedValueOnce({
+      licenseId: "MIT",
+      style: "short",
+      file: "package.json",
+      outcome: "unsupported",
+    });
+    await build(d, flags({ "force-header": "package.json" })).run();
+
+    expect(callsOf(d)).toContain("error");
+    expect(callsOf(d)).not.toContain("headersForceApplied");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("fails when --force-header resolves outside the project", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", headers: { style: "short" } },
+    });
+    d.headers.forceApply.mockResolvedValueOnce({
+      licenseId: "MIT",
+      style: "short",
+      file: "link/b.ts",
+      outcome: "outside",
+    });
+    await build(d, flags({ "force-header": "link/b.ts" })).run();
+
+    expect(callsOf(d)).toContain("error");
+    expect(callsOf(d)).not.toContain("headersForceApplied");
+    expect(process.exitCode).toBe(1);
+  });
+
   it("previews the forced write without writing under --dry-run", async () => {
     const d = makeDeps({
       savedConfig: { licenseId: "MIT", headers: { style: "short" } },

@@ -35,7 +35,7 @@ classDiagram
   }
 
   class HeaderApplier {
-    +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader, writer: IFileSystemWriter)
+    +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader & IPathResolver, writer: IFileSystemWriter)
     +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
     +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
     +forceApply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
@@ -62,7 +62,7 @@ classDiagram
     +licenseId: string
     +style: HeaderStyle
     +file: string
-    +outcome: "written" | "unchanged" | "missing"
+    +outcome: "written" | "unchanged" | "missing" | "unsupported" | "outside"
   }
 
   class HeaderRemovalReport {
@@ -424,6 +424,11 @@ classDiagram
       <<interface>>
       +read(path: string) Promise~string~
       +exists(path: string) Promise~boolean~
+    }
+
+    class IPathResolver {
+      <<interface>>
+      +realPath(path: string) Promise~string~
     }
 
     class IFileSystemWriter {
@@ -801,6 +806,7 @@ classDiagram
   SpdxTemplate ..> TemplateSlot : produces
   SpdxTemplate ..> SlotResolution : produces
   NodeFileSystemReader ..|> IFileSystemReader : implements
+  NodeFileSystemReader ..|> IPathResolver : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
   NodeFileSystemReader ..> FileSystemReaderError : throws
   NodeFileSystemWriter ..> FileSystemWriterError : throws
@@ -856,6 +862,7 @@ classDiagram
   HeaderApplier ..> HeaderApplyReport : produces
   HeaderApplier ..> HeaderPreview : produces
   HeaderApplier ..> HeaderForceReport : produces
+  HeaderApplier ..> IPathResolver : confines forced writes through
   HeaderApplier ..> HeaderRemovalReport : produces
   MessageReporter ..> HeaderGenerateReport : reads
   MessageReporter ..> HeaderDryRunReport : reads

@@ -20,8 +20,10 @@ const GITIGNORE_FILE = ".gitignore";
 // files are not source code, so neither is included; the set is the
 // JavaScript/TypeScript family plus PHP, matching the manifest ecosystems the
 // wizard already understands. Deciding which files are in scope is the scanner's
-// concern, so the policy lives here.
-const SUPPORTED_EXTENSIONS: readonly string[] = [
+// concern, so the policy lives here. Exported so the single-file `--force-header`
+// override can refuse a target outside this set rather than wrap, say, JSON in a
+// comment style that doesn't fit it.
+export const SUPPORTED_EXTENSIONS: readonly string[] = [
   ".js",
   ".jsx",
   ".mjs",
