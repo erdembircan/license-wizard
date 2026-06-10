@@ -128,7 +128,7 @@ export class ClackRenderer implements IRenderer {
           lines.push(`             ${file}`);
         }
         lines.push(
-          `           force one in (when safe): ${this.#name} --force-apply "${skipped[0]}"`,
+          `           force one in (when safe): ${this.#name} --force-header "${skipped[0]}"`,
         );
       }
     }

@@ -263,7 +263,7 @@ describe("MessageReporter", () => {
     ]);
   });
 
-  it("passes a force-apply outcome through as a headersForceApplied message", () => {
+  it("passes a force-header outcome through as a headersForceApplied message", () => {
     const { sink, reporter } = setup();
     reporter.headersForceApplied({
       licenseId: "MIT",

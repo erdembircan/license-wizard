@@ -44,7 +44,7 @@ const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
   "get-tokens": false,
   headers: "",
   "headers-ignore": [],
-  "force-apply": "",
+  "force-header": "",
   "remove-headers": false,
   "dry-run": false,
   ...over,
@@ -203,11 +203,11 @@ describe("NonInteractiveMode routing", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("forces a header into the named file when --force-apply is set and headers are enabled", async () => {
+  it("forces a header into the named file when --force-header is set and headers are enabled", async () => {
     const d = makeDeps({
       savedConfig: { licenseId: "MIT", headers: { style: "short" } },
     });
-    await build(d, flags({ "force-apply": "src/skipped.ts" })).run();
+    await build(d, flags({ "force-header": "src/skipped.ts" })).run();
 
     expect(d.headers.forceApply).toHaveBeenCalledOnce();
     expect(d.headers.forceApply.mock.calls[0]).toEqual([
@@ -221,46 +221,46 @@ describe("NonInteractiveMode routing", () => {
     expect(d.installer.install).not.toHaveBeenCalled();
   });
 
-  it("silently disregards --force-apply when the config has no headers enabled", async () => {
+  it("silently disregards --force-header when the config has no headers enabled", async () => {
     const d = makeDeps({ savedConfig: { licenseId: "MIT" } });
-    await build(d, flags({ "force-apply": "src/skipped.ts" })).run();
+    await build(d, flags({ "force-header": "src/skipped.ts" })).run();
 
     expect(d.headers.forceApply).not.toHaveBeenCalled();
     expect(callsOf(d)).toEqual([]);
     expect(process.exitCode).not.toBe(1);
   });
 
-  it("silently disregards --force-apply when no config is saved", async () => {
+  it("silently disregards --force-header when no config is saved", async () => {
     const d = makeDeps({ savedConfig: null });
-    await build(d, flags({ "force-apply": "src/skipped.ts" })).run();
+    await build(d, flags({ "force-header": "src/skipped.ts" })).run();
 
     expect(d.headers.forceApply).not.toHaveBeenCalled();
     expect(callsOf(d)).toEqual([]);
   });
 
-  it("rejects an absolute --force-apply path as outside the project", async () => {
+  it("rejects an absolute --force-header path as outside the project", async () => {
     const d = makeDeps({
       savedConfig: { licenseId: "MIT", headers: { style: "short" } },
     });
-    await build(d, flags({ "force-apply": "/etc/passwd" })).run();
+    await build(d, flags({ "force-header": "/etc/passwd" })).run();
 
     expect(d.headers.forceApply).not.toHaveBeenCalled();
     expect(callsOf(d)).toContain("error");
     expect(process.exitCode).toBe(1);
   });
 
-  it("rejects a --force-apply path that climbs out of the project", async () => {
+  it("rejects a --force-header path that climbs out of the project", async () => {
     const d = makeDeps({
       savedConfig: { licenseId: "MIT", headers: { style: "short" } },
     });
-    await build(d, flags({ "force-apply": "../outside.ts" })).run();
+    await build(d, flags({ "force-header": "../outside.ts" })).run();
 
     expect(d.headers.forceApply).not.toHaveBeenCalled();
     expect(callsOf(d)).toContain("error");
     expect(process.exitCode).toBe(1);
   });
 
-  it("fails when the --force-apply target does not exist", async () => {
+  it("fails when the --force-header target does not exist", async () => {
     const d = makeDeps({
       savedConfig: { licenseId: "MIT", headers: { style: "short" } },
     });
@@ -270,7 +270,7 @@ describe("NonInteractiveMode routing", () => {
       file: "src/gone.ts",
       outcome: "missing",
     });
-    await build(d, flags({ "force-apply": "src/gone.ts" })).run();
+    await build(d, flags({ "force-header": "src/gone.ts" })).run();
 
     expect(callsOf(d)).toContain("error");
     expect(callsOf(d)).not.toContain("headersForceApplied");
@@ -283,7 +283,7 @@ describe("NonInteractiveMode routing", () => {
     });
     await build(
       d,
-      flags({ "force-apply": "src/skipped.ts", "dry-run": true }),
+      flags({ "force-header": "src/skipped.ts", "dry-run": true }),
     ).run();
 
     expect(d.headers.forceApply.mock.calls[0][4]).toEqual({ dryRun: true });

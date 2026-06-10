@@ -180,7 +180,7 @@ export interface IReporter {
   headersDryRun(report: HeaderDryRunReport): void;
 
   /**
-   * Renders the confirmation printed after `--force-apply` forces a header into
+   * Renders the confirmation printed after `--force-header` forces a header into
    * a single previously-skipped file: whether the file was written or already
    * carried the header, and whether it was only a dry run.
    *

@@ -1369,7 +1369,7 @@ describe("LicenseWizard header removal", () => {
   });
 });
 
-describe("LicenseWizard force-apply mode", () => {
+describe("LicenseWizard force-header mode", () => {
   const originalExitCode = process.exitCode;
 
   beforeEach(() => {
@@ -1389,7 +1389,7 @@ describe("LicenseWizard force-apply mode", () => {
     state.config = { licenseId: "MIT", headers: { style: "short" } };
     state.sourceFiles = { "foreign.ts": FOREIGN };
 
-    await lw(["--force-apply", "foreign.ts"]).run();
+    await lw(["--force-header", "foreign.ts"]).run();
 
     const write = state.headerWrites.find((w) => w.path === "foreign.ts");
     expect(write?.content).toContain("SPDX-License-Identifier: MIT");
@@ -1405,7 +1405,7 @@ describe("LicenseWizard force-apply mode", () => {
     state.config = { licenseId: "MIT" };
     state.sourceFiles = { "foreign.ts": FOREIGN };
 
-    await lw(["--force-apply", "foreign.ts"]).run();
+    await lw(["--force-header", "foreign.ts"]).run();
 
     expect(state.headerWrites).toEqual([]);
     expect(sink.messages).toEqual([]);
@@ -1416,7 +1416,7 @@ describe("LicenseWizard force-apply mode", () => {
     state.config = { licenseId: "MIT", headers: { style: "short" } };
     state.sourceFiles = { "foreign.ts": FOREIGN };
 
-    await lw(["--force-apply", "/etc/passwd"]).run();
+    await lw(["--force-header", "/etc/passwd"]).run();
 
     expect(state.headerWrites).toEqual([]);
     expect(sink.messages).toContainEqual(
@@ -1429,7 +1429,7 @@ describe("LicenseWizard force-apply mode", () => {
     state.config = { licenseId: "MIT", headers: { style: "short" } };
     state.sourceFiles = { "foreign.ts": FOREIGN };
 
-    await lw(["--force-apply", "../escape.ts"]).run();
+    await lw(["--force-header", "../escape.ts"]).run();
 
     expect(state.headerWrites).toEqual([]);
     expect(sink.messages).toContainEqual(
@@ -1442,7 +1442,7 @@ describe("LicenseWizard force-apply mode", () => {
     state.config = { licenseId: "MIT", headers: { style: "short" } };
     state.sourceFiles = { "foreign.ts": FOREIGN };
 
-    await lw(["--force-apply", "foreign.ts", "--dry-run"]).run();
+    await lw(["--force-header", "foreign.ts", "--dry-run"]).run();
 
     expect(state.headerWrites).toEqual([]);
     expect(sink.messages).toContainEqual(

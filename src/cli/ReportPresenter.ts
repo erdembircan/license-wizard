@@ -512,7 +512,7 @@ export class ReportPresenter {
 
   /**
    * Renders the trailing note listing the files a header could not be safely
-   * written into, followed by a copy-pasteable `--force-apply` example so a
+   * written into, followed by a copy-pasteable `--force-header` example so a
    * caller (especially an agent reading non-interactive output) can override the
    * guard for a path it knows is safe. Returns the empty string when none were
    * skipped. `future` words it for a dry run ("Would skip …").
@@ -535,7 +535,7 @@ export class ReportPresenter {
     const example = this.#paint(
       color,
       "dim",
-      `${this.#programName} --force-apply "${skipped[0]}"`,
+      `${this.#programName} --force-header "${skipped[0]}"`,
     );
 
     return (

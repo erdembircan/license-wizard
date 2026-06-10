@@ -24,7 +24,7 @@ export type WizardFlags = {
   "get-tokens": boolean;
   headers: string;
   "headers-ignore": string[];
-  "force-apply": string;
+  "force-header": string;
   "remove-headers": boolean;
   "dry-run": boolean;
 };

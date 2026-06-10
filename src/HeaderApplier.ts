@@ -25,7 +25,7 @@ export type HeaderApplyReport = {
   /**
    * Paths the header could not be safely written into — a file carrying a
    * foreign license notice, or an unplaceable PHP template. Surfaced as the full
-   * list (not just a count) so the caller can inspect, fix, or force-apply each.
+   * list (not just a count) so the caller can inspect, fix, or force-header each.
    */
   skipped: string[];
 };

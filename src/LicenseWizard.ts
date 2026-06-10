@@ -289,7 +289,7 @@ export class LicenseWizard {
           "Extra gitignore-style pattern to skip when writing headers (repeatable).",
         placeholder: "<glob>",
       },
-      "force-apply": {
+      "force-header": {
         type: "string",
         default: "",
         description:
@@ -386,12 +386,12 @@ export class LicenseWizard {
       return this.#verifyMode.run();
     }
 
-    // --apply-config, --force-apply, and the selection flags all run
+    // --apply-config, --force-header, and the selection flags all run
     // non-interactively; --apply-config takes priority over the selection flags
-    // it overrides, and --force-apply is a standalone single-file override.
+    // it overrides, and --force-header is a standalone single-file override.
     if (
       this.#flags["apply-config"] ||
-      this.#flags["force-apply"] !== "" ||
+      this.#flags["force-header"] !== "" ||
       this.#isNonInteractive()
     ) {
       return this.#nonInteractiveMode.run();

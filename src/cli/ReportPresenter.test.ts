@@ -364,7 +364,7 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
-  it("lists files skipped because the header could not be safely written, with a force-apply example", () => {
+  it("lists files skipped because the header could not be safely written, with a force-header example", () => {
     expect(
       present({
         kind: "headersGenerated",
@@ -384,7 +384,7 @@ describe("ReportPresenter wording (plain text)", () => {
         page.php
 
       If one is safe to head, force it in (non-interactive):
-        license-wizard --force-apply "test/fixture.ts"
+        license-wizard --force-header "test/fixture.ts"
       "
     `);
   });
@@ -456,12 +456,12 @@ describe("ReportPresenter wording (plain text)", () => {
         page.php
 
       If one is safe to head, force it in (non-interactive):
-        license-wizard --force-apply "test/fixture.ts"
+        license-wizard --force-header "test/fixture.ts"
       "
     `);
   });
 
-  it("renders a force-apply confirmation", () => {
+  it("renders a force-header confirmation", () => {
     expect(
       present({
         kind: "headersForceApplied",
@@ -478,7 +478,7 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
-  it("renders a force-apply dry-run", () => {
+  it("renders a force-header dry-run", () => {
     expect(
       present({
         kind: "headersForceApplied",
@@ -608,7 +608,7 @@ describe("ReportPresenter wording (plain text)", () => {
         page.php
 
       If one is safe to head, force it in (non-interactive):
-        license-wizard --force-apply "test/fixture.ts"
+        license-wizard --force-header "test/fixture.ts"
       "
     `);
   });

@@ -93,7 +93,7 @@ export class NonInteractiveMode implements IWizardMode {
       await this.#removeHeaders();
       return [];
     }
-    if (this.#flags["force-apply"] !== "") {
+    if (this.#flags["force-header"] !== "") {
       await this.#forceApply();
       return [];
     }
@@ -339,7 +339,7 @@ export class NonInteractiveMode implements IWizardMode {
 
   /**
    * Forces the configured header into a single file the safety guard skipped,
-   * named by the `--force-apply` path — the actionable escape hatch that pairs
+   * named by the `--force-header` path — the actionable escape hatch that pairs
    * with surfacing the skipped list. The override only attaches to a config that
    * opted into headers: when headers are not enabled it is silently disregarded
    * rather than failed. The path is validated as relative-and-inside-the-project
@@ -352,7 +352,7 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    const target = this.#resolveForceTarget(this.#flags["force-apply"]);
+    const target = this.#resolveForceTarget(this.#flags["force-header"]);
     if (target === null) {
       return;
     }
@@ -387,14 +387,14 @@ export class NonInteractiveMode implements IWizardMode {
   }
 
   /**
-   * Validates the `--force-apply` path and returns it unchanged when safe, or
+   * Validates the `--force-header` path and returns it unchanged when safe, or
    * null after reporting an error. The path must be relative and must resolve to
    * a location inside the working directory the command ran in: an absolute path,
    * or one that climbs out of the project with `..`, is rejected. This is a
    * security boundary — the override must never be coaxed into writing outside
    * the project it was invoked in.
    *
-   * @param requested - The raw path supplied to `--force-apply`.
+   * @param requested - The raw path supplied to `--force-header`.
    */
   #resolveForceTarget(requested: string): string | null {
     const cwd = process.cwd();
