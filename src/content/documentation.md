@@ -108,10 +108,10 @@ Every surface that reports a skip — writing, `--dry-run`, and `--verify` — n
 
 ### Forcing a header into a skipped file
 
-When you know a skipped file is safe to head, override the guard for that one path with `--force-apply`:
+When you know a skipped file is safe to head, override the guard for that one path with `--force-header`:
 
 ```bash
-npx license-wizard --force-apply src/legacy.ts
+npx license-wizard --force-header src/legacy.ts
 ```
 
 It writes the header configured in your saved config into the named file, even though a normal run would skip it. It's non-interactive and deliberately narrow: the path is resolved relative to the directory you run it in (absolute paths and paths outside the project are refused), and it only does anything when your saved config has headers enabled. The skipped-file reports print a ready-to-run example using one of the paths they list.
@@ -216,6 +216,6 @@ The complete flag list. Run `npx license-wizard --help` to print the same refere
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit. |
 | `--headers <short\|full>` | Also write SPDX license headers into source files — `short` (tag lines) or `full` (the standard notice). |
 | `--headers-ignore <glob>` | Extra gitignore-style pattern to skip when writing headers, on top of the defaults and `.gitignore` (repeatable). |
-| `--force-apply <path>` | Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors `--dry-run`. |
+| `--force-header <path>` | Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors `--dry-run`. |
 | `--remove-headers` | Strip License Wizard's headers and drop the saved headers preference. Standalone; takes priority over `--headers`; honors `--headers-ignore` and `--dry-run`. |
 | `--dry-run` | Preview the license (and, with `--headers`, a sample block and the files it would touch) and skip every write. |
