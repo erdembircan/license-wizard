@@ -149,17 +149,21 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    // Resolve the supplied fields against the license's copyright slots. With no
-    // --set values this is empty and the official text is generated unchanged.
+    // Resolve the supplied fields against only the slots the requested surfaces
+    // need — the LICENSE body always, the header too only for a `full` header —
+    // so customizing the LICENSE isn't forced to supply header-only fields, and
+    // a `full` run still requires the header's. With no --set values this is
+    // empty and the official text is generated unchanged.
+    const requireHeader = headerStyle === "full";
     let values: Record<string, string> = {};
     if (setEntries.size > 0) {
-      const resolution = copyright.resolve(setEntries);
+      const resolution = copyright.resolveFor(setEntries, requireHeader);
 
       if (resolution.unknown.length > 0) {
         this.#reporter.unknownFields(
           canonicalId,
           resolution.unknown,
-          copyright.slots(),
+          copyright.requiredSlots(requireHeader),
         );
         this.#exitWithError();
         return;

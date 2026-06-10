@@ -370,7 +370,8 @@ classDiagram
       +LicenseCopyright(bodyTemplate: string, headerTemplate: string)
       +fromDetail(detail: LicenseDetail)$ LicenseCopyright
       +slots() TemplateSlot[]
-      +resolve(entries: Map~string, string~) SlotResolution
+      +requiredSlots(fullHeader: boolean) TemplateSlot[]
+      +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
     }
 
     class resolveSlotEntries {

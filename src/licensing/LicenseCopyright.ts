@@ -52,25 +52,54 @@ export class LicenseCopyright {
    * both surfaces is asked for once.
    */
   slots(): TemplateSlot[] {
-    const seen = new Set<string>();
-    const merged: TemplateSlot[] = [];
-    for (const slot of [...this.#body.slots(), ...this.#header.slots()]) {
-      if (!seen.has(slot.token)) {
-        seen.add(slot.token);
-        merged.push(slot);
-      }
-    }
-    return merged;
+    return dedupe([...this.#body.slots(), ...this.#header.slots()]);
   }
 
   /**
-   * Matches supplied field/value entries against the combined slots, returning
-   * the values keyed by token, the slots still awaiting a value, and any fields
-   * matching no slot.
+   * The copyright slots that must be filled for the surfaces a run actually
+   * generates: always the LICENSE body's, plus the header's only when a `full`
+   * header is requested. A `short` header needs no copyright to be valid and an
+   * absent one needs none at all, so neither adds a required field. Discovery
+   * (`--get-tokens`, the interactive Customize prompts) still uses the complete
+   * {@link slots} union; this narrower set is what generation validates against,
+   * so customizing the LICENSE alone is never forced to supply header-only
+   * fields it won't use.
+   *
+   * @param fullHeader - Whether a `full` header is being written this run.
+   */
+  requiredSlots(fullHeader: boolean): TemplateSlot[] {
+    return fullHeader ? this.slots() : dedupe(this.#body.slots());
+  }
+
+  /**
+   * Matches supplied field/value entries against the slots required for the
+   * surfaces being generated (see {@link requiredSlots}), returning the values
+   * keyed by token, the slots still awaiting a value, and any fields matching no
+   * required slot.
    *
    * @param entries - The supplied fields keyed as typed, mapped to their values.
+   * @param fullHeader - Whether a `full` header is being written this run.
    */
-  resolve(entries: Map<string, string>): SlotResolution {
-    return resolveSlotEntries(this.slots(), entries);
+  resolveFor(
+    entries: Map<string, string>,
+    fullHeader: boolean,
+  ): SlotResolution {
+    return resolveSlotEntries(this.requiredSlots(fullHeader), entries);
   }
+}
+
+/**
+ * Returns the slots in order with duplicate tokens removed, so a token shared by
+ * the body and the header is represented once.
+ */
+function dedupe(slots: TemplateSlot[]): TemplateSlot[] {
+  const seen = new Set<string>();
+  const unique: TemplateSlot[] = [];
+  for (const slot of slots) {
+    if (!seen.has(slot.token)) {
+      seen.add(slot.token);
+      unique.push(slot);
+    }
+  }
+  return unique;
 }

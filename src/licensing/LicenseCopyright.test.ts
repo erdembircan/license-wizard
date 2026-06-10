@@ -76,13 +76,35 @@ describe("LicenseCopyright", () => {
     });
   });
 
-  describe("resolve", () => {
-    it("resolves a value against a header-only token", () => {
-      const result = LicenseCopyright.fromDetail(GPL).resolve(
+  describe("requiredSlots", () => {
+    it("excludes header-only slots when no full header is requested", () => {
+      // GPL's body has no copyright, so a non-full run requires nothing.
+      expect(LicenseCopyright.fromDetail(GPL).requiredSlots(false)).toEqual([]);
+    });
+
+    it("includes the header's slots when a full header is requested", () => {
+      expect(LicenseCopyright.fromDetail(GPL).requiredSlots(true)).toEqual([
+        { token: "<year>", label: "year" },
+        { token: "<name of author>", label: "name of author" },
+      ]);
+    });
+
+    it("requires only the body's slots for a body-only license", () => {
+      expect(LicenseCopyright.fromDetail(MIT).requiredSlots(false)).toEqual([
+        { token: "<year>", label: "year" },
+        { token: "<copyright holders>", label: "copyright holders" },
+      ]);
+    });
+  });
+
+  describe("resolveFor", () => {
+    it("resolves header-only tokens when a full header is requested", () => {
+      const result = LicenseCopyright.fromDetail(GPL).resolveFor(
         new Map([
           ["year", "2026"],
           ["name of author", "Jane Doe"],
         ]),
+        true,
       );
 
       expect(result.values).toEqual({
@@ -93,12 +115,17 @@ describe("LicenseCopyright", () => {
       expect(result.unknown).toEqual([]);
     });
 
-    it("reports a value for an unknown field", () => {
-      const result = LicenseCopyright.fromDetail(GPL).resolve(
-        new Map([["nope", "x"]]),
+    it("treats a header-only field as unknown when no full header is requested", () => {
+      // The crux of the scoping: `--set year=…` on GPL without a full header
+      // targets a field nothing being generated uses, so it's unknown — not a
+      // demand to also supply `name of author`.
+      const result = LicenseCopyright.fromDetail(GPL).resolveFor(
+        new Map([["year", "2026"]]),
+        false,
       );
 
-      expect(result.unknown).toEqual(["nope"]);
+      expect(result.unknown).toEqual(["year"]);
+      expect(result.missing).toEqual([]);
     });
   });
 });
