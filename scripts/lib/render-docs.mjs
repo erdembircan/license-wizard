@@ -6,7 +6,19 @@
  * the head differ (a built stylesheet vs. dev module scripts).
  */
 import { marked } from "marked";
-import { parseDocumentation } from "./parse-docs.mjs";
+import { parseDocumentation, slugify } from "./parse-docs.mjs";
+
+// Give every heading a slug id so the search palette can deep-link straight to
+// a subsection (e.g. /docs/source-file-headers/#two-styles). The slug logic is
+// shared with the search-index builder, so anchors and ids always agree.
+marked.use({
+  renderer: {
+    heading({ tokens, depth, text }) {
+      const inner = this.parser.parseInline(tokens);
+      return `<h${depth} id="${slugify(text)}">${inner}</h${depth}>\n`;
+    },
+  },
+});
 
 export const FONT_HREF =
   "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap";
@@ -44,11 +56,36 @@ function pager(sections, index, base) {
 }
 
 /**
+ * Builds the topbar search trigger. It is a faux input that the search palette
+ * (DocsSearch) progressively enhances; without JS it is simply an inert button,
+ * so the docs still work. `data-base`/`data-search-index` tell the client where
+ * the (base-relative) index lives.
+ */
+function searchTrigger(base) {
+  return `<button type="button" id="docs-search-trigger" class="docs-search-trigger"
+            aria-label="Search documentation"
+            aria-keyshortcuts="Meta+K Control+K"
+            data-base="${base}" data-search-index="${base}search-index.json">
+            <svg class="docs-search-trigger-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="docs-search-trigger-label">Search docs</span>
+            <kbd class="docs-search-kbd"><span class="docs-search-kbd-cmd">⌘</span>K</kbd>
+          </button>`;
+}
+
+/**
  * Renders one documentation section to a full HTML document. `assetTags` is the
  * head markup that loads styles — a built `<link>` in production, a dev module
- * script under `pnpm dev`.
+ * script under `pnpm dev`. `scriptTags` is the matching end-of-body script that
+ * loads the search palette (a built bundle in production, a dev module).
  */
-export function renderPage({ section, sections, index, base, assetTags }) {
+export function renderPage({
+  section,
+  sections,
+  index,
+  base,
+  assetTags,
+  scriptTags = "",
+}) {
   const content = marked.parse(section.markdown);
   const rawMdPath = `${base}documentation.md`;
   return `<!doctype html>
@@ -78,6 +115,7 @@ export function renderPage({ section, sections, index, base, assetTags }) {
           <span class="docs-brand-badge">Docs</span>
         </div>
         <div class="docs-topbar-links">
+          ${searchTrigger(base)}
           <a href="${base}" class="nav-link">Home</a>
           <a href="https://www.npmjs.com/package/license-wizard" class="nav-link" target="_blank" rel="noopener">npm</a>
           <a href="https://github.com/erdembircan/license-wizard" class="btn-ghost docs-star" target="_blank" rel="noopener">
@@ -94,6 +132,7 @@ export function renderPage({ section, sections, index, base, assetTags }) {
         ${pager(sections, index, base)}
       </main>
     </div>
+    ${scriptTags}
   </body>
 </html>
 `;

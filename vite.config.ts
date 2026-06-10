@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -14,6 +15,17 @@ export default defineConfig({
   build: {
     outDir: "docs",
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        // The marketing landing page (React).
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        // Standalone search palette for the otherwise-static docs pages; the
+        // prerender step locates the hashed output and injects it per page.
+        docsSearch: fileURLToPath(
+          new URL("./src/docs/search/DocsSearch.ts", import.meta.url),
+        ),
+      },
+    },
   },
   test: {
     environment: "jsdom",

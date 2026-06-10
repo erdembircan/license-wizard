@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getSections, renderPage } from "./lib/render-docs.mjs";
+import { buildSearchIndex } from "./lib/build-search-index.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SOURCE = resolve(here, "..", "src", "content", "documentation.md");
@@ -23,6 +24,10 @@ const STYLESHEET = resolve(here, "..", "src", "style.css");
 
 // Path (after the base) of the dev-only compiled-CSS endpoint.
 const CSS_ROUTE = "/__docs.css";
+
+// Source module for the search palette; Vite serves and transforms it on the
+// fly in dev, mirroring the hashed bundle injected by the production prerender.
+const SEARCH_MODULE = "/src/docs/search/DocsSearch.ts";
 
 /** @returns {import("vite").Plugin} */
 export function docsDevPlugin() {
@@ -68,6 +73,15 @@ export function docsDevPlugin() {
           return;
         }
 
+        // Search index the palette fetches at runtime (built on the fly here).
+        if (rel === "/search-index.json") {
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(
+            JSON.stringify(buildSearchIndex(readFileSync(SOURCE, "utf8"))),
+          );
+          return;
+        }
+
         const match = rel.match(/^\/docs(?:\/([^/]+))?\/?$/);
         if (!match) return next();
 
@@ -81,8 +95,10 @@ export function docsDevPlugin() {
           sections,
           index,
           base,
-          // Base-less href: transformIndexHtml() prepends the configured base.
+          // Base-less href/src: transformIndexHtml() prepends the configured
+          // base (and wires HMR for the module).
           assetTags: `<link rel="stylesheet" href="${CSS_ROUTE}" />`,
+          scriptTags: `<script type="module" src="${SEARCH_MODULE}"></script>`,
         });
         res.setHeader("Content-Type", "text/html");
         res.end(await server.transformIndexHtml(req.url || "/", html));

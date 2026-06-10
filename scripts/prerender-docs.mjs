@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getSections, renderPage } from "./lib/render-docs.mjs";
+import { buildSearchIndex } from "./lib/build-search-index.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -31,6 +32,19 @@ function findStylesheet() {
   return `${BASE}assets/${css}`;
 }
 
+/** Locates the hashed search-palette bundle emitted by the client build. */
+function findSearchScript() {
+  const assets = readdirSync(join(outDir, "assets"));
+  const js = assets.find(
+    (f) => f.startsWith("docsSearch") && f.endsWith(".js"),
+  );
+  if (!js)
+    throw new Error(
+      "No built docsSearch bundle found in docs/assets — run vite build first.",
+    );
+  return `${BASE}assets/${js}`;
+}
+
 function main() {
   const source = readFileSync(SOURCE, "utf8");
   const sections = getSections(source);
@@ -38,8 +52,9 @@ function main() {
     throw new Error("No sections parsed from documentation.md");
 
   const assetTags = `<link rel="stylesheet" href="${findStylesheet()}" />`;
+  const scriptTags = `<script type="module" src="${findSearchScript()}"></script>`;
   const render = (section, index) =>
-    renderPage({ section, sections, index, base: BASE, assetTags });
+    renderPage({ section, sections, index, base: BASE, assetTags, scriptTags });
 
   // One static page per section, at /docs/<id>/.
   sections.forEach((section, index) => {
@@ -54,8 +69,14 @@ function main() {
   // Publish the raw Markdown at /documentation.md.
   writeFileSync(join(outDir, "documentation.md"), source);
 
+  // Publish the search index the palette fetches at runtime.
+  writeFileSync(
+    join(outDir, "search-index.json"),
+    JSON.stringify(buildSearchIndex(source)),
+  );
+
   console.log(
-    `Prerendered ${sections.length} docs pages + /docs/ index, and published documentation.md`,
+    `Prerendered ${sections.length} docs pages + /docs/ index, published documentation.md, and wrote search-index.json`,
   );
 }
 
