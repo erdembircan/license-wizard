@@ -1,6 +1,13 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 import { describe, it, expect, vi } from "vitest";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import { HeaderComposer } from "@headers/HeaderComposer.js";
 import { HeaderInstaller } from "@headers/HeaderInstaller.js";
 import { markerToken } from "@headers/HeaderMarker.js";
 import type { HeaderPlan } from "@headers/HeaderPlan.js";
@@ -71,6 +78,23 @@ describe("HeaderInstaller", () => {
     // The foreign-notice file is left exactly as it was — no second SPDX line.
     expect(fs.files.get("a.ts")).toBe(foreign);
     expect(fs.files.get("b.ts")).toContain("SPDX-License-Identifier: MIT");
+  });
+
+  it("keeps a foreign-notice file current once it already carries our managed block", async () => {
+    // A file a header was forced into earlier: it carries both our managed block
+    // and the original foreign notice. It must not be re-skipped — it stays in
+    // the managed set so config changes still reach it.
+    const foreign =
+      "// SPDX-License-Identifier: GPL-2.0-only\nexport const x = 1;\n";
+    const forced = new HeaderComposer(plan).apply(foreign, "a.ts");
+    const fs = new FakeFs({ "a.ts": forced });
+    const installer = new HeaderInstaller(fs, fs);
+
+    const summary = await installer.install(["a.ts"], plan);
+
+    expect(summary.skipped).toEqual([]);
+    // The managed block already matches the plan, so it is recognised as current.
+    expect(summary.unchanged).toEqual(["a.ts"]);
   });
 
   it("skips an HTML-first PHP file so the header is never emitted as page output", async () => {

@@ -223,7 +223,7 @@ describe("MessageReporter", () => {
       total: 30,
       written: 25,
       unchanged: 5,
-      skipped: 0,
+      skipped: ["c.test.ts", "page.php"],
     });
 
     expect(sink.messages).toEqual([
@@ -235,7 +235,7 @@ describe("MessageReporter", () => {
         total: 30,
         written: 25,
         unchanged: 5,
-        skipped: 0,
+        skipped: ["c.test.ts", "page.php"],
       },
     ]);
   });
@@ -246,6 +246,7 @@ describe("MessageReporter", () => {
       licenseId: "MIT",
       style: "short",
       files: ["a.ts", "b.ts"],
+      skipped: ["c.test.ts"],
       sample: "// SAMPLE HEADER",
     });
 
@@ -256,7 +257,31 @@ describe("MessageReporter", () => {
         licenseId: "MIT",
         style: "short",
         files: ["a.ts", "b.ts"],
+        skipped: ["c.test.ts"],
         sample: "// SAMPLE HEADER",
+      },
+    ]);
+  });
+
+  it("passes a force-header outcome through as a headersForceApplied message", () => {
+    const { sink, reporter } = setup();
+    reporter.headersForceApplied({
+      licenseId: "MIT",
+      style: "short",
+      file: "page.php",
+      outcome: "written",
+      dryRun: false,
+    });
+
+    expect(sink.messages).toEqual([
+      {
+        kind: "headersForceApplied",
+        channel: "out",
+        licenseId: "MIT",
+        style: "short",
+        file: "page.php",
+        outcome: "written",
+        dryRun: false,
       },
     ]);
   });
@@ -295,11 +320,11 @@ describe("MessageReporter", () => {
       licenseId: "MIT",
       style: "short",
       total: 4,
-      matched: ["a.ts", "b.ts", "c.ts", "d.ts"],
+      matched: ["a.ts", "b.ts", "c.ts"],
       missing: [],
       drifted: [],
       fixed: [],
-      skipped: [],
+      skipped: ["page.php"],
     });
 
     expect(sink.messages).toEqual([
@@ -309,7 +334,7 @@ describe("MessageReporter", () => {
         licenseId: "MIT",
         style: "short",
         total: 4,
-        skipped: 0,
+        skipped: ["page.php"],
       },
     ]);
   });
@@ -340,7 +365,7 @@ describe("MessageReporter", () => {
         style: "short",
         added: 2,
         rewritten: 3,
-        skipped: 0,
+        skipped: [],
       },
     ]);
   });

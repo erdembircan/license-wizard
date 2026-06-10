@@ -8,6 +8,7 @@ import type { IOutputSink } from "@cli/interfaces/IOutputSink.js";
 import type {
   DryRunReport,
   HeaderDryRunReport,
+  HeaderForceApplyReport,
   HeaderGenerateReport,
   HeaderRemoveReport,
   IReporter,
@@ -156,7 +157,20 @@ export class MessageReporter implements IReporter {
       licenseId: report.licenseId,
       style: report.style,
       files: report.files,
+      skipped: report.skipped,
       sample: report.sample,
+    });
+  }
+
+  headersForceApplied(report: HeaderForceApplyReport): void {
+    this.#sink.emit({
+      kind: "headersForceApplied",
+      channel: "out",
+      licenseId: report.licenseId,
+      style: report.style,
+      file: report.file,
+      outcome: report.outcome,
+      dryRun: report.dryRun,
     });
   }
 
@@ -185,7 +199,7 @@ export class MessageReporter implements IReporter {
       licenseId: report.licenseId,
       style: report.style,
       total: report.total,
-      skipped: report.skipped.length,
+      skipped: report.skipped,
     });
   }
 
@@ -197,7 +211,7 @@ export class MessageReporter implements IReporter {
       style: report.style,
       added: report.missing.length,
       rewritten: report.drifted.length,
-      skipped: report.skipped.length,
+      skipped: report.skipped,
     });
   }
 

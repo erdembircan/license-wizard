@@ -517,6 +517,7 @@ export class InteractiveMode implements IWizardMode {
       licenseId,
       style,
       files: preview.files,
+      skipped: preview.skipped,
       sample: preview.sample,
     });
   }
@@ -543,6 +544,7 @@ export class InteractiveMode implements IWizardMode {
       style: report.style,
       written: report.written,
       total: report.total,
+      skipped: report.skipped,
     };
   }
 

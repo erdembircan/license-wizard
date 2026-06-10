@@ -24,14 +24,27 @@ export type HeaderGenerateReport = {
   total: number;
   written: number;
   unchanged: number;
-  skipped: number;
+  /** Paths the header could not be safely written into. */
+  skipped: string[];
 };
 
 export type HeaderDryRunReport = {
   licenseId: string;
   style: HeaderStyle;
   files: string[];
+  /** Paths the header would be skipped on under a real run. */
+  skipped: string[];
   sample: string;
+};
+
+export type HeaderForceApplyReport = {
+  licenseId: string;
+  style: HeaderStyle;
+  file: string;
+  /** Whether the forced write changed the file or it already carried the header. */
+  outcome: "written" | "unchanged";
+  /** Whether this was a dry run (the outcome was computed without writing). */
+  dryRun: boolean;
 };
 
 export type HeaderRemoveReport = {
@@ -165,6 +178,15 @@ export interface IReporter {
    * @param report - The header style, sample block, and target file list.
    */
   headersDryRun(report: HeaderDryRunReport): void;
+
+  /**
+   * Renders the confirmation printed after `--force-header` forces a header into
+   * a single previously-skipped file: whether the file was written or already
+   * carried the header, and whether it was only a dry run.
+   *
+   * @param report - The forced file, its outcome, and the dry-run flag.
+   */
+  headersForceApplied(report: HeaderForceApplyReport): void;
 
   /**
    * Renders the confirmation printed after `--remove-headers` strips wizard

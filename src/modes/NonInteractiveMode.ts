@@ -4,12 +4,14 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
+import path from "node:path";
 import type { Answer } from "@cli/Answer.js";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
+import { SUPPORTED_EXTENSIONS } from "@headers/SourceFileScanner.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
@@ -83,12 +85,17 @@ export class NonInteractiveMode implements IWizardMode {
 
   /**
    * Selects and runs the flag-driven flow, in priority order: header removal,
-   * then config application, then selection-flag generation. Returns an empty
-   * answer list — output is surfaced through the reporter.
+   * forcing a header into a single skipped file, config application, then
+   * selection-flag generation. Returns an empty answer list — output is surfaced
+   * through the reporter.
    */
   async run(): Promise<Answer[]> {
     if (this.#flags["remove-headers"]) {
       await this.#removeHeaders();
+      return [];
+    }
+    if (this.#flags["force-header"] !== "") {
+      await this.#forceApply();
       return [];
     }
     if (this.#flags["apply-config"]) {
@@ -332,6 +339,96 @@ export class NonInteractiveMode implements IWizardMode {
   }
 
   /**
+   * Forces the configured header into a single file the safety guard skipped,
+   * named by the `--force-header` path — the actionable escape hatch that pairs
+   * with surfacing the skipped list. The override only attaches to a config that
+   * opted into headers: when headers are not enabled it is silently disregarded
+   * rather than failed. The path is validated as relative-and-inside-the-project
+   * first (a security boundary), then the header derived from the saved config is
+   * forced into it, even though a normal run would skip it. Honors `--dry-run`.
+   */
+  async #forceApply(): Promise<void> {
+    const config = await this.#config.read();
+    if (!config?.headers) {
+      return;
+    }
+
+    const target = this.#resolveForceTarget(this.#flags["force-header"]);
+    if (target === null) {
+      return;
+    }
+
+    const detail = await this.#resolveLicenseDetail(config.licenseId);
+    if (detail === null) {
+      return;
+    }
+
+    const report = await this.#headers.forceApply(
+      config.licenseId,
+      config.headers.style,
+      config.tokens ?? {},
+      target,
+      { dryRun: this.#flags["dry-run"] },
+    );
+
+    if (report.outcome === "missing") {
+      this.#fail(
+        `Cannot force a header into "${target}": no such file in this project.`,
+      );
+      return;
+    }
+    if (report.outcome === "unsupported") {
+      this.#fail(
+        `Cannot force a header into "${target}": it is not a source file the wizard heads (${SUPPORTED_EXTENSIONS.join(", ")}).`,
+      );
+      return;
+    }
+    if (report.outcome === "outside") {
+      this.#fail(
+        `Cannot force a header into "${target}": it resolves outside the project (a symlinked directory leads out of it).`,
+      );
+      return;
+    }
+
+    this.#reporter.headersForceApplied({
+      licenseId: report.licenseId,
+      style: report.style,
+      file: report.file,
+      outcome: report.outcome,
+      dryRun: this.#flags["dry-run"],
+    });
+  }
+
+  /**
+   * Validates the `--force-header` path and returns it unchanged when safe, or
+   * null after reporting an error. The path must be relative and must resolve to
+   * a location inside the working directory the command ran in: an absolute path,
+   * or one that climbs out of the project with `..`, is rejected. This is a
+   * security boundary — the override must never be coaxed into writing outside
+   * the project it was invoked in.
+   *
+   * @param requested - The raw path supplied to `--force-header`.
+   */
+  #resolveForceTarget(requested: string): string | null {
+    const cwd = process.cwd();
+    const relativeToCwd = path.relative(cwd, path.resolve(cwd, requested));
+    const escapes =
+      relativeToCwd === "" ||
+      relativeToCwd === ".." ||
+      relativeToCwd.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relativeToCwd);
+
+    if (path.isAbsolute(requested) || escapes) {
+      this.#fail(
+        `Cannot force a header into "${requested}": the path must be relative to the current directory and stay inside the project.`,
+      );
+      return null;
+    }
+
+    return requested;
+  }
+
+  /**
    * Fetches the requested license's detail, or reports the closest available
    * identifiers and returns null when the id is unrecognized.
    *
@@ -545,6 +642,7 @@ export class NonInteractiveMode implements IWizardMode {
       licenseId,
       style,
       files: preview.files,
+      skipped: preview.skipped,
       sample: preview.sample,
     });
   }

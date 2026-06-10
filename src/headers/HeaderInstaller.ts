@@ -87,13 +87,17 @@ export class HeaderInstaller {
       const source = new SourceFile(existing, file);
 
       // Never prepend a second declaration over a file that already carries a
-      // foreign license notice — that would leave it self-contradicting. The
-      // wizard's own blocks are excluded by this test, so re-heading a file it
-      // wrote (or switching its license) still goes through below. Likewise skip
-      // a file the header can't be safely placed in (a PHP template that opens
-      // with HTML, where the block would leak to the page) rather than corrupt
-      // its output.
-      if (!source.canPlaceHeader() || source.hasForeignLicenseNotice()) {
+      // foreign license notice — that would leave it self-contradicting. Likewise
+      // skip a file the header can't be safely placed in (a PHP template that
+      // opens with HTML, where the block would leak to the page) rather than
+      // corrupt its output. A file already carrying our managed block is exempt
+      // from the skip: it is kept current (the verifier does the same), so a file
+      // a header was forced into rejoins the managed set and tracks config
+      // changes instead of being re-skipped forever.
+      if (
+        !composer.hasManaged(existing) &&
+        (!source.canPlaceHeader() || source.hasForeignLicenseNotice())
+      ) {
         summary.skipped.push(file);
         done += 1;
         onProgress?.({ done, total: files.length, file });

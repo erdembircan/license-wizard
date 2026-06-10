@@ -35,6 +35,7 @@ const SPARK = "✦";
  */
 export class ClackRenderer implements IRenderer {
   readonly #spinner: Spinner;
+  readonly #name: string;
 
   /**
    * Creates a new ClackRenderer and renders the startup banner.
@@ -47,6 +48,7 @@ export class ClackRenderer implements IRenderer {
     spinner: Spinner = new Spinner(),
   ) {
     this.#spinner = spinner;
+    this.#name = meta.name;
     const color = this.#supportsColor();
     // The agent hint sits directly under the banner so automated callers see,
     // before any prompt blocks, that a flag-driven non-interactive mode exists.
@@ -117,6 +119,18 @@ export class ClackRenderer implements IRenderer {
         `Headers    ${summary.headers.style} mark inscribed in ` +
           `${summary.headers.written} of ${summary.headers.total} source file(s)`,
       );
+      if (summary.headers.skipped.length > 0) {
+        const skipped = summary.headers.skipped;
+        lines.push(
+          `Skipped    ${skipped.length} file(s) the header couldn't be safely written into:`,
+        );
+        for (const file of skipped) {
+          lines.push(`             ${file}`);
+        }
+        lines.push(
+          `           force one in (when safe): ${this.#name} --force-header "${skipped[0]}"`,
+        );
+      }
     }
 
     lines.push(

@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Answer } from "@cli/Answer.js";
 import type { CompletionSummary } from "@cli/interfaces/IRenderer.js";
@@ -211,6 +217,7 @@ vi.mock("@configuration/NodeFileSystemReader.js", () => ({
   NodeFileSystemReader: vi.fn(function (this: {
     exists: (path: string) => Promise<boolean>;
     read: (path: string) => Promise<string>;
+    realPath: (path: string) => Promise<string>;
   }) {
     this.exists = async (path: string) =>
       path === "LICENSE"
@@ -225,6 +232,11 @@ vi.mock("@configuration/NodeFileSystemReader.js", () => ({
       }
       throw new Error(`no such file: ${path}`);
     };
+    // No symlinks in the controlled tree: every path resolves under one fixed
+    // project root, so force-header's containment check passes for in-project
+    // paths (absolute/`..` paths are rejected lexically before reaching here).
+    this.realPath = async (p: string) =>
+      p === "." ? "/project" : `/project/${p}`;
   }),
 }));
 
@@ -620,6 +632,7 @@ describe("LicenseWizard interactive header flow", () => {
       style: "short",
       written: 1,
       total: 1,
+      skipped: [],
     });
   });
 
@@ -1365,6 +1378,88 @@ describe("LicenseWizard header removal", () => {
 
     expect(state.rendered.some((q) => q.id === "mode")).toBe(false);
     expect(state.rendered.some((q) => q.id === "license")).toBe(true);
+  });
+});
+
+describe("LicenseWizard force-header mode", () => {
+  const originalExitCode = process.exitCode;
+
+  beforeEach(() => {
+    state.reset();
+  });
+
+  afterEach(() => {
+    process.exitCode = originalExitCode;
+  });
+
+  // A file the safety guard would skip on a normal run: it already carries a
+  // foreign license notice.
+  const FOREIGN =
+    "// SPDX-License-Identifier: GPL-3.0-only\nexport const a = 1;\n";
+
+  it("forces the configured header into a file the guard would skip", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "foreign.ts": FOREIGN };
+
+    await lw(["--force-header", "foreign.ts"]).run();
+
+    const write = state.headerWrites.find((w) => w.path === "foreign.ts");
+    expect(write?.content).toContain("SPDX-License-Identifier: MIT");
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "headersForceApplied",
+        file: "foreign.ts",
+      }),
+    );
+  });
+
+  it("silently disregards the request when headers are not enabled in config", async () => {
+    state.config = { licenseId: "MIT" };
+    state.sourceFiles = { "foreign.ts": FOREIGN };
+
+    await lw(["--force-header", "foreign.ts"]).run();
+
+    expect(state.headerWrites).toEqual([]);
+    expect(sink.messages).toEqual([]);
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it("refuses an absolute path and writes nothing", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "foreign.ts": FOREIGN };
+
+    await lw(["--force-header", "/etc/passwd"]).run();
+
+    expect(state.headerWrites).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "error" }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("refuses a path that climbs out of the project and writes nothing", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "foreign.ts": FOREIGN };
+
+    await lw(["--force-header", "../escape.ts"]).run();
+
+    expect(state.headerWrites).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "error" }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("previews without writing under --dry-run", async () => {
+    state.config = { licenseId: "MIT", headers: { style: "short" } };
+    state.sourceFiles = { "foreign.ts": FOREIGN };
+
+    await lw(["--force-header", "foreign.ts", "--dry-run"]).run();
+
+    expect(state.headerWrites).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "headersForceApplied", dryRun: true }),
+    );
   });
 });
 

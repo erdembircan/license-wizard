@@ -45,6 +45,7 @@ classDiagram
     +style: HeaderStyle
     +written: number
     +total: number
+    +skipped: string[]
   }
 
   class ProgressBar {
@@ -73,6 +74,7 @@ classDiagram
     +headersNoFiles(licenseId: string) void
     +headersGenerated(report: HeaderGenerateReport) void
     +headersDryRun(report: HeaderDryRunReport) void
+    +headersForceApplied(report: HeaderForceApplyReport) void
     +headersRemoved(report: HeaderRemoveReport) void
     +headersRemoveDryRun(report: HeaderRemoveReport) void
     +headersVerifyMatch(report: HeaderVerifyReport) void
@@ -87,13 +89,23 @@ classDiagram
     +total: number
     +written: number
     +unchanged: number
+    +skipped: string[]
   }
 
   class HeaderDryRunReport {
     +licenseId: string
     +style: HeaderStyle
     +files: string[]
+    +skipped: string[]
     +sample: string
+  }
+
+  class HeaderForceApplyReport {
+    +licenseId: string
+    +style: HeaderStyle
+    +file: string
+    +outcome: "written" | "unchanged"
+    +dryRun: boolean
   }
 
   class HeaderRemoveReport {
@@ -245,6 +257,7 @@ classDiagram
   MessageReporter ..> DryRunReport : reads
   MessageReporter ..> HeaderGenerateReport : reads
   MessageReporter ..> HeaderDryRunReport : reads
+  MessageReporter ..> HeaderForceApplyReport : reads
   MessageReporter ..> HeaderRemoveReport : reads
   StreamSink ..|> IOutputSink : implements
   RecordingSink ..|> IOutputSink : implements

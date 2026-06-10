@@ -15,6 +15,7 @@ import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
+import type { IPathResolver } from "@configuration/interfaces/IPathResolver.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
@@ -50,7 +51,7 @@ export class LicenseWizard {
   readonly #manifests: ProjectManifestRepository;
   readonly #licenseRepository: LicenseRepository;
   readonly #generator: LicenseGenerator;
-  readonly #reader: IFileSystemReader;
+  readonly #reader: IFileSystemReader & IPathResolver;
   readonly #writer: IFileSystemWriter;
   readonly #reporter: IReporter;
   readonly #args: string[];
@@ -289,6 +290,13 @@ export class LicenseWizard {
           "Extra gitignore-style pattern to skip when writing headers (repeatable).",
         placeholder: "<glob>",
       },
+      "force-header": {
+        type: "string",
+        default: "",
+        description:
+          "Force the configured header into a single file the safety guard skipped, by path (relative to the working directory; non-interactive; requires headers enabled in config).",
+        placeholder: "<path>",
+      },
       "remove-headers": {
         type: "boolean",
         default: false,
@@ -379,9 +387,14 @@ export class LicenseWizard {
       return this.#verifyMode.run();
     }
 
-    // --apply-config and the selection flags both run non-interactively;
-    // --apply-config takes priority over the selection flags it overrides.
-    if (this.#flags["apply-config"] || this.#isNonInteractive()) {
+    // --apply-config, --force-header, and the selection flags all run
+    // non-interactively; --apply-config takes priority over the selection flags
+    // it overrides, and --force-header is a standalone single-file override.
+    if (
+      this.#flags["apply-config"] ||
+      this.#flags["force-header"] !== "" ||
+      this.#isNonInteractive()
+    ) {
       return this.#nonInteractiveMode.run();
     }
 
