@@ -104,6 +104,7 @@ export class ReportPresenter {
           message.licenseId,
           message.style,
           message.total,
+          message.skipped,
           c,
         );
       case "headersVerifyFixed":
@@ -376,7 +377,7 @@ export class ReportPresenter {
         : "";
     const skipped =
       message.skipped > 0
-        ? ` Skipped ${message.skipped} that already declare a license.`
+        ? ` Skipped ${message.skipped} the header couldn't be safely written into.`
         : "";
     return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}${skipped}\n`;
   }
@@ -444,11 +445,12 @@ export class ReportPresenter {
     licenseId: string,
     style: string,
     total: number,
+    skipped: number,
     c: boolean,
   ): string {
     const mark = this.#mark(c, SPARK, "green");
     const id = this.#paint(c, "bold", licenseId);
-    return `${mark}All ${total} source file(s) bear the expected ${id} ${style} header.\n`;
+    return `${mark}All ${total} source file(s) bear the expected ${id} ${style} header.${this.#skippedNote(skipped)}\n`;
   }
 
   #headersVerifyFixed(
@@ -460,8 +462,19 @@ export class ReportPresenter {
     return (
       `${mark}Realigned the ${id} ${message.style} header: ` +
       `${this.#paint(c, "cyan", String(message.added))} added, ` +
-      `${this.#paint(c, "cyan", String(message.rewritten))} rewritten.\n`
+      `${this.#paint(c, "cyan", String(message.rewritten))} rewritten.` +
+      `${this.#skippedNote(message.skipped)}\n`
     );
+  }
+
+  /**
+   * Renders the trailing note about files a header could not be safely written
+   * into, or the empty string when none were skipped.
+   */
+  #skippedNote(skipped: number): string {
+    return skipped > 0
+      ? ` Skipped ${skipped} the header couldn't be safely written into.`
+      : "";
   }
 
   #headersVerifyMismatch(

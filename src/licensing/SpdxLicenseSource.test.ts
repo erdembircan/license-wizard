@@ -211,4 +211,31 @@ describe("SpdxLicenseSource", () => {
       expect(detail.standardLicenseTemplate).toBeUndefined();
     });
   });
+
+  describe("network timeout", () => {
+    it("passes an abort signal to every fetch", async () => {
+      mockIndexAndDetail({
+        licenseId: "MIT",
+        name: "MIT License",
+        licenseText: "text",
+      });
+
+      const source = new SpdxLicenseSource();
+      await source.fetchLicense("MIT");
+
+      for (const call of vi.mocked(fetch).mock.calls) {
+        expect(call[1]?.signal).toBeInstanceOf(AbortSignal);
+      }
+    });
+
+    it("surfaces a stalled request as a clean timeout error, not a hang", async () => {
+      vi.mocked(fetch).mockImplementation(() =>
+        Promise.reject(new DOMException("aborted", "TimeoutError")),
+      );
+
+      const source = new SpdxLicenseSource();
+
+      await expect(source.search("mit")).rejects.toThrow(/timed out/);
+    });
+  });
 });

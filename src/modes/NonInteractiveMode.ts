@@ -3,7 +3,6 @@ import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import { HeaderTemplate } from "@headers/HeaderTemplate.js";
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -176,43 +175,19 @@ export class NonInteractiveMode implements IWizardMode {
     // its notice's `<year>`/`<name of author>` could never be substituted).
     if (
       headerStyle === "full" &&
-      this.#fullHeaderHasUnfilledPlaceholders(detail, values)
+      HeaderRenderer.fullHeaderHasUnfilledPlaceholders(detail, values)
     ) {
       this.#failUnfillableFullHeader(canonicalId, template);
       return;
     }
 
-    await this.#generateLicense(canonicalId, values, saveTarget, headerStyle);
-  }
-
-  /**
-   * Reports whether rendering the license's `full` header notice with the given
-   * copyright values would leave one of the header's own placeholder tokens
-   * unsubstituted — the signal that the notice can't be completed and would ship
-   * a literal `<year>` / `[name of copyright owner]` into every file.
-   *
-   * @param detail - The resolved detail of the license being generated.
-   * @param values - The resolved copyright slot values keyed by token.
-   */
-  #fullHeaderHasUnfilledPlaceholders(
-    detail: LicenseDetail,
-    values: Record<string, string>,
-  ): boolean {
-    if (!detail.standardLicenseHeaderTemplate) {
-      return false;
-    }
-    const headerSlots = new HeaderTemplate(
-      detail.standardLicenseHeaderTemplate,
-    ).slots();
-    if (headerSlots.length === 0) {
-      return false;
-    }
-    const body = new HeaderRenderer({
-      detail,
-      style: "full",
-      tokens: values,
-    }).body();
-    return headerSlots.some((slot) => body.includes(slot.token));
+    await this.#generateLicense(
+      canonicalId,
+      values,
+      saveTarget,
+      headerStyle,
+      this.#flags["headers-ignore"],
+    );
   }
 
   /**
@@ -262,14 +237,16 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    // The saved config is the source of truth, so its license and header style
-    // are applied as recorded rather than re-validated against selection flags.
-    // The empty save target leaves the config in the store it already lives in.
+    // The saved config is the source of truth, so its license, header style, and
+    // the ignore scope the headers were installed with are applied as recorded
+    // rather than re-validated against selection flags. The empty save target
+    // leaves the config in the store it already lives in.
     await this.#generateLicense(
       config.licenseId,
       config.tokens ?? {},
       "",
       config.headers?.style ?? "",
+      config.headers?.ignore ?? [],
     );
   }
 
@@ -394,12 +371,16 @@ export class NonInteractiveMode implements IWizardMode {
    *   to save nowhere.
    * @param headerStyle - The header style to also write into source files, or
    *   the empty string to write no headers.
+   * @param extraIgnores - Extra gitignore-style patterns scoping which files are
+   *   headed; persisted into the saved header config so verification reuses the
+   *   same scope.
    */
   async #generateLicense(
     licenseId: string,
     slotValues: Record<string, string>,
     saveTarget: string,
     headerStyle: "" | HeaderStyle,
+    extraIgnores: string[],
   ): Promise<void> {
     const selection: LicenseSelection = {
       licenseId,
@@ -408,13 +389,24 @@ export class NonInteractiveMode implements IWizardMode {
         saveTarget === ""
           ? { action: "none" }
           : { action: "save", target: saveTarget },
-      headers: headerStyle === "" ? undefined : { style: headerStyle },
+      headers:
+        headerStyle === ""
+          ? undefined
+          : {
+              style: headerStyle,
+              ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
+            },
     };
 
     if (this.#flags["dry-run"]) {
       await this.#preview(selection);
       if (headerStyle !== "") {
-        await this.#previewHeaders(licenseId, headerStyle, slotValues);
+        await this.#previewHeaders(
+          licenseId,
+          headerStyle,
+          slotValues,
+          extraIgnores,
+        );
       }
       return;
     }
@@ -427,7 +419,7 @@ export class NonInteractiveMode implements IWizardMode {
         licenseId,
         headerStyle,
         slotValues,
-        this.#flags["headers-ignore"],
+        extraIgnores,
       );
       if (report.total === 0) {
         this.#reporter.headersNoFiles(licenseId);
@@ -468,17 +460,19 @@ export class NonInteractiveMode implements IWizardMode {
    * @param licenseId - The SPDX identifier whose header would be written.
    * @param style - The header style (`short` or `full`).
    * @param tokens - Copyright tokens inherited from the license customization.
+   * @param extraIgnores - Extra gitignore-style patterns scoping the scan.
    */
   async #previewHeaders(
     licenseId: string,
     style: HeaderStyle,
     tokens: Record<string, string>,
+    extraIgnores: string[],
   ): Promise<void> {
     const preview = await this.#headers.preview(
       licenseId,
       style,
       tokens,
-      this.#flags["headers-ignore"],
+      extraIgnores,
     );
 
     if (preview === null) {

@@ -48,6 +48,19 @@ describe("SourceFile", () => {
       const source = 'const T = "license-wizard managed-header";\n';
       expect(new SourceFile(source, "a.ts").hasManagedHeader()).toBe(false);
     });
+
+    it("is false for a marker-shaped line stranded in a template literal", () => {
+      // A fully-formed marker line, but inside a backtick string — not sealed in
+      // a comment, so it is not a managed block.
+      const source = [
+        "const banner = `",
+        " * license-wizard managed-header v1 MIT short abcdef123456",
+        "`;",
+        "export const x = 1;",
+        "",
+      ].join("\n");
+      expect(new SourceFile(source, "a.ts").hasManagedHeader()).toBe(false);
+    });
   });
 
   describe("withoutManagedHeaders", () => {
@@ -85,6 +98,74 @@ describe("SourceFile", () => {
         .toString();
 
       expect(result).toBe(original);
+    });
+
+    it("never erases a file over a marker-shaped line in a template literal", () => {
+      // Regression: a marker-shaped line with no enclosing comment must not be
+      // treated as a managed block and have the whole file deleted around it.
+      const source = [
+        "const banner = `",
+        " * license-wizard managed-header v1 MIT short abcdef123456",
+        "`;",
+        "export const x = 1;",
+        "console.log(x);",
+        "",
+      ].join("\n");
+      const result = new SourceFile(source, "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).toBe(source);
+    });
+
+    it("does not delete from an unrelated comment down to a stray marker", () => {
+      // An ordinary block comment higher up, then a marker-shaped line stranded
+      // in a template literal: nothing here is a managed block, so the file is
+      // returned intact rather than gutted between the two.
+      const source = [
+        "/* unrelated banner",
+        "   keep me */",
+        "const banner = `",
+        " * license-wizard managed-header v1 MIT short abcdef123456",
+        "`;",
+        "export const x = 1;",
+        "",
+      ].join("\n");
+      const result = new SourceFile(source, "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      expect(result).toContain("export const x = 1;");
+      expect(result).toContain("/* unrelated banner");
+    });
+
+    it("still removes a real managed block sitting past a stray marker line", () => {
+      // A false-positive marker line above a genuine managed block must not mask
+      // the real block: the stray line is skipped and the real header removed,
+      // while the stray line in the template literal is left untouched.
+      const realBlock = headed("export const x = 1;\n", "a.ts").trimEnd();
+      const source = [
+        "const banner = `",
+        " * license-wizard managed-header v1 MIT short deadbeef0000",
+        "`;",
+        "",
+        realBlock,
+        "export const x = 1;",
+        "",
+      ].join("\n");
+      const occurrences = (text: string): number =>
+        text.split("license-wizard managed-header").length - 1;
+
+      const result = new SourceFile(source, "a.ts")
+        .withoutManagedHeaders()
+        .toString();
+
+      // Both markers present going in; only the stray template-literal one
+      // survives removal of the real block.
+      expect(occurrences(source)).toBe(2);
+      expect(occurrences(result)).toBe(1);
+      expect(result).toContain("deadbeef0000");
+      expect(result).toContain("export const x = 1;");
     });
 
     it("removes a header even when foreign code pushed it below the top", () => {
@@ -168,6 +249,38 @@ describe("SourceFile", () => {
         .toString();
 
       expect(restored).toBe(original);
+    });
+  });
+
+  describe("canPlaceHeader", () => {
+    it("is true for a non-PHP file", () => {
+      expect(
+        new SourceFile("export const x = 1;\n", "a.ts").canPlaceHeader(),
+      ).toBe(true);
+    });
+
+    it("is true for a PHP file opening with <?php", () => {
+      expect(new SourceFile("<?php\necho 1;\n", "x.php").canPlaceHeader()).toBe(
+        true,
+      );
+    });
+
+    it("is true for a PHP file with a shebang then <?php", () => {
+      expect(
+        new SourceFile(
+          "#!/usr/bin/php\n<?php\necho 1;\n",
+          "x.php",
+        ).canPlaceHeader(),
+      ).toBe(true);
+    });
+
+    it("is false for an HTML-first PHP template", () => {
+      const html = "<html>\n<body><?php echo 1; ?></body>\n</html>\n";
+      expect(new SourceFile(html, "page.php").canPlaceHeader()).toBe(false);
+    });
+
+    it("is true for an empty PHP file (nothing to leak)", () => {
+      expect(new SourceFile("", "x.php").canPlaceHeader()).toBe(true);
     });
   });
 

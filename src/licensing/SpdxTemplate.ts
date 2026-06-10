@@ -50,7 +50,7 @@ export abstract class SpdxTemplate {
 
     for (const match of original.matchAll(TOKEN)) {
       const token = match[0];
-      if (seen.has(token)) {
+      if (seen.has(token) || !isFillableSlot(token)) {
         continue;
       }
       seen.add(token);
@@ -145,6 +145,23 @@ export abstract class SpdxTemplate {
    * tokens without a provided value unchanged.
    */
   #applyValues(text: string, values: Record<string, string>): string {
-    return text.replace(TOKEN, (token) => values[token] ?? token);
+    return text.replace(TOKEN, (token) =>
+      isFillableSlot(token) ? (values[token] ?? token) : token,
+    );
   }
+}
+
+/**
+ * Reports whether a bracket token is a fillable copyright field rather than a
+ * concrete piece of the notice. The `original` of a copyright variable can carry
+ * angle-bracketed URLs or emails that are literal content — the GFDL family's
+ * `<http://fsf.org/>`, curl's `<daniel@haxx.se>` — which must never be offered
+ * as a field to fill or be overwritten by a supplied value. Anything that reads
+ * like a URL or email is excluded; the year/holder/owner placeholders remain.
+ *
+ * @param token - The exact bracket text discovered by {@link TOKEN}.
+ */
+function isFillableSlot(token: string): boolean {
+  const inner = token.slice(1, -1);
+  return !/:\/\/|@|^www\./i.test(inner);
 }

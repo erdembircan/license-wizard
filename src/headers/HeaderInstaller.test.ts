@@ -73,6 +73,24 @@ describe("HeaderInstaller", () => {
     expect(fs.files.get("b.ts")).toContain("SPDX-License-Identifier: MIT");
   });
 
+  it("skips an HTML-first PHP file so the header is never emitted as page output", async () => {
+    const htmlFirst = "<html>\n<body><?php echo 1; ?></body>\n</html>\n";
+    const fs = new FakeFs({
+      "page.php": htmlFirst,
+      "lib.php": "<?php\necho 1;\n",
+    });
+    const installer = new HeaderInstaller(fs, fs);
+
+    const summary = await installer.install(["page.php", "lib.php"], plan);
+
+    expect(summary.skipped).toEqual(["page.php"]);
+    expect(summary.written).toEqual(["lib.php"]);
+    // The HTML-first file is left byte-for-byte alone; the proper PHP file is
+    // headed below its open tag.
+    expect(fs.files.get("page.php")).toBe(htmlFirst);
+    expect(fs.files.get("lib.php")!.startsWith("<?php\n\n/*")).toBe(true);
+  });
+
   it("leaves already-headed files untouched on a second run", async () => {
     const fs = new FakeFs({ "a.ts": "export const x = 1;\n" });
     const installer = new HeaderInstaller(fs, fs);

@@ -65,6 +65,10 @@ export class InteractiveMode implements IWizardMode {
   // answered so the later header questions can decide whether the `full` style
   // is available without fetching it again.
   #interactiveHeaderDetail: LicenseDetail | null = null;
+  // The copyright slot values entered during customization, accumulated as each
+  // slot is answered. Read when the header questions decide whether a `full`
+  // header could actually be filled with what the user provided.
+  #interactiveTokens: Record<string, string> = {};
 
   /**
    * Creates a new InteractiveMode.
@@ -142,11 +146,19 @@ export class InteractiveMode implements IWizardMode {
     if (typeof licenseAnswer?.value === "string") {
       const tokens = this.#slotValuesFrom(licenseAnswer.fields);
       const headerStyle = this.#headerStyleFrom(headersAnswer);
+      const extraIgnores = this.#flags["headers-ignore"];
       const selection: LicenseSelection = {
         licenseId: licenseAnswer.value,
         tokens,
         save: this.#saveFrom(saveConfigAnswer),
-        headers: headerStyle ? { style: headerStyle } : undefined,
+        // Persist the ignore scope alongside the style so verification re-scans
+        // the same files this run headed.
+        headers: headerStyle
+          ? {
+              style: headerStyle,
+              ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
+            }
+          : undefined,
       };
 
       if (this.#flags["dry-run"]) {
@@ -186,6 +198,9 @@ export class InteractiveMode implements IWizardMode {
       id: "license",
       text: "Which license do you want to use?",
       type: "autocomplete",
+      // A license must be chosen: an empty submission would otherwise sail
+      // through every later question and exit having written nothing at all.
+      required: true,
       defaultValue: this.#flags.license || projectLicense || config?.licenseId,
       search: async (query) => {
         const results = await this.#licenses.search(query);
@@ -247,9 +262,13 @@ export class InteractiveMode implements IWizardMode {
   /**
    * Builds the top-level "add headers?" prompt. Answering yes injects a
    * short/full style choice, but only when the chosen license publishes a
-   * standard header — otherwise only the `short` style applies and no further
-   * question is needed. The license's support is read from the detail captured
-   * when the license was answered, which runs before this question.
+   * standard header *and* that `full` notice could actually be filled with the
+   * copyright the user provided — otherwise `full` would stamp literal
+   * placeholders (the GPL family exposes no copyright fields at all; an
+   * uncustomized Apache-2.0 leaves `[yyyy]` unfilled), so only the always-safe
+   * `short` style applies and no further question is needed. The license's
+   * support and the entered copyright are both read from state captured while
+   * the license question ran, which completes before this one.
    */
   #buildHeadersQuestion(): ConfirmQuestion {
     return {
@@ -258,10 +277,15 @@ export class InteractiveMode implements IWizardMode {
       type: "confirm",
       defaultValue: false,
       onAnswer: (answer, lifecycle) => {
-        const supportsFull =
-          this.#interactiveHeaderDetail !== null &&
-          HeaderRenderer.supportsFull(this.#interactiveHeaderDetail);
-        if (answer.value === true && supportsFull) {
+        const detail = this.#interactiveHeaderDetail;
+        const fullIsFillable =
+          detail !== null &&
+          HeaderRenderer.supportsFull(detail) &&
+          !HeaderRenderer.fullHeaderHasUnfilledPlaceholders(
+            detail,
+            this.#interactiveTokens,
+          );
+        if (answer.value === true && fullIsFillable) {
           lifecycle.inject([this.#buildHeaderStyleQuestion()]);
         }
       },
@@ -339,6 +363,10 @@ export class InteractiveMode implements IWizardMode {
     lifecycle: QuestionLifecycle,
     savedTokens?: Record<string, string>,
   ): Promise<void> {
+    // Reset any customization captured for a previously considered license so a
+    // re-answer never carries stale copyright values into the header decision.
+    this.#interactiveTokens = {};
+
     if (typeof answer.value !== "string" || answer.value === "") {
       this.#interactiveHeaderDetail = null;
       return;
@@ -374,7 +402,16 @@ export class InteractiveMode implements IWizardMode {
       id: slot.token,
       text: slot.label,
       type: "text",
+      // Customizing means filling the copyright: a blank value would otherwise
+      // be written as an empty copyright line (e.g. `Copyright (c)  holders`),
+      // the very state the non-interactive path rejects as a missing field.
+      required: true,
       defaultValue: savedTokens?.[slot.token],
+      onAnswer: (slotAnswer) => {
+        if (typeof slotAnswer.value === "string") {
+          this.#interactiveTokens[slot.token] = slotAnswer.value;
+        }
+      },
     }));
 
     return {

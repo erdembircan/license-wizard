@@ -5,7 +5,11 @@ import type {
   IRenderer,
 } from "@cli/interfaces/IRenderer.js";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
-import type { Question } from "@cli/Question.js";
+import type {
+  AutocompleteQuestion,
+  Question,
+  TextQuestion,
+} from "@cli/Question.js";
 import type { Config } from "@configuration/Config.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -22,6 +26,51 @@ const MIT: LicenseDetail = {
   name: "MIT License",
   licenseText: "x",
   standardLicenseTemplate: "",
+};
+
+// A license exposing customizable copyright slots in its body template.
+const MIT_CUSTOM: LicenseDetail = {
+  licenseId: "MIT",
+  name: "MIT License",
+  licenseText: "x",
+  standardLicenseTemplate:
+    '<<var;name="copyright";original="Copyright (c) <year> <holders>";match=".*">>',
+};
+
+// GPL-style: publishes a full notice with its own copyright placeholders, but
+// exposes no body copyright slots, so the user is never asked for values — the
+// `full` header could never be filled.
+const GPL: LicenseDetail = {
+  licenseId: "GPL-3.0-only",
+  name: "GNU General Public License v3.0 only",
+  licenseText: "x",
+  standardLicenseTemplate: "",
+  standardLicenseHeader: "Copyright (C) <year> <name of author>",
+  standardLicenseHeaderTemplate:
+    'Copyright (C) <<var;name="copyright";original="<year> <name of author>";match=".+">>',
+};
+
+// Apache-style: exposes body copyright slots and a full header template, so a
+// customized selection can fill the `full` notice.
+const APACHE: LicenseDetail = {
+  licenseId: "Apache-2.0",
+  name: "Apache License 2.0",
+  licenseText: "x",
+  standardLicenseTemplate:
+    '<<var;name="copyright";original="[yyyy] [name of copyright owner]";match=".+">>',
+  standardLicenseHeader: "Copyright [yyyy] [name of copyright owner]",
+  standardLicenseHeaderTemplate:
+    'Copyright <<var;name="copyright";original="[yyyy] [name of copyright owner]";match=".+">>',
+};
+
+const withLicense = (
+  d: ReturnType<typeof makeDeps>,
+  detail: LicenseDetail,
+): void => {
+  d.licenses = {
+    search: async () => [],
+    getLicense: async () => detail,
+  } as unknown as LicenseRepository;
 };
 
 /**
@@ -197,5 +246,71 @@ describe("InteractiveMode", () => {
 
     expect(renderer.rendered.some((q) => q.id === "mode")).toBe(false);
     expect(renderer.rendered.some((q) => q.id === "license")).toBe(true);
+  });
+
+  it("marks the license prompt required so an empty answer can't slip through", async () => {
+    const d = makeDeps();
+    const renderer = new FakeRenderer((q) =>
+      q.id === "saveConfig" ? "skip" : q.type === "confirm" ? false : "MIT",
+    );
+
+    await build(d, renderer, flags()).run();
+
+    const license = renderer.rendered.find((q) => q.id === "license");
+    expect((license as AutocompleteQuestion).required).toBe(true);
+  });
+
+  it("marks copyright slot prompts required so a blank value is re-asked", async () => {
+    const d = makeDeps();
+    withLicense(d, MIT_CUSTOM);
+    const renderer = new FakeRenderer((q) => {
+      if (q.id === "license") return "MIT";
+      if (q.id === "generationMode") return "customize";
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "text") return "2026";
+      return q.type === "confirm" ? false : "MIT";
+    });
+
+    await build(d, renderer, flags()).run();
+
+    const slots = renderer.rendered.filter(
+      (q): q is TextQuestion => q.type === "text",
+    );
+    expect(slots.length).toBeGreaterThan(0);
+    expect(slots.every((q) => q.required === true)).toBe(true);
+  });
+
+  it("does not offer the Full header style when the notice can't be filled with no copyright fields", async () => {
+    const d = makeDeps();
+    withLicense(d, GPL);
+    const renderer = new FakeRenderer((q) => {
+      if (q.id === "license") return "GPL-3.0-only";
+      if (q.id === "addHeaders") return true;
+      if (q.id === "saveConfig") return "skip";
+      return q.type === "confirm" ? false : "GPL-3.0-only";
+    });
+
+    await build(d, renderer, flags()).run();
+
+    expect(renderer.rendered.some((q) => q.id === "addHeaders")).toBe(true);
+    expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(false);
+  });
+
+  it("offers the Full header style once the copyright is customized", async () => {
+    const d = makeDeps();
+    withLicense(d, APACHE);
+    const renderer = new FakeRenderer((q) => {
+      if (q.id === "license") return "Apache-2.0";
+      if (q.id === "generationMode") return "customize";
+      if (q.id === "addHeaders") return true;
+      if (q.id === "headerStyle") return "full";
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "text") return "2026";
+      return q.type === "confirm" ? false : "Apache-2.0";
+    });
+
+    await build(d, renderer, flags()).run();
+
+    expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(true);
   });
 });

@@ -28,6 +28,12 @@ type BaseQuestion = {
 export type TextQuestion = BaseQuestion & {
   type: "text";
   defaultValue?: string;
+  /**
+   * When true, an empty or whitespace-only answer is rejected and re-asked
+   * rather than accepted — mirroring the non-interactive path, which treats a
+   * blank value as a missing field instead of writing it.
+   */
+  required?: boolean;
 };
 
 export type ConfirmQuestion = BaseQuestion & {
@@ -39,6 +45,12 @@ export type AutocompleteQuestion = BaseQuestion & {
   type: "autocomplete";
   defaultValue?: string;
   search?: (query: string) => Promise<AutocompleteOption[]>;
+  /**
+   * When true, submitting with no option selected is rejected and re-asked
+   * rather than returning an empty/undefined value the caller would silently
+   * treat as "nothing chosen" and skip.
+   */
+  required?: boolean;
 };
 
 export type SelectQuestion = BaseQuestion & {

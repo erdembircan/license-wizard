@@ -22,9 +22,13 @@ export const DEFAULT_IGNORES: readonly string[] = [
  *
  * This implements the common, practical subset of the gitignore format: comment
  * and blank lines, `!` negation (a later match wins), a trailing `/` to match
- * directories only, anchoring to the root when a pattern contains a slash, and
- * the `*`, `?`, and `**` wildcards. Patterns are evaluated in order and the last
- * one to match decides, mirroring git's own precedence.
+ * directories only, anchoring to the root when a pattern contains a slash, the
+ * `*`, `?`, and double-star wildcards — including the double star in its three
+ * positional forms (leading, matching at any depth; trailing, matching
+ * everything below; and between slashes, matching zero or more intervening
+ * directories) — and `[...]` character classes (with `!` negation). Patterns are
+ * evaluated in order and the last one to match decides, mirroring git's own
+ * precedence.
  */
 export class GitignoreMatcher {
   readonly #patterns: CompiledPattern[];
@@ -113,9 +117,21 @@ export class GitignoreMatcher {
   }
 
   /**
-   * Translates a gitignore glob into a regular-expression fragment: `**` spans
-   * directory separators, `*` and `?` stay within a single path segment, and
-   * every other character is matched literally.
+   * Translates a gitignore glob into a regular-expression fragment. A single `*`
+   * and `?` stay within one path segment (`[^/]`); a double star is read in
+   * context, so it spans directories the way git does rather than collapsing to
+   * a blanket `.*`:
+   *
+   * - a double star followed by a slash (at the start, or after a slash) matches
+   *   zero or more whole directory segments — so a leading `** /foo` matches
+   *   `foo` at the root and at any depth, and `a/** /b` matches `a/b` with no
+   *   directory between (slashes spaced here only to keep this comment closed).
+   * - a double star at the very end, after a slash, matches everything beneath —
+   *   so `a/` followed by a double star matches every path under `a/`.
+   * - a double star not bordered by slashes degrades to a single-segment `*`.
+   *
+   * `[...]` is carried through as a regex character class (translating a leading
+   * `!` to `^` negation); every other character is matched literally.
    */
   #glob(pattern: string): string {
     let regex = "";
@@ -123,20 +139,76 @@ export class GitignoreMatcher {
     for (let index = 0; index < pattern.length; index += 1) {
       const char = pattern[index];
 
-      if (char === "*") {
-        if (pattern[index + 1] === "*") {
+      if (char === "*" && pattern[index + 1] === "*") {
+        const afterSlash = index === 0 || pattern[index - 1] === "/";
+        const followingSlash = pattern[index + 2] === "/";
+        if (afterSlash && followingSlash) {
+          // `**/` — zero or more directory segments. Consume the trailing slash
+          // too, since the group carries it.
+          regex += "(?:[^/]+/)*";
+          index += 2;
+        } else if (afterSlash && index + 2 === pattern.length) {
+          // Trailing `/**` (or a lone `**`) — match everything below.
           regex += ".*";
           index += 1;
         } else {
+          // A `**` not bounded by slashes is just a single-segment wildcard.
           regex += "[^/]*";
+          index += 1;
         }
+      } else if (char === "*") {
+        regex += "[^/]*";
       } else if (char === "?") {
         regex += "[^/]";
+      } else if (char === "[") {
+        const close = this.#classEnd(pattern, index);
+        if (close === -1) {
+          // No closing bracket: a literal `[`.
+          regex += "\\[";
+        } else {
+          regex += this.#charClass(pattern.slice(index, close + 1));
+          index = close;
+        }
       } else {
         regex += char.replace(/[.+^${}()|[\]\\]/, "\\$&");
       }
     }
 
     return regex;
+  }
+
+  /**
+   * Returns the index of the `]` that closes the character class opened at
+   * `start`, or -1 when the class is never closed (so the `[` is a literal). A
+   * `]` in the first position — directly after `[` or `[!` — is a class member,
+   * not the terminator, matching shell glob rules.
+   */
+  #classEnd(pattern: string, start: number): number {
+    let index = start + 1;
+    if (pattern[index] === "!") {
+      index += 1;
+    }
+    if (pattern[index] === "]") {
+      index += 1;
+    }
+    while (index < pattern.length && pattern[index] !== "]") {
+      index += 1;
+    }
+    return index < pattern.length ? index : -1;
+  }
+
+  /**
+   * Translates a glob character class (e.g. `[Bb]`, `[!a-z]`) into its regex
+   * equivalent, mapping a leading `!` negation to `^` and escaping any backslash
+   * in the class body so the bracket expression stays well-formed.
+   */
+  #charClass(token: string): string {
+    let body = token.slice(1, -1);
+    const negated = body.startsWith("!");
+    if (negated) {
+      body = body.slice(1);
+    }
+    body = body.replace(/\\/g, "\\\\");
+    return `[${negated ? "^" : ""}${body}]`;
   }
 }

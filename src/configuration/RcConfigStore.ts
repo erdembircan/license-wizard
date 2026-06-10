@@ -1,7 +1,10 @@
 import type { IConfigStore } from "@configuration/interfaces/IConfigStore.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
-import type { WizardConfig } from "@configuration/WizardConfig.js";
+import {
+  parseWizardConfig,
+  type WizardConfig,
+} from "@configuration/WizardConfig.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -40,7 +43,7 @@ export class RcConfigStore implements IConfigStore {
         return null;
       }
       const raw = await reader.read(RC_FILE);
-      return JSON.parse(raw) as WizardConfig;
+      return parseWizardConfig(JSON.parse(raw), RC_FILE);
     } catch (cause) {
       if (cause instanceof FileSystemReaderError) {
         throw cause;

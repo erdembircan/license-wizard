@@ -80,11 +80,14 @@ export class SourceFile {
 
   /**
    * Reports whether the file currently carries a wizard-managed header,
-   * identified by a fully-formed marker line. A hand-written notice that lacks
-   * the marker — or code that merely names the marker token — is not managed.
+   * identified by a marker line sitting inside a well-formed comment block. A
+   * hand-written notice that lacks the marker — or code that merely names the
+   * marker token, including a marker-shaped line loose in a template literal or
+   * doc text — is not managed: detection requires the same enclosing block
+   * comment the wizard writes, never a bare marker-shaped line.
    */
   hasManagedHeader(): boolean {
-    return this.#lines().some((line) => isMarkerLine(line));
+    return findManagedBlock(this.#lines()) !== null;
   }
 
   /**
@@ -100,6 +103,28 @@ export class SourceFile {
     const { head, body } = this.#split();
     return [...head, ...body].some((line) =>
       /SPDX-License-Identifier\s*:/i.test(line),
+    );
+  }
+
+  /**
+   * Reports whether a managed header can be safely placed at the top of this
+   * file. True for everything except a PHP file whose first meaningful content
+   * is not a `<?php` open tag — a legacy HTML-first template — where the comment
+   * block would land outside any PHP tag and be served verbatim to visitors as
+   * page output. Such files are skipped rather than corrupted. An empty or
+   * blank-only PHP file has nothing to leak and is placeable.
+   */
+  canPlaceHeader(): boolean {
+    if (SourceFile.extensionOf(this.#path) !== ".php") {
+      return true;
+    }
+    const lines = this.#lines();
+    let index = lines[0]?.startsWith("#!") ? 1 : 0;
+    while (index < lines.length && lines[index].trim() === "") {
+      index += 1;
+    }
+    return (
+      index >= lines.length || lines[index].trimStart().startsWith("<?php")
     );
   }
 
@@ -257,22 +282,54 @@ function stripManagedBlocks(lines: readonly string[]): string[] {
 /**
  * Returns the inclusive `[start, end]` line range of the first wizard-managed
  * block — the block comment carrying the marker — or null when none is present.
- * The marker line locates the block; the bounds are found by walking out to the
- * enclosing comment delimiters.
+ * The marker line locates a candidate; the bounds are confirmed by walking out
+ * to the enclosing comment delimiters. A marker-shaped line that is *not* sealed
+ * in a well-formed comment (one stranded in a template literal or doc text, or a
+ * genuine block whose `/*` or closing delimiter was lost in an edit) is not a
+ * managed block: the walk returns null for it and the search moves on to the
+ * next candidate. This is the load-bearing safety property — the fail-safe
+ * response to an unrecognised block is to skip it, never to guess a span and
+ * delete everything inside it.
  */
 function findManagedBlock(lines: readonly string[]): [number, number] | null {
-  const markerLine = lines.findIndex((line) => isMarkerLine(line));
-  if (markerLine === -1) {
-    return null;
+  for (let marker = 0; marker < lines.length; marker += 1) {
+    if (!isMarkerLine(lines[marker])) {
+      continue;
+    }
+    const bounds = enclosingComment(lines, marker);
+    if (bounds !== null) {
+      return bounds;
+    }
   }
+  return null;
+}
 
+/**
+ * Confirms that the marker line at `markerLine` sits inside a well-formed block
+ * comment and returns its inclusive `[start, end]` bounds, or null when it does
+ * not. The walk climbs to a `/*` opener and descends to a closing `*` + `/`
+ * delimiter, but only across comment-body lines (those whose trimmed form begins
+ * with `*`); the moment it would step onto a line that is neither a body line
+ * nor the delimiter it seeks — or run off either end of the file — the marker is
+ * not enclosed and the block is rejected.
+ */
+function enclosingComment(
+  lines: readonly string[],
+  markerLine: number,
+): [number, number] | null {
   let start = markerLine;
-  while (start > 0 && !lines[start].trimStart().startsWith("/*")) {
+  while (!lines[start].trimStart().startsWith("/*")) {
+    if (start === 0 || !lines[start].trimStart().startsWith("*")) {
+      return null;
+    }
     start -= 1;
   }
 
   let end = markerLine;
-  while (end < lines.length - 1 && !lines[end].includes("*/")) {
+  while (!lines[end].includes("*/")) {
+    if (end === lines.length - 1 || !lines[end].trimStart().startsWith("*")) {
+      return null;
+    }
     end += 1;
   }
 

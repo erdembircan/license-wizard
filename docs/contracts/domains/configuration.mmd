@@ -54,6 +54,15 @@ classDiagram
 
   class HeaderConfig {
     +style: HeaderStyle
+    +ignore?: string[]
+  }
+
+  %% Module-level validator co-located with WizardConfig; the config stores run
+  %% every parsed config through it on read so a malformed file is rejected
+  %% (named) up front instead of casting unchecked.
+  class parseWizardConfig {
+    <<function>>
+    +parseWizardConfig(value: unknown, fileName: string) WizardConfig
   }
 
   class ConfigTarget {
@@ -143,6 +152,10 @@ classDiagram
   Config ..> FileSystemWriterError : throws
   RcConfigStore ..|> IConfigStore : implements
   ManifestConfigStore ..|> IConfigStore : implements
+  RcConfigStore ..> parseWizardConfig : validates reads with
+  ManifestConfigStore ..> parseWizardConfig : validates reads with
+  parseWizardConfig ..> WizardConfig : produces
+  parseWizardConfig ..> FileSystemReaderError : throws
   RcConfigStore ..> IFileSystemReader : uses
   RcConfigStore ..> IFileSystemWriter : uses
   RcConfigStore ..> FileSystemReaderError : throws

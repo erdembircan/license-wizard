@@ -339,7 +339,7 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
-  it("notes files skipped for already declaring a license", () => {
+  it("notes files skipped because the header could not be safely written", () => {
     expect(
       present({
         kind: "headersGenerated",
@@ -352,7 +352,7 @@ describe("ReportPresenter wording (plain text)", () => {
         skipped: 2,
       }),
     ).toMatchInlineSnapshot(`
-      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark. Skipped 2 that already declare a license.
+      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark. Skipped 2 the header couldn't be safely written into.
       "
     `);
   });
@@ -468,6 +468,7 @@ describe("ReportPresenter wording (plain text)", () => {
         licenseId: "MIT",
         style: "short",
         total: 4,
+        skipped: 0,
       }),
     ).toMatchInlineSnapshot(`
       "All 4 source file(s) bear the expected MIT short header.
@@ -484,9 +485,26 @@ describe("ReportPresenter wording (plain text)", () => {
         style: "short",
         added: 2,
         rewritten: 3,
+        skipped: 0,
       }),
     ).toMatchInlineSnapshot(`
       "Realigned the MIT short header: 2 added, 3 rewritten.
+      "
+    `);
+  });
+
+  it("notes files skipped during a header verify match", () => {
+    expect(
+      present({
+        kind: "headersVerifyMatch",
+        channel: "out",
+        licenseId: "MIT",
+        style: "short",
+        total: 4,
+        skipped: 2,
+      }),
+    ).toMatchInlineSnapshot(`
+      "All 4 source file(s) bear the expected MIT short header. Skipped 2 the header couldn't be safely written into.
       "
     `);
   });

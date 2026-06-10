@@ -159,7 +159,12 @@ export class FlagParser<T extends FlagDefinitions> {
         continue;
       }
 
-      if (token.value === undefined) {
+      if (token.value === undefined || token.value.trim() === "") {
+        // A missing value *or* an explicit empty one (`--license=`, e.g. from an
+        // unset `--license=$VAR` in CI) is rejected the same way: an empty string
+        // equals the flag's default, so it would otherwise pass validation, fail
+        // the non-interactive check, and drop a non-TTY run into the interactive
+        // prompt — hanging CI instead of failing fast.
         errors.push(`The --${token.name} flag requires a value.`);
       } else if (token.value.startsWith("--")) {
         errors.push(

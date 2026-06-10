@@ -138,6 +138,12 @@ export class ClackRenderer implements IRenderer {
         clack.text({
           message: q.text,
           initialValue: (q as TextQuestion).defaultValue,
+          validate: (q as TextQuestion).required
+            ? (value) =>
+                value !== undefined && value.trim() !== ""
+                  ? undefined
+                  : "A value is required."
+            : undefined,
         }),
       confirm: (q) =>
         clack.confirm({
@@ -267,6 +273,15 @@ export class ClackRenderer implements IRenderer {
         typeof clack.autocomplete<string>
       >[0]["options"],
       filter: () => true,
+      // A required prompt rejects an empty submission (clack yields `undefined`
+      // for one) so the wizard can't continue with no license chosen and then
+      // silently exit having written nothing.
+      validate: question.required
+        ? (value) =>
+            typeof value === "string" && value !== ""
+              ? undefined
+              : "Choose a license to continue."
+        : undefined,
       placeholder: `Type at least ${MIN_SEARCH_LENGTH} characters to search…`,
     });
   }

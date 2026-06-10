@@ -38,6 +38,36 @@ export class HeaderRenderer {
   }
 
   /**
+   * Reports whether rendering this license's `full` header notice with the given
+   * copyright tokens would leave one of the header's own placeholder tokens
+   * unsubstituted — the signal that the notice cannot be completed and would ship
+   * a literal `<year>` / `[name of copyright owner]` into every file. A license
+   * whose header carries no placeholders (or none the wizard discovers) is always
+   * fillable; one whose placeholders survive the render with the supplied tokens
+   * is not. Both run modes consult this so the interactive and flag-driven paths
+   * guard the `full` style identically.
+   *
+   * @param detail - The license detail whose standard header is inspected.
+   * @param tokens - The copyright tokens that would fill the header, keyed by token.
+   */
+  static fullHeaderHasUnfilledPlaceholders(
+    detail: LicenseDetail,
+    tokens: Record<string, string>,
+  ): boolean {
+    if (!detail.standardLicenseHeaderTemplate) {
+      return false;
+    }
+    const headerSlots = new HeaderTemplate(
+      detail.standardLicenseHeaderTemplate,
+    ).slots();
+    if (headerSlots.length === 0) {
+      return false;
+    }
+    const body = new HeaderRenderer({ detail, style: "full", tokens }).body();
+    return headerSlots.some((slot) => body.includes(slot.token));
+  }
+
+  /**
    * Renders the header body for the plan's style: the SPDX tag lines for
    * `short`, or the standard header notice (template-substituted when the
    * selection was customized) for `full`. Returns the text with no surrounding

@@ -196,6 +196,55 @@ describe("ClackRenderer", () => {
         expect(answer).toEqual({ questionId: "license", value: "MIT" });
       });
 
+      it("attaches a validate that rejects an empty answer for a required text question", async () => {
+        vi.mocked(clack.text).mockResolvedValue("2026");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer(META);
+        await renderer.render({
+          id: "year",
+          text: "Year",
+          type: "text",
+          required: true,
+        });
+
+        const opts = vi.mocked(clack.text).mock.calls[0][0];
+        expect(typeof opts.validate).toBe("function");
+        expect(opts.validate!("")).toBeTruthy();
+        expect(opts.validate!("   ")).toBeTruthy();
+        expect(opts.validate!("2026")).toBeUndefined();
+      });
+
+      it("leaves a non-required text question without a validate", async () => {
+        vi.mocked(clack.text).mockResolvedValue("2026");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer(META);
+        await renderer.render({ id: "year", text: "Year", type: "text" });
+
+        expect(vi.mocked(clack.text).mock.calls[0][0].validate).toBeUndefined();
+      });
+
+      it("attaches a validate that rejects an empty selection for a required autocomplete", async () => {
+        vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
+        vi.mocked(clack.isCancel).mockReturnValue(false);
+
+        const renderer = new ClackRenderer(META);
+        await renderer.render({
+          id: "license",
+          text: "Which license?",
+          type: "autocomplete",
+          required: true,
+          search: async () => [],
+        });
+
+        const opts = vi.mocked(clack.autocomplete).mock.calls[0][0];
+        expect(typeof opts.validate).toBe("function");
+        expect(opts.validate!(undefined)).toBeTruthy();
+        expect(opts.validate!("")).toBeTruthy();
+        expect(opts.validate!("MIT")).toBeUndefined();
+      });
+
       it("passes options as a function to clack.autocomplete", async () => {
         vi.mocked(clack.autocomplete).mockResolvedValue("MIT");
         vi.mocked(clack.isCancel).mockReturnValue(false);
