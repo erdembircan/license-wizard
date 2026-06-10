@@ -98,6 +98,10 @@
 <td>Extra gitignore-style pattern to skip when writing headers, on top of the defaults and <code>.gitignore</code> (repeatable).</td>
 </tr>
 <tr>
+<td><code>--force-header &lt;path&gt;</code></td>
+<td>Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors <code>--dry-run</code>.</td>
+</tr>
+<tr>
 <td><code>--remove-headers</code></td>
 <td>Strip License Wizard&#39;s headers and drop the saved headers preference. Standalone; takes priority over <code>--headers</code>; honors <code>--headers-ignore</code> and <code>--dry-run</code>.</td>
 </tr>
