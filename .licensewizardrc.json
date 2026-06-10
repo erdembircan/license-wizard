@@ -3,5 +3,11 @@
   "tokens": {
     "[yyyy]": "2026",
     "[name of copyright owner]": "Erdem Bircan"
+  },
+  "headers": {
+    "style": "short",
+    "ignore": [
+      "dist/"
+    ]
   }
 }

@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 import type { ILicenseSource } from "@licensing/interfaces/ILicenseSource.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";

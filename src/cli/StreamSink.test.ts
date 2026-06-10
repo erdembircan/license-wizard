@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ReportPresenter } from "@cli/ReportPresenter.js";
 import { StreamSink } from "@cli/StreamSink.js";

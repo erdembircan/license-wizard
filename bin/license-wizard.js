@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 import { LicenseWizard } from "../dist/index.js";
 
 // Ultimate safety net: LicenseWizard.run() reports its own failures as a single
