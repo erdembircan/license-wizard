@@ -114,7 +114,7 @@ When you know a skipped file is safe to head, override the guard for that one pa
 npx license-wizard --force-header src/legacy.ts
 ```
 
-It writes the header configured in your saved config into the named file, even though a normal run would skip it. It's non-interactive and deliberately narrow: the path is resolved relative to the directory you run it in (absolute paths and paths outside the project are refused), and it only does anything when your saved config has headers enabled. The skipped-file reports print a ready-to-run example using one of the paths they list.
+It writes the header configured in your saved config into the named file, even though a normal run would skip it. It's non-interactive and deliberately narrow: the target must be one of the source file types License Wizard heads, the path is resolved relative to the directory you run it in (absolute paths, and paths that resolve outside the project — including through a symlinked directory — are refused), and it only does anything when your saved config has headers enabled. The skipped-file reports print a ready-to-run example using one of the paths they list.
 
 ### Removing headers
 
