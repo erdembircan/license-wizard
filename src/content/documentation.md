@@ -69,6 +69,8 @@ npx license-wizard --license MIT --set "year=2026" --set "copyright holders=Erde
 
 A field may be named by its label (e.g. `year`, case-insensitive) or its bracket token (e.g. `<year>`). Omit `--set` to write the official text unchanged.
 
+Some licenses (the GPL family) declare no copyright field in their `LICENSE` text but do in their header notice. `--get-tokens` lists those header fields too, and they apply only when you also write a [`full` header](/license-wizard/docs/source-file-headers/) — supplying one on its own tells you it belongs to the header and to add `--headers full`.
+
 > If you start customizing but leave out a required field, License Wizard writes nothing — it lists the missing fields and exits non-zero, so you (or a calling agent) know exactly what to provide.
 
 ### Unrecognized identifiers
@@ -92,15 +94,15 @@ npx license-wizard --license MIT --headers short --save-npm
 - `short` writes the canonical SPDX tag lines (`SPDX-License-Identifier:`, plus `SPDX-FileCopyrightText:` when you've filled in copyright fields). Available for **every** license.
 - `full` writes the license's complete standard header notice, with your copyright fields substituted. Available only for licenses that publish one (Apache-2.0, the GPL family, MPL-2.0, …). For a license without a standard header (MIT, BSD, ISC, …), only `short` applies.
 
-The header reuses whatever copyright values you chose for the `LICENSE` text — it's never asked for separately.
+The header is filled from the same copyright values you supply when customizing — you're never asked for them twice. A `full` notice that carries copyright placeholders can only be written once those values are provided: in the wizard, **Full** is offered only after you've customized the copyright; non-interactively, `--headers full` requires the matching `--set` values and otherwise stops, listing the fields it needs.
 
 ### What gets a header
 
-Only the source files the npm and Composer ecosystems use: `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.cts`, `.mts`, and `.php`. JSON, stylesheets, markdown, and generated output are left alone. Dependencies (`node_modules/`, `vendor/`), `.git/`, and everything your `.gitignore` excludes are skipped automatically — add more with a repeatable `--headers-ignore <glob>`. A `#!` shebang stays on top, and the header sits inside PHP's `<?php` tag.
+Only the source files the npm and Composer ecosystems use: `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.cts`, `.mts`, and `.php`. JSON, stylesheets, markdown, and generated output are left alone. Dependencies (`node_modules/`, `vendor/`), `.git/`, and everything your `.gitignore` excludes are skipped automatically — add more with a repeatable `--headers-ignore <glob>`. A `#!` shebang stays on top, and the header sits inside PHP's `<?php` tag — a `.php` file that opens with HTML rather than `<?php` is skipped instead, so the header is never emitted as page output.
 
 ### Safe to re-run
 
-License Wizard owns the headers it writes. Running it again over an unchanged project changes nothing; switching licenses updates the existing header in place rather than stacking a second one; and [verification](/license-wizard/docs/verify-ci/) keeps them current. A notice you wrote by hand is always left untouched.
+License Wizard owns the headers it writes. Running it again over an unchanged project changes nothing; switching licenses updates the existing header in place rather than stacking a second one; and [verification](/license-wizard/docs/verify-ci/) keeps them current. Any file it can't safely head — one already carrying a hand-written license notice, or an HTML-first `.php` file — is skipped and reported, both when writing and under `--verify`, so a notice you wrote by hand is always left untouched.
 
 ### Removing headers
 
