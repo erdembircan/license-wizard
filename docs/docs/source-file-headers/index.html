@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/license-wizard/assets/index-mAziS-h0.css" />
+    <link rel="stylesheet" href="/license-wizard/assets/main-CBCNvV9v.css" />
   </head>
   <body class="page-canvas">
     <header class="docs-topbar">
@@ -25,6 +25,14 @@
           <span class="docs-brand-badge">Docs</span>
         </div>
         <div class="docs-topbar-links">
+          <button type="button" id="docs-search-trigger" class="docs-search-trigger"
+            aria-label="Search documentation"
+            aria-keyshortcuts="Meta+K Control+K"
+            data-base="/license-wizard/" data-search-index="/license-wizard/search-index.json">
+            <svg class="docs-search-trigger-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="docs-search-trigger-label">Search docs</span>
+            <kbd class="docs-search-kbd"><span class="docs-search-kbd-cmd">⌘</span>K</kbd>
+          </button>
           <a href="/license-wizard/" class="nav-link">Home</a>
           <a href="https://www.npmjs.com/package/license-wizard" class="nav-link" target="_blank" rel="noopener">npm</a>
           <a href="https://github.com/erdembircan/license-wizard" class="btn-ghost docs-star" target="_blank" rel="noopener">
@@ -40,27 +48,27 @@
     <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link is-active" aria-current="page">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link">Flags reference</a></li></ul>
   </nav>
       <main class="docs-main">
-        <article class="doc-prose"><h2>Source-file headers</h2>
+        <article class="doc-prose"><h2 id="source-file-headers">Source-file headers</h2>
 <p>Beyond the <code>LICENSE</code> file, License Wizard can stamp a per-file license header at the top of your source files — the short notice many licenses ask you to add to each file. The interactive wizard offers this after the license is chosen; non-interactively, pass <code>--headers</code> with a style:</p>
 <pre><code class="language-bash">npx license-wizard --license MIT --headers short --save-npm
 </code></pre>
-<h3>Two styles</h3>
+<h3 id="two-styles">Two styles</h3>
 <ul>
 <li><code>short</code> writes the canonical SPDX tag lines (<code>SPDX-License-Identifier:</code>, plus <code>SPDX-FileCopyrightText:</code> when you&#39;ve filled in copyright fields). Available for <strong>every</strong> license.</li>
 <li><code>full</code> writes the license&#39;s complete standard header notice, with your copyright fields substituted. Available only for licenses that publish one (Apache-2.0, the GPL family, MPL-2.0, …). For a license without a standard header (MIT, BSD, ISC, …), only <code>short</code> applies.</li>
 </ul>
 <p>The header is filled from the same copyright values you supply when customizing — you&#39;re never asked for them twice. A <code>full</code> notice that carries copyright placeholders can only be written once those values are provided: in the wizard, <strong>Full</strong> is offered only after you&#39;ve customized the copyright; non-interactively, <code>--headers full</code> requires the matching <code>--set</code> values and otherwise stops, listing the fields it needs.</p>
-<h3>What gets a header</h3>
+<h3 id="what-gets-a-header">What gets a header</h3>
 <p>Only the source files the npm and Composer ecosystems use: <code>.js</code>, <code>.jsx</code>, <code>.mjs</code>, <code>.cjs</code>, <code>.ts</code>, <code>.tsx</code>, <code>.cts</code>, <code>.mts</code>, and <code>.php</code>. JSON, stylesheets, markdown, and generated output are left alone. Dependencies (<code>node_modules/</code>, <code>vendor/</code>), <code>.git/</code>, and everything your <code>.gitignore</code> excludes are skipped automatically — add more with a repeatable <code>--headers-ignore &lt;glob&gt;</code>. A <code>#!</code> shebang stays on top, and the header sits inside PHP&#39;s <code>&lt;?php</code> tag — a <code>.php</code> file that opens with HTML rather than <code>&lt;?php</code> is skipped instead, so the header is never emitted as page output.</p>
-<h3>Safe to re-run</h3>
+<h3 id="safe-to-re-run">Safe to re-run</h3>
 <p>License Wizard owns the headers it writes. Running it again over an unchanged project changes nothing; switching licenses updates the existing header in place rather than stacking a second one; and <a href="/license-wizard/docs/verify-ci/">verification</a> keeps them current. Any file it can&#39;t safely head — one already carrying a hand-written license notice, or an HTML-first <code>.php</code> file — is skipped and reported, both when writing and under <code>--verify</code>, so a notice you wrote by hand is always left untouched.</p>
 <p>Every surface that reports a skip — writing, <code>--dry-run</code>, and <code>--verify</code> — now lists the <strong>paths</strong> it skipped, not just a count, so you can see exactly which files were left alone and why.</p>
-<h3>Forcing a header into a skipped file</h3>
+<h3 id="forcing-a-header-into-a-skipped-file">Forcing a header into a skipped file</h3>
 <p>When you know a skipped file is safe to head, override the guard for that one path with <code>--force-header</code>:</p>
 <pre><code class="language-bash">npx license-wizard --force-header src/legacy.ts
 </code></pre>
 <p>It writes the header configured in your saved config into the named file, even though a normal run would skip it. It&#39;s non-interactive and deliberately narrow: the target must be one of the source file types License Wizard heads, the path is resolved relative to the directory you run it in (absolute paths, and paths that resolve outside the project — including through a symlinked directory — are refused), and it only does anything when your saved config has headers enabled. The skipped-file reports print a ready-to-run example using one of the paths they list.</p>
-<h3>Removing headers</h3>
+<h3 id="removing-headers">Removing headers</h3>
 <p>To take the headers back out, pass <code>--remove-headers</code>. It strips every header License Wizard added and drops the headers preference from your saved config, so verification stops checking that surface. It honors <code>--headers-ignore</code> and <code>--dry-run</code>, and your hand-written notices stay put.</p>
 <pre><code class="language-bash">npx license-wizard --remove-headers
 </code></pre>
@@ -68,5 +76,6 @@
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/one-shot-generation/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">One-shot generation</span></a><a href="/license-wizard/docs/verify-ci/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">Verify & CI</span></a></nav>
       </main>
     </div>
+    <script type="module" src="/license-wizard/assets/docsSearch-BDtaLwIJ.js"></script>
   </body>
 </html>
