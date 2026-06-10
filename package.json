@@ -34,7 +34,8 @@
     "dist",
     "bin",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "node scripts/build.js",
