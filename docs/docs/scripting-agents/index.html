@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/license-wizard/assets/index-mAziS-h0.css" />
+    <link rel="stylesheet" href="/license-wizard/assets/main-PPlYoukN.css" />
   </head>
   <body class="page-canvas">
     <header class="docs-topbar">
@@ -25,6 +25,14 @@
           <span class="docs-brand-badge">Docs</span>
         </div>
         <div class="docs-topbar-links">
+          <button type="button" id="docs-search-trigger" class="docs-search-trigger"
+            aria-label="Search documentation"
+            aria-keyshortcuts="Meta+K Control+K"
+            data-base="/license-wizard/" data-search-index="/license-wizard/search-index.json">
+            <svg class="docs-search-trigger-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="docs-search-trigger-label">Search docs</span>
+            <kbd class="docs-search-kbd"><span class="docs-search-kbd-cmd">⌘</span>K</kbd>
+          </button>
           <a href="/license-wizard/" class="nav-link">Home</a>
           <a href="https://www.npmjs.com/package/license-wizard" class="nav-link" target="_blank" rel="noopener">npm</a>
           <a href="https://github.com/erdembircan/license-wizard" class="btn-ghost docs-star" target="_blank" rel="noopener">
@@ -40,15 +48,15 @@
     <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link is-active" aria-current="page">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link">Flags reference</a></li></ul>
   </nav>
       <main class="docs-main">
-        <article class="doc-prose"><h2>Scripting &amp; agents</h2>
+        <article class="doc-prose"><h2 id="scripting-agents">Scripting &amp; agents</h2>
 <p>The same predictable flow that guides a human drives cleanly from scripts, CI, and AI agents. Any of <code>--license</code>, <code>--set</code>, or <code>--get-tokens</code> switches off the prompts and runs as a single command, and the standalone modes (<code>--verify</code>, <code>--apply-config</code>, <code>--remove-headers</code>) never prompt at all.</p>
-<h3>Exit codes are the contract</h3>
+<h3 id="exit-codes-are-the-contract">Exit codes are the contract</h3>
 <p>Every run signals its outcome through its exit code, so a script or agent always knows what happened without parsing output:</p>
 <ul>
 <li>A successful generation, a clean <code>--verify</code>, or a healed run exits <code>0</code>.</li>
 <li>A missing required field, an unrecognized identifier, a <code>--verify --strict</code> run that found drift, or a standalone mode with nothing to act on exits non-zero — and prints exactly what&#39;s wrong.</li>
 </ul>
-<h3>Standalone modes take priority</h3>
+<h3 id="standalone-modes-take-priority">Standalone modes take priority</h3>
 <p><code>--apply-config</code> and <code>--remove-headers</code> are standalone: when combined with selection flags like <code>--license</code>, the standalone mode wins. This means an agent can replay a saved config without worrying that a stray <code>--license</code> will override it.</p>
 <blockquote>
 <p>Tell your agent to use License Wizard and it will: the flags are explicit, the failures are descriptive, and nothing is written until every required field is present.</p>
@@ -57,5 +65,6 @@
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/configuration-files/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Configuration files</span></a><a href="/license-wizard/docs/flags-reference/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">Flags reference</span></a></nav>
       </main>
     </div>
+    <script type="module" src="/license-wizard/assets/docsSearch-BD5ZGtFz.js"></script>
   </body>
 </html>

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/license-wizard/assets/index-mAziS-h0.css" />
+    <link rel="stylesheet" href="/license-wizard/assets/main-PPlYoukN.css" />
   </head>
   <body class="page-canvas">
     <header class="docs-topbar">
@@ -25,6 +25,14 @@
           <span class="docs-brand-badge">Docs</span>
         </div>
         <div class="docs-topbar-links">
+          <button type="button" id="docs-search-trigger" class="docs-search-trigger"
+            aria-label="Search documentation"
+            aria-keyshortcuts="Meta+K Control+K"
+            data-base="/license-wizard/" data-search-index="/license-wizard/search-index.json">
+            <svg class="docs-search-trigger-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span class="docs-search-trigger-label">Search docs</span>
+            <kbd class="docs-search-kbd"><span class="docs-search-kbd-cmd">⌘</span>K</kbd>
+          </button>
           <a href="/license-wizard/" class="nav-link">Home</a>
           <a href="https://www.npmjs.com/package/license-wizard" class="nav-link" target="_blank" rel="noopener">npm</a>
           <a href="https://github.com/erdembircan/license-wizard" class="btn-ghost docs-star" target="_blank" rel="noopener">
@@ -40,7 +48,7 @@
     <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link is-active" aria-current="page">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link">Flags reference</a></li></ul>
   </nav>
       <main class="docs-main">
-        <article class="doc-prose"><h2>Interactive wizard</h2>
+        <article class="doc-prose"><h2 id="interactive-wizard">Interactive wizard</h2>
 <p>Run the command from the root of the project you want to license and you&#39;ll be guided through a short flow:</p>
 <pre><code class="language-bash">npx license-wizard
 </code></pre>
@@ -57,5 +65,6 @@
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/getting-started/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Getting started</span></a><a href="/license-wizard/docs/one-shot-generation/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">One-shot generation</span></a></nav>
       </main>
     </div>
+    <script type="module" src="/license-wizard/assets/docsSearch-BD5ZGtFz.js"></script>
   </body>
 </html>
