@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/license-wizard/assets/index-CRa2Of7x.css" />
+    <link rel="stylesheet" href="/license-wizard/assets/index-mAziS-h0.css" />
   </head>
   <body class="page-canvas">
     <header class="docs-topbar">
@@ -49,11 +49,11 @@
 <li><code>short</code> writes the canonical SPDX tag lines (<code>SPDX-License-Identifier:</code>, plus <code>SPDX-FileCopyrightText:</code> when you&#39;ve filled in copyright fields). Available for <strong>every</strong> license.</li>
 <li><code>full</code> writes the license&#39;s complete standard header notice, with your copyright fields substituted. Available only for licenses that publish one (Apache-2.0, the GPL family, MPL-2.0, …). For a license without a standard header (MIT, BSD, ISC, …), only <code>short</code> applies.</li>
 </ul>
-<p>The header reuses whatever copyright values you chose for the <code>LICENSE</code> text — it&#39;s never asked for separately.</p>
+<p>The header is filled from the same copyright values you supply when customizing — you&#39;re never asked for them twice. A <code>full</code> notice that carries copyright placeholders can only be written once those values are provided: in the wizard, <strong>Full</strong> is offered only after you&#39;ve customized the copyright; non-interactively, <code>--headers full</code> requires the matching <code>--set</code> values and otherwise stops, listing the fields it needs.</p>
 <h3>What gets a header</h3>
-<p>Only the source files the npm and Composer ecosystems use: <code>.js</code>, <code>.jsx</code>, <code>.mjs</code>, <code>.cjs</code>, <code>.ts</code>, <code>.tsx</code>, <code>.cts</code>, <code>.mts</code>, and <code>.php</code>. JSON, stylesheets, markdown, and generated output are left alone. Dependencies (<code>node_modules/</code>, <code>vendor/</code>), <code>.git/</code>, and everything your <code>.gitignore</code> excludes are skipped automatically — add more with a repeatable <code>--headers-ignore &lt;glob&gt;</code>. A <code>#!</code> shebang stays on top, and the header sits inside PHP&#39;s <code>&lt;?php</code> tag.</p>
+<p>Only the source files the npm and Composer ecosystems use: <code>.js</code>, <code>.jsx</code>, <code>.mjs</code>, <code>.cjs</code>, <code>.ts</code>, <code>.tsx</code>, <code>.cts</code>, <code>.mts</code>, and <code>.php</code>. JSON, stylesheets, markdown, and generated output are left alone. Dependencies (<code>node_modules/</code>, <code>vendor/</code>), <code>.git/</code>, and everything your <code>.gitignore</code> excludes are skipped automatically — add more with a repeatable <code>--headers-ignore &lt;glob&gt;</code>. A <code>#!</code> shebang stays on top, and the header sits inside PHP&#39;s <code>&lt;?php</code> tag — a <code>.php</code> file that opens with HTML rather than <code>&lt;?php</code> is skipped instead, so the header is never emitted as page output.</p>
 <h3>Safe to re-run</h3>
-<p>License Wizard owns the headers it writes. Running it again over an unchanged project changes nothing; switching licenses updates the existing header in place rather than stacking a second one; and <a href="/license-wizard/docs/verify-ci/">verification</a> keeps them current. A notice you wrote by hand is always left untouched.</p>
+<p>License Wizard owns the headers it writes. Running it again over an unchanged project changes nothing; switching licenses updates the existing header in place rather than stacking a second one; and <a href="/license-wizard/docs/verify-ci/">verification</a> keeps them current. Any file it can&#39;t safely head — one already carrying a hand-written license notice, or an HTML-first <code>.php</code> file — is skipped and reported, both when writing and under <code>--verify</code>, so a notice you wrote by hand is always left untouched.</p>
 <h3>Removing headers</h3>
 <p>To take the headers back out, pass <code>--remove-headers</code>. It strips every header License Wizard added and drops the headers preference from your saved config, so verification stops checking that surface. It honors <code>--headers-ignore</code> and <code>--dry-run</code>, and your hand-written notices stay put.</p>
 <pre><code class="language-bash">npx license-wizard --remove-headers

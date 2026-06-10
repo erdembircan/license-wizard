@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="/license-wizard/assets/index-CRa2Of7x.css" />
+    <link rel="stylesheet" href="/license-wizard/assets/index-mAziS-h0.css" />
   </head>
   <body class="page-canvas">
     <header class="docs-topbar">
@@ -51,6 +51,7 @@
 npx license-wizard --license MIT --set &quot;year=2026&quot; --set &quot;copyright holders=Erdem Bircan&quot;
 </code></pre>
 <p>A field may be named by its label (e.g. <code>year</code>, case-insensitive) or its bracket token (e.g. <code>&lt;year&gt;</code>). Omit <code>--set</code> to write the official text unchanged.</p>
+<p>Some licenses (the GPL family) declare no copyright field in their <code>LICENSE</code> text but do in their header notice. <code>--get-tokens</code> lists those header fields too, and they apply only when you also write a <a href="/license-wizard/docs/source-file-headers/"><code>full</code> header</a> — supplying one on its own tells you it belongs to the header and to add <code>--headers full</code>.</p>
 <blockquote>
 <p>If you start customizing but leave out a required field, License Wizard writes nothing — it lists the missing fields and exits non-zero, so you (or a calling agent) know exactly what to provide.</p>
 </blockquote>
