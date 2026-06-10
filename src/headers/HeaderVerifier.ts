@@ -4,6 +4,7 @@ import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
 import { parseMarker } from "@headers/HeaderMarker.js";
+import { SourceFile } from "@headers/SourceFile.js";
 import type { SourceFileScanner } from "@headers/SourceFileScanner.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 
@@ -51,6 +52,13 @@ export type HeaderVerifyReport = {
   drifted: HeaderDrift[];
   /** Files rewritten during a fixing run (the reconciled `missing` + `drifted`). */
   fixed: string[];
+  /**
+   * Files left untouched because the wizard cannot safely head them — they carry
+   * a foreign (non-wizard) license notice, or are PHP files whose header can't be
+   * placed inside their tags. The installer already refuses to write these, so
+   * the verifier (whose fixing run is on by default) must not write them either.
+   */
+  skipped: string[];
 };
 
 export type HeaderVerifyOutcome =
@@ -123,7 +131,12 @@ export class HeaderVerifier {
       tokens: config.tokens ?? {},
     };
     const composer = new HeaderComposer(plan);
-    const files = await this.#scanner.scan();
+    // Re-scan with the same ignore scope the headers were installed under, so a
+    // project headed with `--headers-ignore` isn't re-headed into the excluded
+    // files on a fixing verify run.
+    const files = await this.#scanner.scan({
+      extraIgnores: config.headers.ignore ?? [],
+    });
 
     const report: HeaderVerifyReport = {
       licenseId: config.licenseId,
@@ -133,6 +146,7 @@ export class HeaderVerifier {
       missing: [],
       drifted: [],
       fixed: [],
+      skipped: [],
     };
 
     for (const file of files) {
@@ -154,6 +168,18 @@ export class HeaderVerifier {
     report: HeaderVerifyReport,
   ): Promise<void> {
     const existing = await this.#reader.read(file);
+    const source = new SourceFile(existing, file);
+
+    // A file the wizard wouldn't write in the first place must not be written
+    // here either: skip a foreign-notice or unplaceable file (when it isn't
+    // already one of ours) rather than stamp a header over it under fix mode.
+    if (
+      !composer.hasManaged(existing) &&
+      (source.hasForeignLicenseNotice() || !source.canPlaceHeader())
+    ) {
+      report.skipped.push(file);
+      return;
+    }
 
     if (!composer.hasManaged(existing)) {
       report.missing.push(file);

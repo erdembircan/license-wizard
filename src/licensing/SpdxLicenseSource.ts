@@ -8,6 +8,14 @@ const INDEX_URL =
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// How long to wait for an SPDX HTTP response before aborting it. Without a
+// bound, a stalled connection hangs on undici's ~5-minute default: a CI run
+// (`--license`, `--verify`) blocks for minutes, and the interactive search locks
+// up entirely (its in-flight guard never clears, so every later keystroke's
+// search is dropped behind the dead request). A short ceiling turns a stall into
+// the same clean one-line failure any other network error already produces.
+const DEFAULT_TIMEOUT_MS = 15 * 1000; // 15 seconds
+
 type SpdxIndexItem = {
   licenseId: string;
   name: string;
@@ -50,14 +58,20 @@ export class SpdxLicenseSource implements ILicenseSource {
   #cache: IndexCache | null = null;
   readonly #detailCache = new Map<string, DetailCacheEntry>();
   readonly #ttlMs: number;
+  readonly #timeoutMs: number;
 
   /**
    * Creates a new SpdxLicenseSource.
    *
    * @param ttlMs - How long the in-memory index cache is considered fresh, in milliseconds. Defaults to one hour.
+   * @param timeoutMs - How long to wait for an SPDX HTTP response before aborting it, in milliseconds. Defaults to 15 seconds.
    */
-  constructor(ttlMs: number = DEFAULT_TTL_MS) {
+  constructor(
+    ttlMs: number = DEFAULT_TTL_MS,
+    timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  ) {
     this.#ttlMs = ttlMs;
+    this.#timeoutMs = timeoutMs;
   }
 
   /**
@@ -69,6 +83,30 @@ export class SpdxLicenseSource implements ILicenseSource {
   }
 
   /**
+   * Fetches a URL with an abort timeout so a stalled connection fails fast
+   * instead of hanging on the platform default. A timeout is reported as a
+   * plain network error, the same clean one-line failure the callers already
+   * surface for any other fetch problem.
+   *
+   * @param url - The URL to fetch.
+   */
+  async #fetch(url: string): Promise<Response> {
+    try {
+      return await fetch(url, {
+        signal: AbortSignal.timeout(this.#timeoutMs),
+      });
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "TimeoutError") {
+        throw new Error(
+          `SPDX request timed out after ${this.#timeoutMs}ms: ${url}`,
+          { cause },
+        );
+      }
+      throw cause;
+    }
+  }
+
+  /**
    * Loads the SPDX license index, using the cache when it is still fresh.
    */
   async #loadIndex(): Promise<SpdxIndexItem[]> {
@@ -76,7 +114,7 @@ export class SpdxLicenseSource implements ILicenseSource {
       return this.#cache!.data;
     }
 
-    const response = await fetch(INDEX_URL);
+    const response = await this.#fetch(INDEX_URL);
     if (!response.ok) {
       throw new Error(
         `Failed to fetch SPDX license index: ${response.status} ${response.statusText}`,
@@ -210,7 +248,7 @@ export class SpdxLicenseSource implements ILicenseSource {
       throw new LicenseNotFoundError(licenseId);
     }
 
-    const response = await fetch(entry.detailsUrl);
+    const response = await this.#fetch(entry.detailsUrl);
     if (!response.ok) {
       throw new Error(
         `Failed to fetch license details for ${licenseId}: ${response.status} ${response.statusText}`,

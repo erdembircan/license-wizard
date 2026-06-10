@@ -259,6 +259,7 @@ classDiagram
       +text: string
       +type: "text"
       +defaultValue: string
+      +required?: boolean
       +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
 
@@ -275,6 +276,7 @@ classDiagram
       +text: string
       +type: "autocomplete"
       +defaultValue: string
+      +required?: boolean
       +search(query: string) Promise~AutocompleteOption[]~
       +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
     }
@@ -335,7 +337,7 @@ classDiagram
     }
 
     class SpdxLicenseSource {
-      +SpdxLicenseSource(ttlMs: number)
+      +SpdxLicenseSource(ttlMs?: number, timeoutMs?: number)
     }
 
     class LicenseIndexEntry {
@@ -362,6 +364,19 @@ classDiagram
 
     class LicenseTemplate {
       +LicenseTemplate(template: string)
+    }
+
+    class LicenseCopyright {
+      +LicenseCopyright(bodyTemplate: string, headerTemplate: string)
+      +fromDetail(detail: LicenseDetail)$ LicenseCopyright
+      +slots() TemplateSlot[]
+      +requiredSlots(fullHeader: boolean) TemplateSlot[]
+      +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
+    }
+
+    class resolveSlotEntries {
+      <<function>>
+      +resolveSlotEntries(slots: TemplateSlot[], entries: Map~string, string~) SlotResolution
     }
 
     class TemplateSlot {
@@ -423,6 +438,12 @@ classDiagram
 
     class HeaderConfig {
       +style: HeaderStyle
+      +ignore?: string[]
+    }
+
+    class parseWizardConfig {
+      <<function>>
+      +parseWizardConfig(value: unknown, fileName: string) WizardConfig
     }
 
     class ConfigTarget {
@@ -512,6 +533,7 @@ classDiagram
     class HeaderRenderer {
       +HeaderRenderer(plan: HeaderPlan)
       +supportsFull(detail: LicenseDetail)$ boolean
+      +fullHeaderHasUnfilledPlaceholders(detail: LicenseDetail, tokens: Record~string, string~)$ boolean
       +body() string
     }
 
@@ -564,6 +586,7 @@ classDiagram
     class HeaderInstallSummary {
       +written: string[]
       +unchanged: string[]
+      +skipped: string[]
     }
 
     class SourceFile {
@@ -571,6 +594,7 @@ classDiagram
       +extensionOf(path: string)$ string
       +commentStyleFor(extension: string)$ CommentStyle
       +hasManagedHeader() boolean
+      +canPlaceHeader() boolean
       +withoutManagedHeaders() SourceFile
       +withManagedHeader(block: string) SourceFile
       +toString() string
@@ -613,6 +637,7 @@ classDiagram
       +missing: string[]
       +drifted: HeaderDrift[]
       +fixed: string[]
+      +skipped: string[]
     }
 
     class HeaderDrift {
@@ -747,6 +772,9 @@ classDiagram
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
   LicenseTemplate --|> SpdxTemplate : extends
+  LicenseCopyright ..> LicenseTemplate : parses body and header with
+  LicenseCopyright ..> resolveSlotEntries : resolves with
+  SpdxTemplate ..> resolveSlotEntries : resolves with
   HeaderTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces
   SpdxTemplate ..> SlotResolution : produces

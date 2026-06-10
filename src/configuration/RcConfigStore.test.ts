@@ -112,6 +112,47 @@ describe("RcConfigStore", () => {
       expect(error).toBeInstanceOf(FileSystemReaderError);
       expect(error.cause).toBe(cause);
     });
+
+    it("rejects an empty object instead of masking a valid config elsewhere", async () => {
+      const store = new RcConfigStore();
+
+      const error = await store
+        .read(new FakeReader({ [RC_FILE]: "{}" }))
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(FileSystemReaderError);
+      expect(error.message).toContain(RC_FILE);
+    });
+
+    it("rejects a non-string token value, naming the file", async () => {
+      const store = new RcConfigStore();
+
+      const error = await store
+        .read(
+          new FakeReader({
+            [RC_FILE]: '{"licenseId":"MIT","tokens":{"<year>":2026}}',
+          }),
+        )
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(FileSystemReaderError);
+      expect(error.message).toContain("tokens");
+    });
+
+    it("rejects an unknown header style", async () => {
+      const store = new RcConfigStore();
+
+      const error = await store
+        .read(
+          new FakeReader({
+            [RC_FILE]: '{"licenseId":"MIT","headers":{"style":"medium"}}',
+          }),
+        )
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(FileSystemReaderError);
+      expect(error.message).toContain("headers.style");
+    });
   });
 
   describe("write", () => {

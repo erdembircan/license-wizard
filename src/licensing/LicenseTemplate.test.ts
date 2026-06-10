@@ -65,6 +65,19 @@ describe("LicenseTemplate", () => {
     it("returns no slots for an empty template", () => {
       expect(new LicenseTemplate("").slots()).toEqual([]);
     });
+
+    it("does not treat an angle-bracketed URL or email as a fillable slot", () => {
+      // GFDL/curl-style notices carry concrete URLs and emails in angle
+      // brackets; only the real placeholders should be offered as fields.
+      const template = new LicenseTemplate(
+        '<<var;name="copyright";original="Copyright (C) <year> <name> <http://fsf.org/> <daniel@haxx.se>";match=".*">>',
+      );
+
+      expect(template.slots()).toEqual([
+        { token: "<year>", label: "year" },
+        { token: "<name>", label: "name" },
+      ]);
+    });
   });
 
   describe("render", () => {
@@ -97,6 +110,21 @@ describe("LicenseTemplate", () => {
 
       expect(result).toContain("Copyright (c) <year> <copyright holders>");
       expect(result).toContain('Permission to use the "Software".');
+    });
+
+    it("never overwrites an angle-bracketed URL/email, even if keyed directly", () => {
+      const template = new LicenseTemplate(
+        '<<var;name="copyright";original="Copyright (C) <year> <http://fsf.org/>";match=".*">>',
+      );
+
+      // Even a value deliberately keyed to the URL token must not replace the
+      // upstream notice's own URL.
+      const result = template.render({
+        "<year>": "2026",
+        "<http://fsf.org/>": "https://evil.example",
+      });
+
+      expect(result).toBe("Copyright (C) 2026 <http://fsf.org/>");
     });
   });
 

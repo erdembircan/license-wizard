@@ -138,6 +138,7 @@ export type OutputMessage =
       licenseId: string;
       style: HeaderStyle;
       total: number;
+      skipped: number;
     }
   | {
       kind: "headersVerifyFixed";
@@ -146,6 +147,7 @@ export type OutputMessage =
       style: HeaderStyle;
       added: number;
       rewritten: number;
+      skipped: number;
     }
   | {
       kind: "headersVerifyMismatch";

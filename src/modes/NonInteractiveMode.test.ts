@@ -245,4 +245,99 @@ describe("NonInteractiveMode routing", () => {
     expect(callsOf(d)).toContain("error");
     expect(process.exitCode).toBe(1);
   });
+
+  it("fills a full header from header-only copyright supplied via --set", async () => {
+    const d = makeDeps();
+    const gpl: LicenseDetail = {
+      licenseId: "GPL-3.0-only",
+      name: "GNU GPL v3.0 only",
+      licenseText: "GPL text",
+      // No copyright in the body, but the header carries the placeholders.
+      standardLicenseTemplate: "",
+      standardLicenseHeader: "Copyright (C) <year> <name of author>",
+      standardLicenseHeaderTemplate:
+        '<<var;name="copyright";original="Copyright (C) <year> <name of author>";match=".+">>',
+    };
+    d.licenses = {
+      getLicense: async () => gpl,
+      suggest: async () => [],
+    } as unknown as LicenseRepository;
+
+    await build(
+      d,
+      flags({
+        license: "GPL-3.0-only",
+        headers: "full",
+        set: ["year=2026", "name of author=Jane Doe"],
+      }),
+    ).run();
+
+    // The header tokens resolve (not rejected as unknown), so the full header is
+    // written with the supplied copyright rather than refused.
+    expect(callsOf(d)).not.toContain("error");
+    expect(d.installer.install).toHaveBeenCalledOnce();
+    expect(d.headers.apply).toHaveBeenCalledOnce();
+    const [, style, tokens] = d.headers.apply.mock.calls[0];
+    expect(style).toBe("full");
+    expect(tokens).toMatchObject({
+      "<year>": "2026",
+      "<name of author>": "Jane Doe",
+    });
+  });
+
+  it("lists header-only copyright fields for --get-tokens", async () => {
+    const d = makeDeps();
+    const gpl: LicenseDetail = {
+      licenseId: "GPL-3.0-only",
+      name: "GNU GPL v3.0 only",
+      licenseText: "GPL text",
+      standardLicenseTemplate: "",
+      standardLicenseHeaderTemplate:
+        '<<var;name="copyright";original="Copyright (C) <year> <name of author>";match=".+">>',
+    };
+    d.licenses = {
+      getLicense: async () => gpl,
+      suggest: async () => [],
+    } as unknown as LicenseRepository;
+
+    await build(
+      d,
+      flags({ license: "GPL-3.0-only", "get-tokens": true }),
+    ).run();
+
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("tokens");
+  });
+
+  it("steers a header-only --set field to --headers full instead of calling it unknown", async () => {
+    const d = makeDeps();
+    const gpl: LicenseDetail = {
+      licenseId: "GPL-3.0-only",
+      name: "GNU GPL v3.0 only",
+      licenseText: "GPL text",
+      // No body copyright; `year` is a header-only field.
+      standardLicenseTemplate: "",
+      standardLicenseHeaderTemplate:
+        '<<var;name="copyright";original="Copyright (C) <year> <name of author>";match=".+">>',
+    };
+    d.licenses = {
+      getLicense: async () => gpl,
+      suggest: async () => [],
+    } as unknown as LicenseRepository;
+
+    // `--set year` without `--headers full`: the field is real (header), so it
+    // must not be reported as an unknown typo.
+    await build(
+      d,
+      flags({ license: "GPL-3.0-only", set: ["year=2026"] }),
+    ).run();
+
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(callsOf(d)).not.toContain("unknownFields");
+    const message = reporters.get(d)?.calls.find((c) => c.method === "error")
+      ?.arg as string;
+    expect(message).toContain("--headers full");
+    expect(process.exitCode).toBe(1);
+  });
 });

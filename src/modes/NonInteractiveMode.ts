@@ -3,13 +3,12 @@ import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import { HeaderTemplate } from "@headers/HeaderTemplate.js";
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
-import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
+import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { HeaderApplier } from "../HeaderApplier.js";
 import type {
   LicenseSelection,
@@ -121,10 +120,14 @@ export class NonInteractiveMode implements IWizardMode {
     // (possibly differently-cased) text the user typed, so the LICENSE, config,
     // and manifest fields all record the official SPDX id (e.g. `MIT`, not `mit`).
     const canonicalId = detail.licenseId;
-    const template = new LicenseTemplate(detail.standardLicenseTemplate ?? "");
+    // The customizable copyright spans both the LICENSE body and the header
+    // notice: some licenses (the GPL family) expose no copyright field in their
+    // body yet have `<year>`/`<name of author>` in their header, so tokens are
+    // discovered from, and resolved against, the union of the two.
+    const copyright = LicenseCopyright.fromDetail(detail);
 
     if (this.#flags["get-tokens"]) {
-      this.#reporter.tokens(canonicalId, template.slots());
+      this.#reporter.tokens(canonicalId, copyright.slots());
       return;
     }
 
@@ -146,17 +149,32 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    // Resolve the supplied fields against the license's copyright slots. With no
-    // --set values this is empty and the official text is generated unchanged.
+    // Resolve the supplied fields against only the slots the requested surfaces
+    // need — the LICENSE body always, the header too only for a `full` header —
+    // so customizing the LICENSE isn't forced to supply header-only fields, and
+    // a `full` run still requires the header's. With no --set values this is
+    // empty and the official text is generated unchanged.
+    const requireHeader = headerStyle === "full";
     let values: Record<string, string> = {};
     if (setEntries.size > 0) {
-      const resolution = template.resolveSlots(setEntries);
+      const resolution = copyright.resolveFor(setEntries, requireHeader);
 
       if (resolution.unknown.length > 0) {
+        // A field that's unknown to the body but valid once a full header is in
+        // play isn't a typo — it's a header-only field the user can't apply
+        // without --headers full. Calling it "unknown" (when --get-tokens lists
+        // it) is misleading, so steer them to the flag instead.
+        const headerOnly = requireHeader
+          ? []
+          : this.#headerOnlyFields(copyright, setEntries, resolution.unknown);
+        if (headerOnly.length === resolution.unknown.length) {
+          this.#failHeaderOnlyFields(canonicalId, headerOnly);
+          return;
+        }
         this.#reporter.unknownFields(
           canonicalId,
           resolution.unknown,
-          template.slots(),
+          copyright.requiredSlots(requireHeader),
         );
         this.#exitWithError();
         return;
@@ -176,43 +194,19 @@ export class NonInteractiveMode implements IWizardMode {
     // its notice's `<year>`/`<name of author>` could never be substituted).
     if (
       headerStyle === "full" &&
-      this.#fullHeaderHasUnfilledPlaceholders(detail, values)
+      HeaderRenderer.fullHeaderHasUnfilledPlaceholders(detail, values)
     ) {
-      this.#failUnfillableFullHeader(canonicalId, template);
+      this.#failUnfillableFullHeader(canonicalId, copyright);
       return;
     }
 
-    await this.#generateLicense(canonicalId, values, saveTarget, headerStyle);
-  }
-
-  /**
-   * Reports whether rendering the license's `full` header notice with the given
-   * copyright values would leave one of the header's own placeholder tokens
-   * unsubstituted — the signal that the notice can't be completed and would ship
-   * a literal `<year>` / `[name of copyright owner]` into every file.
-   *
-   * @param detail - The resolved detail of the license being generated.
-   * @param values - The resolved copyright slot values keyed by token.
-   */
-  #fullHeaderHasUnfilledPlaceholders(
-    detail: LicenseDetail,
-    values: Record<string, string>,
-  ): boolean {
-    if (!detail.standardLicenseHeaderTemplate) {
-      return false;
-    }
-    const headerSlots = new HeaderTemplate(
-      detail.standardLicenseHeaderTemplate,
-    ).slots();
-    if (headerSlots.length === 0) {
-      return false;
-    }
-    const body = new HeaderRenderer({
-      detail,
-      style: "full",
-      tokens: values,
-    }).body();
-    return headerSlots.some((slot) => body.includes(slot.token));
+    await this.#generateLicense(
+      canonicalId,
+      values,
+      saveTarget,
+      headerStyle,
+      this.#flags["headers-ignore"],
+    );
   }
 
   /**
@@ -221,13 +215,13 @@ export class NonInteractiveMode implements IWizardMode {
    * the license exposes them, or `--headers short` when it does not.
    *
    * @param licenseId - The canonical SPDX identifier being generated.
-   * @param template - The license's body template, whose slots are the fillable fields.
+   * @param copyright - The license's copyright, whose slots are the fillable fields.
    */
   #failUnfillableFullHeader(
     licenseId: string,
-    template: LicenseTemplate,
+    copyright: LicenseCopyright,
   ): void {
-    const slots = template.slots();
+    const slots = copyright.slots();
     if (slots.length > 0) {
       const fields = slots.map((slot) => slot.label).join(", ");
       this.#fail(
@@ -238,6 +232,42 @@ export class NonInteractiveMode implements IWizardMode {
         `${licenseId} exposes no copyright fields, so its full header notice would ship unfilled placeholders. Use --headers short instead.`,
       );
     }
+  }
+
+  /**
+   * Returns which of the supplied unknown fields are not typos but copyright
+   * fields that exist only on the header — known once a full header is in scope,
+   * yet unknown to the body that this (non-full) run generates. Comparing the
+   * body-scoped resolution against the full-header one isolates exactly those.
+   *
+   * @param copyright - The license's copyright across both surfaces.
+   * @param entries - The supplied `--set` fields keyed as typed.
+   * @param unknown - The fields the body-scoped resolution rejected.
+   */
+  #headerOnlyFields(
+    copyright: LicenseCopyright,
+    entries: Map<string, string>,
+    unknown: string[],
+  ): string[] {
+    const unknownToFull = copyright.resolveFor(entries, true).unknown;
+    return unknown.filter((field) => !unknownToFull.includes(field));
+  }
+
+  /**
+   * Reports that the supplied fields apply only to a license's header notice and
+   * can't be used without `--headers full`, rather than mislabelling them as
+   * unknown when `--get-tokens` would list them.
+   *
+   * @param licenseId - The canonical SPDX identifier being generated.
+   * @param fields - The header-only field names the user supplied.
+   */
+  #failHeaderOnlyFields(licenseId: string, fields: string[]): void {
+    const list = fields.join(", ");
+    const plural = fields.length > 1;
+    this.#fail(
+      `${list} ${plural ? "are" : "is"} only used in ${licenseId}'s header notice, not its license text. ` +
+        `Add --headers full to apply ${plural ? "them" : "it"}, or drop ${plural ? "them" : "it"}.`,
+    );
   }
 
   /**
@@ -262,14 +292,16 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    // The saved config is the source of truth, so its license and header style
-    // are applied as recorded rather than re-validated against selection flags.
-    // The empty save target leaves the config in the store it already lives in.
+    // The saved config is the source of truth, so its license, header style, and
+    // the ignore scope the headers were installed with are applied as recorded
+    // rather than re-validated against selection flags. The empty save target
+    // leaves the config in the store it already lives in.
     await this.#generateLicense(
       config.licenseId,
       config.tokens ?? {},
       "",
       config.headers?.style ?? "",
+      config.headers?.ignore ?? [],
     );
   }
 
@@ -394,12 +426,16 @@ export class NonInteractiveMode implements IWizardMode {
    *   to save nowhere.
    * @param headerStyle - The header style to also write into source files, or
    *   the empty string to write no headers.
+   * @param extraIgnores - Extra gitignore-style patterns scoping which files are
+   *   headed; persisted into the saved header config so verification reuses the
+   *   same scope.
    */
   async #generateLicense(
     licenseId: string,
     slotValues: Record<string, string>,
     saveTarget: string,
     headerStyle: "" | HeaderStyle,
+    extraIgnores: string[],
   ): Promise<void> {
     const selection: LicenseSelection = {
       licenseId,
@@ -408,13 +444,24 @@ export class NonInteractiveMode implements IWizardMode {
         saveTarget === ""
           ? { action: "none" }
           : { action: "save", target: saveTarget },
-      headers: headerStyle === "" ? undefined : { style: headerStyle },
+      headers:
+        headerStyle === ""
+          ? undefined
+          : {
+              style: headerStyle,
+              ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
+            },
     };
 
     if (this.#flags["dry-run"]) {
       await this.#preview(selection);
       if (headerStyle !== "") {
-        await this.#previewHeaders(licenseId, headerStyle, slotValues);
+        await this.#previewHeaders(
+          licenseId,
+          headerStyle,
+          slotValues,
+          extraIgnores,
+        );
       }
       return;
     }
@@ -427,7 +474,7 @@ export class NonInteractiveMode implements IWizardMode {
         licenseId,
         headerStyle,
         slotValues,
-        this.#flags["headers-ignore"],
+        extraIgnores,
       );
       if (report.total === 0) {
         this.#reporter.headersNoFiles(licenseId);
@@ -468,17 +515,19 @@ export class NonInteractiveMode implements IWizardMode {
    * @param licenseId - The SPDX identifier whose header would be written.
    * @param style - The header style (`short` or `full`).
    * @param tokens - Copyright tokens inherited from the license customization.
+   * @param extraIgnores - Extra gitignore-style patterns scoping the scan.
    */
   async #previewHeaders(
     licenseId: string,
     style: HeaderStyle,
     tokens: Record<string, string>,
+    extraIgnores: string[],
   ): Promise<void> {
     const preview = await this.#headers.preview(
       licenseId,
       style,
       tokens,
-      this.#flags["headers-ignore"],
+      extraIgnores,
     );
 
     if (preview === null) {

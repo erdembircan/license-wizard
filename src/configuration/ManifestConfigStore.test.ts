@@ -178,6 +178,23 @@ describe("ManifestConfigStore", () => {
       expect(error).toBeInstanceOf(FileSystemWriterError);
       expect(error.cause).toBe(cause);
     });
+
+    it("refuses a top-level-array manifest instead of silently dropping the field", async () => {
+      // `JSON.stringify` discards own properties set on an array, so writing into
+      // an array-top-level manifest would report success while persisting
+      // nothing — and the coordinator would then clear every other store. Abort
+      // before any of that happens.
+      const reader = new FakeReader({ [PACKAGE_JSON]: "[]" });
+      const writer = new FakeWriter();
+
+      const error = await makeStore()
+        .write(reader, writer, { licenseId: "MIT" })
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(FileSystemWriterError);
+      expect(error.message).toContain("not a JSON object");
+      expect(writer.written.has(PACKAGE_JSON)).toBe(false);
+    });
   });
 
   describe("clear", () => {

@@ -38,7 +38,7 @@ classDiagram
   }
 
   class SpdxLicenseSource {
-    +SpdxLicenseSource(ttlMs: number)
+    +SpdxLicenseSource(ttlMs?: number, timeoutMs?: number)
   }
 
   class LicenseIndexEntry {
@@ -65,6 +65,19 @@ classDiagram
 
   class LicenseTemplate {
     +LicenseTemplate(template: string)
+  }
+
+  class LicenseCopyright {
+    +LicenseCopyright(bodyTemplate: string, headerTemplate: string)
+    +fromDetail(detail: LicenseDetail)$ LicenseCopyright
+    +slots() TemplateSlot[]
+    +requiredSlots(fullHeader: boolean) TemplateSlot[]
+    +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
+  }
+
+  class resolveSlotEntries {
+    <<function>>
+    +resolveSlotEntries(slots: TemplateSlot[], entries: Map~string, string~) SlotResolution
   }
 
   class TemplateSlot {
@@ -96,3 +109,10 @@ classDiagram
   LicenseTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces
   SpdxTemplate ..> SlotResolution : produces
+  SpdxTemplate ..> resolveSlotEntries : resolves with
+  LicenseCopyright ..> LicenseTemplate : parses body and header with
+  LicenseCopyright ..> LicenseDetail : built from
+  LicenseCopyright ..> resolveSlotEntries : resolves with
+  LicenseCopyright ..> TemplateSlot : produces
+  LicenseCopyright ..> SlotResolution : produces
+  resolveSlotEntries ..> SlotResolution : produces

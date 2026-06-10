@@ -19,8 +19,11 @@ export type HeaderInstallSummary = {
   /** Files whose header was already correct and were left untouched. */
   unchanged: string[];
   /**
-   * Files left untouched because they already carry a foreign (non-wizard)
-   * license notice, which the wizard will not prepend a second header over.
+   * Files left untouched because the wizard cannot safely head them: they
+   * already carry a foreign (non-wizard) license notice it will not prepend a
+   * second header over, or they are PHP files whose first meaningful content is
+   * not a `<?php` tag, where a header would land outside any PHP tag and be
+   * served as page output.
    */
   skipped: string[];
 };
@@ -75,11 +78,16 @@ export class HeaderInstaller {
     for (const file of files) {
       const existing = await this.#reader.read(file);
 
+      const source = new SourceFile(existing, file);
+
       // Never prepend a second declaration over a file that already carries a
       // foreign license notice — that would leave it self-contradicting. The
       // wizard's own blocks are excluded by this test, so re-heading a file it
-      // wrote (or switching its license) still goes through below.
-      if (new SourceFile(existing, file).hasForeignLicenseNotice()) {
+      // wrote (or switching its license) still goes through below. Likewise skip
+      // a file the header can't be safely placed in (a PHP template that opens
+      // with HTML, where the block would leak to the page) rather than corrupt
+      // its output.
+      if (!source.canPlaceHeader() || source.hasForeignLicenseNotice()) {
         summary.skipped.push(file);
         done += 1;
         onProgress?.({ done, total: files.length, file });

@@ -132,6 +132,51 @@ describe("HeaderVerifier", () => {
     expect(fs.files.get("b.ts")).toContain("SPDX-License-Identifier: MIT");
   });
 
+  it("never writes a header over a foreign SPDX notice when fixing", async () => {
+    const foreign =
+      "// SPDX-License-Identifier: GPL-2.0-only\nexport const x = 1;\n";
+    const { fs, verifier } = setup({ "a.ts": foreign });
+
+    const outcome = await verifier.verify(headedConfig, { fix: true });
+
+    // The installer refuses to head such a file; the verifier must too — it is
+    // skipped, not "fixed" with a contradictory second declaration.
+    if (outcome.kind !== "disabled") {
+      expect(outcome.skipped).toEqual(["a.ts"]);
+      expect(outcome.fixed).toEqual([]);
+    }
+    expect(fs.files.get("a.ts")).toBe(foreign);
+  });
+
+  it("honours the persisted ignore scope, not re-heading excluded files", async () => {
+    const { fs, verifier } = setup({
+      "src/a.ts": headedFile("export const x = 1;\n", "src/a.ts"),
+      "generated/b.ts": "export const y = 2;\n",
+    });
+
+    // The headers were installed with `--headers-ignore generated/`, persisted
+    // into the config; a fixing verify must not write into the excluded file.
+    const outcome = await verifier.verify(
+      { licenseId: "MIT", headers: { style: "short", ignore: ["generated/"] } },
+      { fix: true },
+    );
+
+    expect(outcome.kind).toBe("match");
+    expect(fs.files.get("generated/b.ts")).toBe("export const y = 2;\n");
+  });
+
+  it("skips an HTML-first PHP file rather than leak the header to the page", async () => {
+    const htmlFirst = "<html>\n<body><?php echo 1; ?></body>\n</html>\n";
+    const { fs, verifier } = setup({ "page.php": htmlFirst });
+
+    const outcome = await verifier.verify(headedConfig, { fix: true });
+
+    if (outcome.kind !== "disabled") {
+      expect(outcome.skipped).toEqual(["page.php"]);
+    }
+    expect(fs.files.get("page.php")).toBe(htmlFirst);
+  });
+
   it("rewrites a drifted header (wrong license) when fixing", async () => {
     const drifted = new HeaderComposer({
       detail: { ...MIT, licenseId: "Apache-2.0" },

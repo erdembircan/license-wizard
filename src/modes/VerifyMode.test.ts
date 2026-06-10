@@ -178,6 +178,7 @@ describe("VerifyMode", () => {
       missing: [],
       drifted: [],
       fixed: [],
+      skipped: [],
     });
     const mode = new VerifyMode(
       licenseVerifier(matchReport),
@@ -204,6 +205,7 @@ describe("VerifyMode", () => {
       missing: ["a.ts"],
       drifted: [],
       fixed: [],
+      skipped: [],
     });
     const mode = new VerifyMode(
       licenseVerifier(matchReport),

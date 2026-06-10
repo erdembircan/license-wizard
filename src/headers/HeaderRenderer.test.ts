@@ -38,6 +38,50 @@ describe("HeaderRenderer", () => {
     });
   });
 
+  describe("fullHeaderHasUnfilledPlaceholders", () => {
+    // GPL-style: a full notice carrying its own copyright placeholders. The
+    // interactive flow discovers no *body* copyright fields for the GPL family,
+    // so the user is never asked for a year/name and the tokens stay empty —
+    // leaving the header's `<year>` / `<name of author>` unfillable.
+    const GPL: LicenseDetail = {
+      licenseId: "GPL-3.0-only",
+      name: "GNU General Public License v3.0 only",
+      licenseText: "...",
+      standardLicenseHeader: "Copyright (C) <year> <name of author>",
+      standardLicenseHeaderTemplate:
+        'Copyright (C) <<var;name="copyright";original="<year> <name of author>";match=".+">>',
+    };
+
+    it("is false for a license that publishes no standard header (MIT)", () => {
+      expect(HeaderRenderer.fullHeaderHasUnfilledPlaceholders(MIT, {})).toBe(
+        false,
+      );
+    });
+
+    it("is true when the full notice keeps placeholders no token fills", () => {
+      // With empty tokens, the GPL header's `<year>` / `<name of author>`
+      // survive into the rendered body.
+      expect(HeaderRenderer.fullHeaderHasUnfilledPlaceholders(GPL, {})).toBe(
+        true,
+      );
+    });
+
+    it("is true for an uncustomized Apache header (placeholders survive)", () => {
+      expect(HeaderRenderer.fullHeaderHasUnfilledPlaceholders(APACHE, {})).toBe(
+        true,
+      );
+    });
+
+    it("is false once the supplied tokens fill every placeholder", () => {
+      expect(
+        HeaderRenderer.fullHeaderHasUnfilledPlaceholders(APACHE, {
+          "[yyyy]": "2026",
+          "[name of copyright owner]": "Erdem Bircan",
+        }),
+      ).toBe(false);
+    });
+  });
+
   describe("short style", () => {
     it("emits just the identifier tag when no tokens are given", () => {
       const body = new HeaderRenderer({

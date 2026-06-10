@@ -1,7 +1,10 @@
 import type { IConfigStore } from "@configuration/interfaces/IConfigStore.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
-import type { WizardConfig } from "@configuration/WizardConfig.js";
+import {
+  parseWizardConfig,
+  type WizardConfig,
+} from "@configuration/WizardConfig.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -56,7 +59,9 @@ export class ManifestConfigStore implements IConfigStore {
       }
       const manifest = await this.#readManifest(reader);
       const field = manifest[CONFIG_FIELD];
-      return field === undefined ? null : (field as WizardConfig);
+      return field === undefined
+        ? null
+        : parseWizardConfig(field, this.#fileName);
     } catch (cause) {
       if (cause instanceof FileSystemReaderError) {
         throw cause;
@@ -137,8 +142,23 @@ export class ManifestConfigStore implements IConfigStore {
   async #readManifest(
     reader: IFileSystemReader,
   ): Promise<Record<string, unknown>> {
-    const raw = await reader.read(this.#fileName);
-    return JSON.parse(raw) as Record<string, unknown>;
+    const parsed = JSON.parse(await reader.read(this.#fileName)) as unknown;
+    // A JSON array, string, number, or null would silently lose the
+    // `license-wizard` field on reserialization (`JSON.stringify` drops own
+    // properties set on an array), so `write`/`clear` would report success while
+    // writing nothing — and `Config.write` would then clear every other store,
+    // stranding the config nowhere. Reject those up front, exactly as the sibling
+    // `JsonManifest.#parseObject` guard does for the `license` field.
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
+      throw new FileSystemWriterError(
+        `Cannot update ${this.#fileName}: its top level is not a JSON object.`,
+      );
+    }
+    return parsed as Record<string, unknown>;
   }
 
   async #writeManifest(

@@ -293,6 +293,7 @@ describe("MessageReporter", () => {
       missing: [],
       drifted: [],
       fixed: [],
+      skipped: [],
     });
 
     expect(sink.messages).toEqual([
@@ -302,6 +303,7 @@ describe("MessageReporter", () => {
         licenseId: "MIT",
         style: "short",
         total: 4,
+        skipped: 0,
       },
     ]);
   });
@@ -320,6 +322,7 @@ describe("MessageReporter", () => {
         { file: "e.ts", declares: null, reason: "outdated" },
       ],
       fixed: ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"],
+      skipped: [],
     });
 
     // added = missing.length (2); rewritten = drifted.length (3).
@@ -331,6 +334,7 @@ describe("MessageReporter", () => {
         style: "short",
         added: 2,
         rewritten: 3,
+        skipped: 0,
       },
     ]);
   });
@@ -357,6 +361,7 @@ describe("MessageReporter", () => {
         { file: "d.ts", declares: null, reason: "unknown" },
       ],
       fixed: [],
+      skipped: [],
     });
 
     expect(sink.messages).toEqual([

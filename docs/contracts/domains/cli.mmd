@@ -168,6 +168,7 @@ classDiagram
     +text: string
     +type: "text"
     +defaultValue: string
+    +required?: boolean
     +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
   }
 
@@ -184,6 +185,7 @@ classDiagram
     +text: string
     +type: "autocomplete"
     +defaultValue: string
+    +required?: boolean
     +search(query: string) Promise~AutocompleteOption[]~
     +onAnswer(answer: Answer, lifecycle: QuestionLifecycle) void
   }

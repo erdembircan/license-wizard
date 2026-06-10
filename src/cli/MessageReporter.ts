@@ -179,6 +179,7 @@ export class MessageReporter implements IReporter {
       licenseId: report.licenseId,
       style: report.style,
       total: report.total,
+      skipped: report.skipped.length,
     });
   }
 
@@ -190,6 +191,7 @@ export class MessageReporter implements IReporter {
       style: report.style,
       added: report.missing.length,
       rewritten: report.drifted.length,
+      skipped: report.skipped.length,
     });
   }
 

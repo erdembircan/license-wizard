@@ -61,6 +61,22 @@ describe("FlagParser", () => {
       const parser = new FlagParser(SELECTION_FLAGS);
       expect(parser.validate(["--license=MIT"])).toEqual([]);
     });
+
+    it("rejects an explicit empty inline value", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      // `--license=` (e.g. an unset `--license=$VAR` in CI) must fail fast rather
+      // than fall through to the interactive prompt.
+      expect(parser.validate(["--license="])[0]).toBe(
+        "The --license flag requires a value.",
+      );
+    });
+
+    it("rejects a whitespace-only inline value", () => {
+      const parser = new FlagParser(SELECTION_FLAGS);
+      expect(parser.validate(["--license=   "])[0]).toBe(
+        "The --license flag requires a value.",
+      );
+    });
   });
   describe("boolean flags", () => {
     it("returns the default value for a flag that is not present in args", () => {
