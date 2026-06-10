@@ -22,7 +22,7 @@ import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
-import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
+import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { HeaderApplier, HeaderApplyReport } from "../HeaderApplier.js";
 import type {
@@ -376,9 +376,10 @@ export class InteractiveMode implements IWizardMode {
     // Remember the detail so the later header-style question can tell whether
     // this license supports a `full` header without fetching it again.
     this.#interactiveHeaderDetail = detail;
-    const slots = new LicenseTemplate(
-      detail.standardLicenseTemplate ?? "",
-    ).slots();
+    // Discover the copyright fields from the body *and* the header notice: a
+    // license such as the GPL family has none in its body but has them in its
+    // header, and those must still be offered so a full header can be filled.
+    const slots = LicenseCopyright.fromDetail(detail).slots();
 
     if (slots.length === 0) {
       return;

@@ -337,7 +337,7 @@ classDiagram
     }
 
     class SpdxLicenseSource {
-      +SpdxLicenseSource(ttlMs: number)
+      +SpdxLicenseSource(ttlMs?: number, timeoutMs?: number)
     }
 
     class LicenseIndexEntry {
@@ -364,6 +364,18 @@ classDiagram
 
     class LicenseTemplate {
       +LicenseTemplate(template: string)
+    }
+
+    class LicenseCopyright {
+      +LicenseCopyright(bodyTemplate: string, headerTemplate: string)
+      +fromDetail(detail: LicenseDetail)$ LicenseCopyright
+      +slots() TemplateSlot[]
+      +resolve(entries: Map~string, string~) SlotResolution
+    }
+
+    class resolveSlotEntries {
+      <<function>>
+      +resolveSlotEntries(slots: TemplateSlot[], entries: Map~string, string~) SlotResolution
     }
 
     class TemplateSlot {
@@ -759,6 +771,9 @@ classDiagram
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
   LicenseTemplate --|> SpdxTemplate : extends
+  LicenseCopyright ..> LicenseTemplate : parses body and header with
+  LicenseCopyright ..> resolveSlotEntries : resolves with
+  SpdxTemplate ..> resolveSlotEntries : resolves with
   HeaderTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces
   SpdxTemplate ..> SlotResolution : produces

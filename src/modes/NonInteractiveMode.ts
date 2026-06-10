@@ -8,7 +8,7 @@ import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js"
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
-import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
+import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { HeaderApplier } from "../HeaderApplier.js";
 import type {
   LicenseSelection,
@@ -120,10 +120,14 @@ export class NonInteractiveMode implements IWizardMode {
     // (possibly differently-cased) text the user typed, so the LICENSE, config,
     // and manifest fields all record the official SPDX id (e.g. `MIT`, not `mit`).
     const canonicalId = detail.licenseId;
-    const template = new LicenseTemplate(detail.standardLicenseTemplate ?? "");
+    // The customizable copyright spans both the LICENSE body and the header
+    // notice: some licenses (the GPL family) expose no copyright field in their
+    // body yet have `<year>`/`<name of author>` in their header, so tokens are
+    // discovered from, and resolved against, the union of the two.
+    const copyright = LicenseCopyright.fromDetail(detail);
 
     if (this.#flags["get-tokens"]) {
-      this.#reporter.tokens(canonicalId, template.slots());
+      this.#reporter.tokens(canonicalId, copyright.slots());
       return;
     }
 
@@ -149,13 +153,13 @@ export class NonInteractiveMode implements IWizardMode {
     // --set values this is empty and the official text is generated unchanged.
     let values: Record<string, string> = {};
     if (setEntries.size > 0) {
-      const resolution = template.resolveSlots(setEntries);
+      const resolution = copyright.resolve(setEntries);
 
       if (resolution.unknown.length > 0) {
         this.#reporter.unknownFields(
           canonicalId,
           resolution.unknown,
-          template.slots(),
+          copyright.slots(),
         );
         this.#exitWithError();
         return;
@@ -177,7 +181,7 @@ export class NonInteractiveMode implements IWizardMode {
       headerStyle === "full" &&
       HeaderRenderer.fullHeaderHasUnfilledPlaceholders(detail, values)
     ) {
-      this.#failUnfillableFullHeader(canonicalId, template);
+      this.#failUnfillableFullHeader(canonicalId, copyright);
       return;
     }
 
@@ -196,13 +200,13 @@ export class NonInteractiveMode implements IWizardMode {
    * the license exposes them, or `--headers short` when it does not.
    *
    * @param licenseId - The canonical SPDX identifier being generated.
-   * @param template - The license's body template, whose slots are the fillable fields.
+   * @param copyright - The license's copyright, whose slots are the fillable fields.
    */
   #failUnfillableFullHeader(
     licenseId: string,
-    template: LicenseTemplate,
+    copyright: LicenseCopyright,
   ): void {
-    const slots = template.slots();
+    const slots = copyright.slots();
     if (slots.length > 0) {
       const fields = slots.map((slot) => slot.label).join(", ");
       this.#fail(

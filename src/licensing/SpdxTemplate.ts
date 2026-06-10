@@ -72,27 +72,7 @@ export abstract class SpdxTemplate {
    * @param entries - The supplied fields keyed as typed, mapped to their values.
    */
   resolveSlots(entries: Map<string, string>): SlotResolution {
-    const slots = this.slots();
-    const values: Record<string, string> = {};
-    const unknown: string[] = [];
-
-    for (const [field, value] of entries) {
-      const slot = this.#matchSlot(slots, field);
-      if (!slot) {
-        unknown.push(field);
-        continue;
-      }
-      // An empty or whitespace-only value is not a value: leaving it out keeps
-      // the slot in `missing`, so a customized license is never written with a
-      // blank copyright line that silently passed the "field is present" check.
-      if (value.trim() !== "") {
-        values[slot.token] = value;
-      }
-    }
-
-    const missing = slots.filter((slot) => !(slot.token in values));
-
-    return { values, missing, unknown };
+    return resolveSlotEntries(this.slots(), entries);
   }
 
   /**
@@ -113,18 +93,6 @@ export abstract class SpdxTemplate {
       )
       .replace(/<<beginOptional>>/g, "")
       .replace(/<<endOptional>>/g, "");
-  }
-
-  /**
-   * Finds the slot a supplied field refers to, matching either its label
-   * (case-insensitively) or its exact bracket token. Returns undefined when no
-   * slot matches.
-   */
-  #matchSlot(slots: TemplateSlot[], field: string): TemplateSlot | undefined {
-    const normalized = field.toLowerCase();
-    return slots.find(
-      (slot) => slot.token === field || slot.label.toLowerCase() === normalized,
-    );
   }
 
   /**
@@ -149,6 +117,45 @@ export abstract class SpdxTemplate {
       isFillableSlot(token) ? (values[token] ?? token) : token,
     );
   }
+}
+
+/**
+ * Matches supplied field/value entries against a set of copyright slots and
+ * partitions the outcome, independent of which template the slots came from. A
+ * field matches a slot by its label (case-insensitively, e.g. `year`) or by its
+ * exact bracket token (e.g. `<year>`); an empty or whitespace-only value is
+ * treated as unfilled and left among the missing slots, so a customized output
+ * is never written with a blank copyright line. Shared so a license's combined
+ * body-and-header slots (see {@link LicenseCopyright}) resolve identically to a
+ * single template's.
+ *
+ * @param slots - The copyright slots to resolve against.
+ * @param entries - The supplied fields keyed as typed, mapped to their values.
+ */
+export function resolveSlotEntries(
+  slots: TemplateSlot[],
+  entries: Map<string, string>,
+): SlotResolution {
+  const values: Record<string, string> = {};
+  const unknown: string[] = [];
+
+  for (const [field, value] of entries) {
+    const normalized = field.toLowerCase();
+    const slot = slots.find(
+      (s) => s.token === field || s.label.toLowerCase() === normalized,
+    );
+    if (!slot) {
+      unknown.push(field);
+      continue;
+    }
+    if (value.trim() !== "") {
+      values[slot.token] = value;
+    }
+  }
+
+  const missing = slots.filter((slot) => !(slot.token in values));
+
+  return { values, missing, unknown };
 }
 
 /**

@@ -280,11 +280,30 @@ describe("InteractiveMode", () => {
     expect(slots.every((q) => q.required === true)).toBe(true);
   });
 
-  it("does not offer the Full header style when the notice can't be filled with no copyright fields", async () => {
+  it("offers customization for a license whose copyright lives only in its header", async () => {
     const d = makeDeps();
     withLicense(d, GPL);
     const renderer = new FakeRenderer((q) => {
       if (q.id === "license") return "GPL-3.0-only";
+      if (q.id === "generationMode") return "standard";
+      if (q.id === "addHeaders") return false;
+      if (q.id === "saveConfig") return "skip";
+      return q.type === "confirm" ? false : "GPL-3.0-only";
+    });
+
+    await build(d, renderer, flags()).run();
+
+    // GPL has no body copyright, but its header does — so the Customize choice
+    // must still be offered (it was not, before tokens were unioned).
+    expect(renderer.rendered.some((q) => q.id === "generationMode")).toBe(true);
+  });
+
+  it("does not offer the Full header style when copyright was left standard", async () => {
+    const d = makeDeps();
+    withLicense(d, GPL);
+    const renderer = new FakeRenderer((q) => {
+      if (q.id === "license") return "GPL-3.0-only";
+      if (q.id === "generationMode") return "standard";
       if (q.id === "addHeaders") return true;
       if (q.id === "saveConfig") return "skip";
       return q.type === "confirm" ? false : "GPL-3.0-only";
@@ -292,11 +311,40 @@ describe("InteractiveMode", () => {
 
     await build(d, renderer, flags()).run();
 
-    expect(renderer.rendered.some((q) => q.id === "addHeaders")).toBe(true);
+    // Standard (no copyright supplied) → the header can't be filled → no Full.
     expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(false);
   });
 
-  it("offers the Full header style once the copyright is customized", async () => {
+  it("fills the Full header from header-only copyright once customized (GPL)", async () => {
+    const d = makeDeps();
+    withLicense(d, GPL);
+    const renderer = new FakeRenderer((q) => {
+      if (q.id === "license") return "GPL-3.0-only";
+      if (q.id === "generationMode") return "customize";
+      if (q.id === "addHeaders") return true;
+      if (q.id === "headerStyle") return "full";
+      if (q.id === "saveConfig") return "skip";
+      if (q.type === "text") return "2026";
+      return q.type === "confirm" ? false : "GPL-3.0-only";
+    });
+
+    await build(d, renderer, flags()).run();
+
+    // The Full option is now offered (the header can be filled)...
+    expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(true);
+    // ...and the header is applied as `full` with the supplied copyright tokens.
+    expect(d.headers.apply).toHaveBeenCalledOnce();
+    const call = d.headers.apply.mock.calls[0] as unknown as [
+      string,
+      string,
+      Record<string, string>,
+      string[],
+    ];
+    expect(call[1]).toBe("full");
+    expect(Object.values(call[2])).toContain("2026");
+  });
+
+  it("offers the Full header style once the copyright is customized (Apache)", async () => {
     const d = makeDeps();
     withLicense(d, APACHE);
     const renderer = new FakeRenderer((q) => {
