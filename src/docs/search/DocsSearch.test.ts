@@ -54,12 +54,15 @@ async function open(): Promise<void> {
   await flush();
 }
 
+// Comfortably longer than the palette's input debounce.
+const PAST_DEBOUNCE_MS = 360;
+
 /** Types into the field and waits out the input debounce so results settle. */
 async function type(value: string): Promise<void> {
   const input = document.querySelector<HTMLInputElement>(".docs-search-input")!;
   input.value = value;
   input.dispatchEvent(new Event("input"));
-  await new Promise((resolve) => setTimeout(resolve, 160));
+  await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE_MS));
 }
 
 beforeEach(() => {
@@ -172,7 +175,7 @@ describe("DocsSearch palette", () => {
       "Browse the docs",
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 160));
+    await new Promise((resolve) => setTimeout(resolve, PAST_DEBOUNCE_MS));
 
     // Once the debounce elapses, the search has run.
     expect(document.querySelector(".docs-search-group")).toBeNull();

@@ -22,8 +22,9 @@ const MAX_RESULTS = 8;
 const MIN_QUERY_LENGTH = 2;
 
 // Coalesce bursts of keystrokes into one search this many milliseconds after
-// the last keypress, so holding/typing fast doesn't re-rank on every key.
-const DEBOUNCE_MS = 120;
+// the last keypress, so a search runs only once the user pauses typing rather
+// than on every key.
+const DEBOUNCE_MS = 300;
 
 /**
  * Drives the documentation search palette: state, DOM, and all interaction
