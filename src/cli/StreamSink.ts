@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 import type { IOutputSink } from "@cli/interfaces/IOutputSink.js";
 import type { OutputMessage } from "@cli/OutputMessage.js";
 import type { ReportPresenter } from "@cli/ReportPresenter.js";

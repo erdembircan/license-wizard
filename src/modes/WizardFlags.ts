@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Erdem Bircan
+ * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
+ */
+
 /**
  * The resolved CLI flag values shared between {@link LicenseWizard} and the
  * run modes it delegates to. The shape mirrors the flag definitions built in
