@@ -160,6 +160,17 @@ export class NonInteractiveMode implements IWizardMode {
       const resolution = copyright.resolveFor(setEntries, requireHeader);
 
       if (resolution.unknown.length > 0) {
+        // A field that's unknown to the body but valid once a full header is in
+        // play isn't a typo — it's a header-only field the user can't apply
+        // without --headers full. Calling it "unknown" (when --get-tokens lists
+        // it) is misleading, so steer them to the flag instead.
+        const headerOnly = requireHeader
+          ? []
+          : this.#headerOnlyFields(copyright, setEntries, resolution.unknown);
+        if (headerOnly.length === resolution.unknown.length) {
+          this.#failHeaderOnlyFields(canonicalId, headerOnly);
+          return;
+        }
         this.#reporter.unknownFields(
           canonicalId,
           resolution.unknown,
@@ -221,6 +232,42 @@ export class NonInteractiveMode implements IWizardMode {
         `${licenseId} exposes no copyright fields, so its full header notice would ship unfilled placeholders. Use --headers short instead.`,
       );
     }
+  }
+
+  /**
+   * Returns which of the supplied unknown fields are not typos but copyright
+   * fields that exist only on the header — known once a full header is in scope,
+   * yet unknown to the body that this (non-full) run generates. Comparing the
+   * body-scoped resolution against the full-header one isolates exactly those.
+   *
+   * @param copyright - The license's copyright across both surfaces.
+   * @param entries - The supplied `--set` fields keyed as typed.
+   * @param unknown - The fields the body-scoped resolution rejected.
+   */
+  #headerOnlyFields(
+    copyright: LicenseCopyright,
+    entries: Map<string, string>,
+    unknown: string[],
+  ): string[] {
+    const unknownToFull = copyright.resolveFor(entries, true).unknown;
+    return unknown.filter((field) => !unknownToFull.includes(field));
+  }
+
+  /**
+   * Reports that the supplied fields apply only to a license's header notice and
+   * can't be used without `--headers full`, rather than mislabelling them as
+   * unknown when `--get-tokens` would list them.
+   *
+   * @param licenseId - The canonical SPDX identifier being generated.
+   * @param fields - The header-only field names the user supplied.
+   */
+  #failHeaderOnlyFields(licenseId: string, fields: string[]): void {
+    const list = fields.join(", ");
+    const plural = fields.length > 1;
+    this.#fail(
+      `${list} ${plural ? "are" : "is"} only used in ${licenseId}'s header notice, not its license text. ` +
+        `Add --headers full to apply ${plural ? "them" : "it"}, or drop ${plural ? "them" : "it"}.`,
+    );
   }
 
   /**

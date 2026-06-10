@@ -308,4 +308,36 @@ describe("NonInteractiveMode routing", () => {
     expect(d.installer.install).not.toHaveBeenCalled();
     expect(callsOf(d)).toContain("tokens");
   });
+
+  it("steers a header-only --set field to --headers full instead of calling it unknown", async () => {
+    const d = makeDeps();
+    const gpl: LicenseDetail = {
+      licenseId: "GPL-3.0-only",
+      name: "GNU GPL v3.0 only",
+      licenseText: "GPL text",
+      // No body copyright; `year` is a header-only field.
+      standardLicenseTemplate: "",
+      standardLicenseHeaderTemplate:
+        '<<var;name="copyright";original="Copyright (C) <year> <name of author>";match=".+">>',
+    };
+    d.licenses = {
+      getLicense: async () => gpl,
+      suggest: async () => [],
+    } as unknown as LicenseRepository;
+
+    // `--set year` without `--headers full`: the field is real (header), so it
+    // must not be reported as an unknown typo.
+    await build(
+      d,
+      flags({ license: "GPL-3.0-only", set: ["year=2026"] }),
+    ).run();
+
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(callsOf(d)).not.toContain("unknownFields");
+    const message = reporters.get(d)?.calls.find((c) => c.method === "error")
+      ?.arg as string;
+    expect(message).toContain("--headers full");
+    expect(process.exitCode).toBe(1);
+  });
 });

@@ -238,15 +238,24 @@ export class ReportPresenter {
     const unknownList = unknown
       .map((field) => this.#paint(c, "yellow", field))
       .join(", ");
-    const accepted =
-      slots.length === 0
-        ? `${licenseId} has no customizable copyright fields.`
-        : `${licenseId} accepts: ${slots
-            .map((slot) => this.#paint(c, "cyan", slot.label))
-            .join(", ")}.`;
+    const mark = this.#mark(c, FIZZLE, "red");
 
+    if (slots.length === 0) {
+      // The surface being generated (the license text) has no fields, but the
+      // license may still carry header-only ones, which `--get-tokens` lists —
+      // so don't claim it has none outright and contradict that listing.
+      return (
+        `${mark}${heading} ${unknownList}.\n` +
+        `${licenseId}'s license text has no customizable copyright fields. ` +
+        `Run with --get-tokens to see every field, including any used only by a --headers full notice.\n`
+      );
+    }
+
+    const accepted = `${licenseId} accepts: ${slots
+      .map((slot) => this.#paint(c, "cyan", slot.label))
+      .join(", ")}.`;
     return (
-      `${this.#mark(c, FIZZLE, "red")}${heading} ${unknownList}.\n` +
+      `${mark}${heading} ${unknownList}.\n` +
       `${accepted}\nRun with --get-tokens to list them.\n`
     );
   }
@@ -375,11 +384,7 @@ export class ReportPresenter {
       message.unchanged > 0
         ? ` ${message.unchanged} already bore the mark.`
         : "";
-    const skipped =
-      message.skipped > 0
-        ? ` Skipped ${message.skipped} the header couldn't be safely written into.`
-        : "";
-    return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}${skipped}\n`;
+    return `${mark}Inscribed the ${id} ${style} header across ${written} of ${message.total} source file(s).${unchanged}${this.#skippedNote(message.skipped)}\n`;
   }
 
   #headersDryRun(
@@ -450,7 +455,11 @@ export class ReportPresenter {
   ): string {
     const mark = this.#mark(c, SPARK, "green");
     const id = this.#paint(c, "bold", licenseId);
-    return `${mark}All ${total} source file(s) bear the expected ${id} ${style} header.${this.#skippedNote(skipped)}\n`;
+    // The success claim covers only the files that can carry the header; skipped
+    // files (foreign notice, unplaceable PHP) are reported separately and must
+    // not be counted among those that "bear" it.
+    const bearing = total - skipped;
+    return `${mark}All ${bearing} source file(s) bear the expected ${id} ${style} header.${this.#skippedNote(skipped)}\n`;
   }
 
   #headersVerifyFixed(
@@ -473,7 +482,7 @@ export class ReportPresenter {
    */
   #skippedNote(skipped: number): string {
     return skipped > 0
-      ? ` Skipped ${skipped} the header couldn't be safely written into.`
+      ? ` Skipped ${skipped} file(s) the header couldn't be safely written into.`
       : "";
   }
 

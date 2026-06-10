@@ -206,6 +206,25 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
+  it("does not claim a license has no fields when only the license text lacks them", () => {
+    // Empty `slots` here means the generated surface (the license body) has no
+    // fields; the message must not contradict `--get-tokens`, which may still
+    // list header-only ones.
+    expect(
+      present({
+        kind: "unknownFields",
+        channel: "err",
+        licenseId: "GPL-3.0-only",
+        unknown: ["nope"],
+        slots: [],
+      }),
+    ).toMatchInlineSnapshot(`
+      "Unknown copyright field(s) for GPL-3.0-only: nope.
+      GPL-3.0-only's license text has no customizable copyright fields. Run with --get-tokens to see every field, including any used only by a --headers full notice.
+      "
+    `);
+  });
+
   it("renders the license-not-found error with suggestions", () => {
     expect(
       present({
@@ -352,7 +371,7 @@ describe("ReportPresenter wording (plain text)", () => {
         skipped: 2,
       }),
     ).toMatchInlineSnapshot(`
-      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark. Skipped 2 the header couldn't be safely written into.
+      "Inscribed the MIT short header across 23 of 30 source file(s). 5 already bore the mark. Skipped 2 file(s) the header couldn't be safely written into.
       "
     `);
   });
@@ -493,7 +512,7 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
-  it("notes files skipped during a header verify match", () => {
+  it("notes files skipped during a header verify match and counts only those that bear it", () => {
     expect(
       present({
         kind: "headersVerifyMatch",
@@ -504,7 +523,7 @@ describe("ReportPresenter wording (plain text)", () => {
         skipped: 2,
       }),
     ).toMatchInlineSnapshot(`
-      "All 4 source file(s) bear the expected MIT short header. Skipped 2 the header couldn't be safely written into.
+      "All 2 source file(s) bear the expected MIT short header. Skipped 2 file(s) the header couldn't be safely written into.
       "
     `);
   });
