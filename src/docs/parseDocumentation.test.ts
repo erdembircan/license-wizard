@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 // The parser is plain ESM so the prerender script (also plain Node) and these
 // tests share exactly the same implementation.
-import { parseDocumentation, slugify } from "../../scripts/lib/parse-docs.mjs";
+import {
+  getSubsections,
+  parseDocumentation,
+  slugify,
+} from "../../scripts/lib/parse-docs.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const docSource = readFileSync(
@@ -68,5 +72,43 @@ describe("parseDocumentation", () => {
         expect(ids.has(match[1]!)).toBe(true);
       }
     }
+  });
+});
+
+describe("getSubsections", () => {
+  it("lists each ### heading as a slugged { id, title } in order", () => {
+    const md =
+      "## Section\n\nIntro.\n\n### First step\n\nA.\n\n### Second step\n\nB.";
+    expect(getSubsections(md)).toEqual([
+      { id: "first-step", title: "First step" },
+      { id: "second-step", title: "Second step" },
+    ]);
+  });
+
+  it("returns an empty array when a section has no subsections", () => {
+    expect(getSubsections("## Lonely\n\nJust a body, no headings.")).toEqual(
+      [],
+    );
+  });
+
+  it("ignores ### lines inside fenced code blocks", () => {
+    const md =
+      "## Shell\n\n### Real heading\n\n```bash\n### not a heading\necho hi\n```\n\n### Another";
+    expect(getSubsections(md)).toEqual([
+      { id: "real-heading", title: "Real heading" },
+      { id: "another", title: "Another" },
+    ]);
+  });
+
+  it("derives ids that match the heading anchors the renderer assigns", () => {
+    const { sections } = parseDocumentation(docSource);
+    const headers = sections.find((s) => s.id === "source-file-headers");
+    expect(getSubsections(headers!.markdown).map((s) => s.title)).toEqual([
+      "Two styles",
+      "What gets a header",
+      "Safe to re-run",
+      "Forcing a header into a skipped file",
+      "Removing headers",
+    ]);
   });
 });

@@ -6,7 +6,7 @@
  * the head differ (a built stylesheet vs. dev module scripts).
  */
 import { marked } from "marked";
-import { parseDocumentation, slugify } from "./parse-docs.mjs";
+import { getSubsections, parseDocumentation, slugify } from "./parse-docs.mjs";
 
 // Give every heading a slug id so the search palette can deep-link straight to
 // a subsection (e.g. /docs/source-file-headers/#two-styles). The slug logic is
@@ -41,6 +41,27 @@ function sidebar(sections, activeId, base) {
     <p class="docs-side-title">Documentation</p>
     <ul class="docs-side-list">${items}</ul>
   </nav>`;
+}
+
+/**
+ * Builds the in-page "On this page" navigation from a section's `###`
+ * subsections. It is a `<details>` so it works as a tappable disclosure on
+ * narrow screens and unfolds into a sticky right-hand column on wide ones (see
+ * the `.docs-toc` rules in style.css). Returns an empty string when the section
+ * has no subsections, so single-topic pages keep the plain two-column layout.
+ */
+function toc(subsections) {
+  if (subsections.length === 0) return "";
+  const items = subsections
+    .map(
+      (s) =>
+        `<li><a href="#${s.id}" class="docs-toc-link" data-toc-target="${s.id}">${s.title}</a></li>`,
+    )
+    .join("");
+  return `<details class="docs-toc" open>
+    <summary class="docs-toc-summary">On this page</summary>
+    <ul class="docs-toc-list">${items}</ul>
+  </details>`;
 }
 
 function pager(sections, index, base) {
@@ -88,6 +109,11 @@ export function renderPage({
 }) {
   const content = marked.parse(section.markdown);
   const rawMdPath = `${base}documentation.md`;
+  const subsections = getSubsections(section.markdown);
+  const tocHtml = toc(subsections);
+  // The third column only exists when there's a subsection nav to put in it;
+  // otherwise the shell stays a plain two-column (sidebar + content) grid.
+  const shellClass = subsections.length ? "docs-shell has-toc" : "docs-shell";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -125,8 +151,9 @@ export function renderPage({
         </div>
       </div>
     </header>
-    <div class="docs-shell">
+    <div class="${shellClass}">
       ${sidebar(sections, section.id, base)}
+      ${tocHtml}
       <main class="docs-main">
         <article class="doc-prose">${content}</article>
         ${pager(sections, index, base)}
