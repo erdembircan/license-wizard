@@ -226,6 +226,11 @@ export class LicenseWizard {
         default: false,
         description: "Show this help message and exit.",
       },
+      version: {
+        type: "boolean",
+        default: false,
+        description: "Print the version number and exit.",
+      },
       verify: {
         type: "boolean",
         default: false,
@@ -332,7 +337,8 @@ export class LicenseWizard {
 
   /**
    * Selects and runs the matching mode. `--help` prints the usage screen and
-   * exits. Otherwise the flags route to one of the three modes, in priority
+   * `--version` prints the version number, each exiting immediately (help takes
+   * priority when both are given). Otherwise the flags route to one of the three modes, in priority
    * order: header removal and other flag-driven flows run in the non-interactive
    * mode (`--remove-headers` and `--apply-config` take priority over the
    * selection flags), `--verify` runs the verify mode, and an invocation with no
@@ -342,6 +348,11 @@ export class LicenseWizard {
   async run(): Promise<Answer[]> {
     if (this.#flags.help) {
       this.#reporter.usage(this.#createFlagParser().formatHelp());
+      return [];
+    }
+
+    if (this.#flags.version) {
+      this.#reporter.version(pkg.version);
       return [];
     }
 

@@ -68,6 +68,13 @@ export interface IReporter {
   usage(options: string): void;
 
   /**
+   * Renders the program version line.
+   *
+   * @param version - The package version to display.
+   */
+  version(version: string): void;
+
+  /**
    * Renders the customizable copyright fields a license accepts, with a
    * copy-pasteable `--set` example. When the license has no fields, says so.
    *

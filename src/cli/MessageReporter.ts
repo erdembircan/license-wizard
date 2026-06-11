@@ -46,6 +46,10 @@ export class MessageReporter implements IReporter {
     this.#sink.emit({ kind: "usage", channel: "out", options });
   }
 
+  version(version: string): void {
+    this.#sink.emit({ kind: "version", channel: "out", version });
+  }
+
   tokens(licenseId: string, slots: TemplateSlot[]): void {
     this.#sink.emit({ kind: "tokens", channel: "out", licenseId, slots });
   }

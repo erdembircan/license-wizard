@@ -14,6 +14,7 @@ import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
+import pkg from "../../package.json" with { type: "json" };
 
 type GenerateCall = { licenseId: string; slotValues: Record<string, string> };
 
@@ -1636,6 +1637,34 @@ describe("LicenseWizard argument validation", () => {
 
     expect(sink.messages).toContainEqual(
       expect.objectContaining({ kind: "usage" }),
+    );
+  });
+});
+
+describe("LicenseWizard version flag", () => {
+  beforeEach(() => {
+    state.reset();
+  });
+
+  it("prints the package version and runs no mode with --version", async () => {
+    const answers = await lw(["--version"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "version", version: pkg.version }),
+    );
+    expect(answers).toEqual([]);
+    expect(state.rendered).toEqual([]);
+    expect(state.generateCalls).toEqual([]);
+  });
+
+  it("shows help, not the version, when both flags are given", async () => {
+    await lw(["--help", "--version"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({ kind: "usage" }),
+    );
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "version" }),
     );
   });
 });

@@ -58,6 +58,8 @@ export class ReportPresenter {
     switch (message.kind) {
       case "usage":
         return this.#usage(message.options, c);
+      case "version":
+        return this.#version(message.version, c);
       case "tokens":
         return this.#tokens(message.licenseId, message.slots, c);
       case "generated":
@@ -129,6 +131,11 @@ export class ReportPresenter {
     const name = this.#paint(c, ["bold", "blue"], this.#programName);
     const label = this.#paint(c, "bold", "Options:");
     return `${header} ${name} [options]\n\n${label}\n${options}\n`;
+  }
+
+  #version(version: string, c: boolean): string {
+    const name = this.#paint(c, ["bold", "blue"], this.#programName);
+    return `${name} ${version}\n`;
   }
 
   #tokens(licenseId: string, slots: TemplateSlot[], c: boolean): string {

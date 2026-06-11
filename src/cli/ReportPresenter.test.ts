@@ -35,6 +35,14 @@ describe("ReportPresenter wording (plain text)", () => {
     `);
   });
 
+  it("renders the version line", () => {
+    expect(present({ kind: "version", channel: "out", version: "1.0.0" }))
+      .toMatchInlineSnapshot(`
+      "license-wizard 1.0.0
+      "
+    `);
+  });
+
   it("renders the token listing with a --set example", () => {
     expect(
       present({
