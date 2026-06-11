@@ -21,7 +21,7 @@ const AGENT_DOCS_URL =
 // several lines and looks cramped on narrow terminals — so the header uses this
 // concise one-liner instead.
 export const BANNER_TAGLINE =
-  "Generate a correct LICENSE from the SPDX catalog and keep it in sync.";
+  "Generate the right LICENSE and keep your project in sync with it.";
 
 /**
  * Builds the CLI startup header: the wizard glyph followed by the package name,
