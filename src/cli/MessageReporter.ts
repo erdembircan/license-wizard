@@ -20,7 +20,7 @@ import type {
 } from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
-import type { VerifyReport } from "../LicenseVerifier.js";
+import type { VerifyReport } from "@application/LicenseVerifier.js";
 
 /**
  * Renders every CLI outcome into a semantic `OutputMessage` and emits it to a

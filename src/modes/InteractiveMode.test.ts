@@ -22,8 +22,8 @@ import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
-import type { HeaderApplier } from "../HeaderApplier.js";
-import type { LicenseInstaller } from "../LicenseInstaller.js";
+import type { HeaderApplier } from "@application/HeaderApplier.js";
+import type { LicenseInstaller } from "@application/LicenseInstaller.js";
 import type { WizardFlags } from "./WizardFlags.js";
 import { InteractiveMode } from "./InteractiveMode.js";
 

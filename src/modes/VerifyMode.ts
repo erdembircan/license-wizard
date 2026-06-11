@@ -9,7 +9,7 @@ import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import type { HeaderVerifier } from "@headers/HeaderVerifier.js";
-import type { LicenseVerifier } from "../LicenseVerifier.js";
+import type { LicenseVerifier } from "@application/LicenseVerifier.js";
 import type { IWizardMode } from "./IWizardMode.js";
 
 /**

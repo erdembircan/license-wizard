@@ -12,7 +12,10 @@ import type {
   HeaderVerifier,
   HeaderVerifyOutcome,
 } from "@headers/HeaderVerifier.js";
-import type { LicenseVerifier, VerifyOutcome } from "../LicenseVerifier.js";
+import type {
+  LicenseVerifier,
+  VerifyOutcome,
+} from "@application/LicenseVerifier.js";
 import { VerifyMode } from "./VerifyMode.js";
 
 /**

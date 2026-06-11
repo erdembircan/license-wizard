@@ -17,11 +17,11 @@ import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
-import type { HeaderApplier } from "../HeaderApplier.js";
+import type { HeaderApplier } from "@application/HeaderApplier.js";
 import type {
   LicenseSelection,
   LicenseInstaller,
-} from "../LicenseInstaller.js";
+} from "@application/LicenseInstaller.js";
 import type { IWizardMode } from "./IWizardMode.js";
 import type { WizardFlags } from "./WizardFlags.js";
 

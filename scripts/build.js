@@ -19,6 +19,7 @@ await esbuild.build({
   format: "esm",
   outfile: "dist/index.js",
   alias: {
+    "@application": path.join(srcDir, "application"),
     "@cli": path.join(srcDir, "cli"),
     "@licensing": path.join(srcDir, "licensing"),
     "@configuration": path.join(srcDir, "configuration"),
