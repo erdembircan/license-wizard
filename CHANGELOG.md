@@ -41,5 +41,6 @@ Initial public release.
 - **Readable output** — colorized output on a TTY, plain text otherwise, with
   license text hard-wrapped to 80 columns.
 - **`--help`** — print the complete flag list from the CLI.
+- **`--version`** — print the version number from the CLI.
 
 [1.0.0]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.0

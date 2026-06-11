@@ -62,6 +62,7 @@ classDiagram
   class IReporter {
     <<interface>>
     +usage(options: string) void
+    +version(version: string) void
     +tokens(licenseId: string, slots: TemplateSlot[]) void
     +generated(licenseId: string, savedTo: string) void
     +dryRun(report: DryRunReport) void

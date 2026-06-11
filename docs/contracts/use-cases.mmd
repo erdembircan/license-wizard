@@ -11,7 +11,13 @@ flowchart TD
     HELP -->|Yes| HU[Print usage + flag listing]
     HU --> H
 
-    HELP -->|No| RH{--remove-headers flag?<br/>takes priority over --headers}
+    HELP -->|No| VER{--version flag?}
+
+    %% ─── Version path ───
+    VER -->|Yes| VU[Print version number]
+    VU --> H
+
+    VER -->|No| RH{--remove-headers flag?<br/>takes priority over --headers}
 
     %% ─── Header removal path (standalone) ───
     RH -->|Yes| RHSCAN[Scan source files —<br/>same scope as writing,<br/>--headers-ignore honored]

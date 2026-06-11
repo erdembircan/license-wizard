@@ -58,6 +58,7 @@ export type HeaderDriftNote =
  */
 export type OutputMessage =
   | { kind: "usage"; channel: "out"; options: string }
+  | { kind: "version"; channel: "out"; version: string }
   | { kind: "tokens"; channel: "out"; licenseId: string; slots: TemplateSlot[] }
   | { kind: "generated"; channel: "out"; licenseId: string; savedTo: string }
   | {

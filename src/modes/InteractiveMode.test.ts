@@ -106,6 +106,7 @@ class FakeRenderer implements IRenderer {
 
 const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
   help: false,
+  version: false,
   verify: false,
   strict: false,
   "apply-config": false,

@@ -35,6 +35,15 @@ describe("MessageReporter", () => {
     ]);
   });
 
+  it("emits the version message carrying the version string", () => {
+    const { sink, reporter } = setup();
+    reporter.version("1.0.0");
+
+    expect(sink.messages).toEqual([
+      { kind: "version", channel: "out", version: "1.0.0" },
+    ]);
+  });
+
   it("emits a tokens message carrying the license and its slots", () => {
     const { sink, reporter } = setup();
     reporter.tokens("MIT", SLOTS);

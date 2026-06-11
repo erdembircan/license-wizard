@@ -13,6 +13,7 @@
  */
 export type WizardFlags = {
   help: boolean;
+  version: boolean;
   verify: boolean;
   strict: boolean;
   "apply-config": boolean;
