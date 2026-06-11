@@ -205,6 +205,7 @@ The complete flag list. Run `npx license-wizard --help` to print the same refere
 | Flag | Description |
 | --- | --- |
 | `--help` | Show the help message and exit. |
+| `--version` | Print the version number and exit. |
 | `--verify` | Check the `LICENSE` file, every manifest's `license` field, and (when configured) the source-file headers against your saved configuration, reconciling any drift. Standalone mode. |
 | `--strict` | With `--verify`, fail on any drift instead of reconciling it — for CI. |
 | `--apply-config` | Regenerate the `LICENSE`, manifest fields, and configured headers from the saved config; errors if none exists. Standalone — takes priority over selection flags; honors `--dry-run`. |
