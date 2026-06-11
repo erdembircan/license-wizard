@@ -45,9 +45,7 @@ export default function Agents() {
               nature for any agent.
             </p>
             <a
-              href="https://github.com/erdembircan/license-wizard#non-interactive-mode-scripting--agents"
-              target="_blank"
-              rel="noopener"
+              href={`${import.meta.env.BASE_URL}docs/scripting-agents/`}
               className="mt-7 inline-flex items-center gap-2 font-semibold text-brand-strong transition-colors hover:text-brand"
             >
               How agents drive it
