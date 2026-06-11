@@ -16,6 +16,13 @@ const TEXT_INDENT = 4;
 const AGENT_DOCS_URL =
   "https://erdembircan.github.io/license-wizard/documentation.md";
 
+// A short tagline shown under the name in the startup header. The package.json
+// description is deliberately long for npm search visibility, which wraps over
+// several lines and looks cramped on narrow terminals — so the header uses this
+// concise one-liner instead.
+export const BANNER_TAGLINE =
+  "Generate the right LICENSE and keep your project in sync with it.";
+
 /**
  * Builds the CLI startup header: the wizard glyph followed by the package name,
  * with the description and version on the two lines beneath it.
