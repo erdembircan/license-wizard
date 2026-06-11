@@ -7,7 +7,7 @@
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
-import type { ConfigSave } from "../LicenseInstaller.js";
+import type { ConfigSave } from "@application/LicenseInstaller.js";
 
 /**
  * The stream a message is destined for: `out` for informational output, `err`

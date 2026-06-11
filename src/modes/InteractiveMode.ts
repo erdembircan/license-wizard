@@ -30,12 +30,15 @@ import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
-import type { HeaderApplier, HeaderApplyReport } from "../HeaderApplier.js";
+import type {
+  HeaderApplier,
+  HeaderApplyReport,
+} from "@application/HeaderApplier.js";
 import type {
   ConfigSave,
   LicenseSelection,
   LicenseInstaller,
-} from "../LicenseInstaller.js";
+} from "@application/LicenseInstaller.js";
 import type { IWizardMode } from "./IWizardMode.js";
 import type { WizardFlags } from "./WizardFlags.js";
 

@@ -29,12 +29,12 @@ import { SpdxLicenseSource } from "@licensing/SpdxLicenseSource.js";
 import { HeaderApplier } from "./HeaderApplier.js";
 import { LicenseInstaller } from "./LicenseInstaller.js";
 import { LicenseVerifier } from "./LicenseVerifier.js";
-import { InteractiveMode } from "./modes/InteractiveMode.js";
-import type { IWizardMode } from "./modes/IWizardMode.js";
-import { NonInteractiveMode } from "./modes/NonInteractiveMode.js";
-import { VerifyMode } from "./modes/VerifyMode.js";
-import type { WizardFlags } from "./modes/WizardFlags.js";
-import pkg from "../package.json" with { type: "json" };
+import { InteractiveMode } from "../modes/InteractiveMode.js";
+import type { IWizardMode } from "../modes/IWizardMode.js";
+import { NonInteractiveMode } from "../modes/NonInteractiveMode.js";
+import { VerifyMode } from "../modes/VerifyMode.js";
+import type { WizardFlags } from "../modes/WizardFlags.js";
+import pkg from "../../package.json" with { type: "json" };
 
 const PACKAGE_JSON = "package.json";
 const COMPOSER_JSON = "composer.json";

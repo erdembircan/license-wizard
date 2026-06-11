@@ -19,6 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@application": path.resolve(__dirname, "src/application"),
       "@cli": path.resolve(__dirname, "src/cli"),
       "@licensing": path.resolve(__dirname, "src/licensing"),
       "@configuration": path.resolve(__dirname, "src/configuration"),

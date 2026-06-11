@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "paths": {
+      "@application/*": ["./src/application/*"],
       "@cli/*": ["./src/cli/*"],
       "@licensing/*": ["./src/licensing/*"],
       "@configuration/*": ["./src/configuration/*"],
