@@ -231,9 +231,7 @@ export default function Headers() {
             </ul>
 
             <a
-              href="https://github.com/erdembircan/license-wizard#source-file-headers"
-              target="_blank"
-              rel="noopener"
+              href={`${import.meta.env.BASE_URL}docs/source-file-headers/`}
               className="mt-7 inline-flex items-center gap-2 font-semibold text-brand-strong transition-colors hover:text-brand"
             >
               Source-file header docs
