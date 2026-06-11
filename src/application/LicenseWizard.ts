@@ -5,6 +5,7 @@
  */
 
 import type { Answer } from "@cli/Answer.js";
+import { BANNER_TAGLINE } from "@cli/Banner.js";
 import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { CliReporter } from "@cli/CliReporter.js";
 import { FlagParser } from "@cli/FlagParser.js";
@@ -141,7 +142,7 @@ export class LicenseWizard {
     if (this.#interactiveModeInstance === null) {
       const renderer = new ClackRenderer({
         name: pkg.name,
-        description: pkg.description,
+        description: BANNER_TAGLINE,
         version: pkg.version,
       });
       this.#interactiveModeInstance = new InteractiveMode(
