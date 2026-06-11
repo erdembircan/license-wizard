@@ -10,7 +10,12 @@ const ACTIVE_CLASS = "is-active";
 // Distance from the top of the viewport, in pixels, at which a heading counts
 // as "current" — matched to the headings' scroll-margin-top (6rem) plus a
 // little slack so a heading activates as it settles below the fixed topbar.
-const ACTIVATION_OFFSET = 104;
+const ACTIVATION_OFFSET = 108;
+
+// How long after the last scroll event a programmatic (smooth) anchor scroll
+// counts as settled. Smooth scrolling emits a steady stream of scroll events;
+// once they stop for this long, the animation is over.
+const SETTLE_MS = 150;
 
 /** Highlights the table-of-contents link whose heading is currently in view. */
 export function initDocsToc(): void {
@@ -42,29 +47,104 @@ export function initDocsToc(): void {
     }
   };
 
-  // The current heading is the last one whose top has scrolled above the
-  // activation line; near the bottom of the page nothing has, so we fall back
-  // to the first. Recomputed from live geometry whenever an observed heading
-  // crosses the activation band.
+  // The current heading, from live geometry: the last one whose top has
+  // scrolled above the activation line. At the very bottom of the page the
+  // final heading is current — with little content after it, it may never
+  // reach the line at all.
   const update = (): void => {
+    const doc = document.documentElement;
+    const atBottom =
+      window.scrollY + window.innerHeight >= doc.scrollHeight - 2;
+
     let current = tracked[0]!;
-    for (const pair of tracked) {
-      if (pair.heading.getBoundingClientRect().top <= ACTIVATION_OFFSET) {
-        current = pair;
-      } else {
-        break;
+    if (atBottom) {
+      current = tracked[tracked.length - 1]!;
+    } else {
+      for (const pair of tracked) {
+        if (pair.heading.getBoundingClientRect().top <= ACTIVATION_OFFSET) {
+          current = pair;
+        } else {
+          break;
+        }
       }
     }
     setActive(current.link);
   };
 
-  const observer = new IntersectionObserver(update, {
-    // A thin band at the activation line — observers fire as each heading
-    // enters or leaves it, which is exactly when the active entry can change.
-    rootMargin: `-${ACTIVATION_OFFSET}px 0px -70% 0px`,
-    threshold: [0, 1],
-  });
-  for (const { heading } of tracked) observer.observe(heading);
+  let frame = 0;
+  const schedule = (): void => {
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      update();
+    });
+  };
 
-  update();
+  /*
+   * Clicked (or deep-linked) entries win over the geometry. Clicking a link
+   * starts a smooth programmatic scroll (scroll-behavior: smooth), and a
+   * heading near the end of the page may be unable to reach the activation
+   * line at all — on tall viewports the page simply cannot scroll that far, so
+   * geometry alone would highlight the preceding entry. The clicked entry is
+   * therefore pinned immediately; while the animation's scroll events stream
+   * in, the spy is held off, and the pin dissolves once they settle. A real
+   * user gesture (wheel, touch) hands control back to the spy at once.
+   */
+  let pinned = false;
+  let settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const releasePin = (): void => {
+    pinned = false;
+    if (settleTimer !== null) {
+      clearTimeout(settleTimer);
+      settleTimer = null;
+    }
+  };
+
+  const pinTo = (id: string): void => {
+    const pair = tracked.find((p) => p.heading.id === id);
+    if (!pair) return;
+    pinned = true;
+    setActive(pair.link);
+  };
+
+  for (const { link, heading } of tracked) {
+    link.addEventListener("click", () => pinTo(heading.id));
+  }
+  // Covers the search palette deep-linking to a subsection on the same page.
+  window.addEventListener("hashchange", () =>
+    pinTo(window.location.hash.slice(1)),
+  );
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (pinned) {
+        if (settleTimer !== null) clearTimeout(settleTimer);
+        settleTimer = setTimeout(releasePin, SETTLE_MS);
+        return;
+      }
+      schedule();
+    },
+    { passive: true },
+  );
+
+  const onUserGesture = (): void => {
+    if (!pinned) return;
+    releasePin();
+    schedule();
+  };
+  window.addEventListener("wheel", onUserGesture, { passive: true });
+  window.addEventListener("touchstart", onUserGesture, { passive: true });
+
+  window.addEventListener("resize", schedule);
+
+  // Arriving with a subsection hash starts pinned to it; otherwise the spy
+  // decides from geometry.
+  const hashId = window.location.hash.slice(1);
+  if (hashId && tracked.some((p) => p.heading.id === hashId)) {
+    pinTo(hashId);
+  } else {
+    update();
+  }
 }
