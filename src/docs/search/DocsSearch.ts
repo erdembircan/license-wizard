@@ -14,6 +14,7 @@ import {
   tokenize,
   type SearchEntry,
 } from "./SearchRanking";
+import { initDocsToc } from "../toc/DocsToc";
 
 const MAX_RESULTS = 8;
 
@@ -428,8 +429,14 @@ export function initDocsSearch(): void {
   search.attachPanelKeys();
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initDocsSearch);
-} else {
+/** Boots the docs page enhancements: the search palette and the TOC scroll-spy. */
+function initDocs(): void {
   initDocsSearch();
+  initDocsToc();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initDocs);
+} else {
+  initDocs();
 }

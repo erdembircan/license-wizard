@@ -60,3 +60,30 @@ export function parseDocumentation(source) {
     })),
   };
 }
+
+/**
+ * Extracts the `###` subsections from a section's Markdown as ordered
+ * `{ id, title }` entries. Headings inside fenced code blocks are ignored, and
+ * each `id` is the same slug the renderer assigns to the heading — so an anchor
+ * to `#id` lands on it. Returns an empty array for sections with no subsections.
+ */
+export function getSubsections(markdown) {
+  const subsections = [];
+  let inFence = false;
+
+  for (const line of markdown.split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+
+    const h3 = line.match(/^### (.+)$/);
+    if (h3) {
+      const heading = h3[1].trim();
+      subsections.push({ id: slugify(heading), title: heading });
+    }
+  }
+
+  return subsections;
+}
