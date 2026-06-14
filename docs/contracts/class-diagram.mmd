@@ -494,7 +494,16 @@ classDiagram
     }
 
     class ManifestConfigStore {
+      <<abstract>>
       +ManifestConfigStore(fileName: string)
+    }
+
+    class NpmConfigStore {
+      +NpmConfigStore()
+    }
+
+    class ComposerConfigStore {
+      +ComposerConfigStore()
     }
 
     class Config {
@@ -819,6 +828,8 @@ classDiagram
   Config ..> FileSystemWriterError : throws
   RcConfigStore ..|> IConfigStore : implements
   ManifestConfigStore ..|> IConfigStore : implements
+  NpmConfigStore --|> ManifestConfigStore : extends
+  ComposerConfigStore --|> ManifestConfigStore : extends
   RcConfigStore ..> IFileSystemReader : uses
   RcConfigStore ..> IFileSystemWriter : uses
   RcConfigStore ..> FileSystemReaderError : throws
@@ -841,7 +852,8 @@ classDiagram
   LicenseWizard ..> NodeFileSystemWriter : creates
   LicenseWizard ..> Config : creates
   LicenseWizard ..> RcConfigStore : creates
-  LicenseWizard ..> ManifestConfigStore : creates
+  LicenseWizard ..> NpmConfigStore : creates
+  LicenseWizard ..> ComposerConfigStore : creates
   LicenseWizard ..> NpmManifest : creates
   LicenseWizard ..> ComposerManifest : creates
   LicenseWizard ..> ProjectManifestRepository : creates

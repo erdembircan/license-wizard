@@ -17,15 +17,15 @@ import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterErr
 const CONFIG_FIELD = "license-wizard";
 
 /**
- * Stores the wizard configuration inside a project manifest's
+ * Base for wizard configuration stored inside a project manifest's
  * `"license-wizard"` field (e.g. `package.json`, `composer.json`). Available
  * only when the manifest file exists; writing and clearing preserve every other
- * field in the file.
+ * field in the file. Subclasses fix the manifest file name.
  *
  * The store holds no file system access of its own — callers hand a reader or
  * writer to each operation that needs one.
  */
-export class ManifestConfigStore implements IConfigStore {
+export abstract class ManifestConfigStore implements IConfigStore {
   readonly id: string;
   readonly label: string;
   readonly #fileName: string;

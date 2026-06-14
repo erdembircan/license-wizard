@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
+import { NpmConfigStore } from "@configuration/NpmConfigStore.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
@@ -86,10 +86,16 @@ class ThrowingWriter implements IFileSystemWriter {
   }
 }
 
-const makeStore = (): ManifestConfigStore =>
-  new ManifestConfigStore(PACKAGE_JSON);
+const makeStore = (): NpmConfigStore => new NpmConfigStore();
 
-describe("ManifestConfigStore", () => {
+describe("NpmConfigStore", () => {
+  it("targets package.json for its id and label", () => {
+    const store = makeStore();
+
+    expect(store.id).toBe(PACKAGE_JSON);
+    expect(store.label).toBe(PACKAGE_JSON);
+  });
+
   describe("available", () => {
     it("is available when the manifest exists", async () => {
       const reader = new FakeReader({ [PACKAGE_JSON]: "{}" });

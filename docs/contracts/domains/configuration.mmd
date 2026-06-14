@@ -90,7 +90,16 @@ classDiagram
   }
 
   class ManifestConfigStore {
+    <<abstract>>
     +ManifestConfigStore(fileName: string)
+  }
+
+  class NpmConfigStore {
+    +NpmConfigStore()
+  }
+
+  class ComposerConfigStore {
+    +ComposerConfigStore()
   }
 
   class Config {
@@ -158,6 +167,8 @@ classDiagram
   Config ..> FileSystemWriterError : throws
   RcConfigStore ..|> IConfigStore : implements
   ManifestConfigStore ..|> IConfigStore : implements
+  NpmConfigStore --|> ManifestConfigStore : extends
+  ComposerConfigStore --|> ManifestConfigStore : extends
   RcConfigStore ..> parseWizardConfig : validates reads with
   ManifestConfigStore ..> parseWizardConfig : validates reads with
   parseWizardConfig ..> WizardConfig : produces

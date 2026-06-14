@@ -10,14 +10,15 @@ import { ClackRenderer } from "@cli/ClackRenderer.js";
 import { CliReporter } from "@cli/CliReporter.js";
 import { FlagParser } from "@cli/FlagParser.js";
 import type { IReporter } from "@cli/interfaces/IReporter.js";
+import { ComposerConfigStore } from "@configuration/ComposerConfigStore.js";
 import { ComposerManifest } from "@configuration/ComposerManifest.js";
 import { Config } from "@configuration/Config.js";
-import { ManifestConfigStore } from "@configuration/ManifestConfigStore.js";
 import { NodeFileSystemReader } from "@configuration/NodeFileSystemReader.js";
 import { NodeFileSystemWriter } from "@configuration/NodeFileSystemWriter.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IPathResolver } from "@configuration/interfaces/IPathResolver.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
+import { NpmConfigStore } from "@configuration/NpmConfigStore.js";
 import { NpmManifest } from "@configuration/NpmManifest.js";
 import { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { RcConfigStore } from "@configuration/RcConfigStore.js";
@@ -36,9 +37,6 @@ import { NonInteractiveMode } from "../modes/NonInteractiveMode.js";
 import { VerifyMode } from "../modes/VerifyMode.js";
 import type { WizardFlags } from "../modes/WizardFlags.js";
 import pkg from "../../package.json" with { type: "json" };
-
-const PACKAGE_JSON = "package.json";
-const COMPOSER_JSON = "composer.json";
 
 /**
  * Entry point and composition root for the license-wizard CLI application. It
@@ -86,8 +84,8 @@ export class LicenseWizard {
     this.#reader = reader;
     this.#writer = writer;
     const rcConfigStore = new RcConfigStore();
-    const npmConfigStore = new ManifestConfigStore(PACKAGE_JSON);
-    const composerConfigStore = new ManifestConfigStore(COMPOSER_JSON);
+    const npmConfigStore = new NpmConfigStore();
+    const composerConfigStore = new ComposerConfigStore();
     this.#saveTargetByFlag = {
       "save-rc": rcConfigStore.id,
       "save-npm": npmConfigStore.id,
