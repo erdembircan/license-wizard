@@ -154,6 +154,16 @@ classDiagram
     +licenseId: string | null
   }
 
+  class JsonManifestDocument {
+    +read(raw: string, fileName: string)$ JsonManifestDocument
+    +empty()$ JsonManifestDocument
+    +has(field: string) boolean
+    +get(field: string) unknown
+    +set(field: string, value: unknown) void
+    +delete(field: string) void
+    +serialize() string
+  }
+
   class JsonStyle {
     +detect(raw: string)$ JsonStyle
     +default()$ JsonStyle
@@ -194,8 +204,10 @@ classDiagram
   JsonManifest ..> IFileSystemWriter : uses
   JsonManifest ..> FileSystemReaderError : throws
   JsonManifest ..> FileSystemWriterError : throws
-  JsonManifest ..> JsonStyle : preserves formatting with
-  ManifestConfigStore ..> JsonStyle : preserves formatting with
+  JsonManifest ..> JsonManifestDocument : reads & writes through
+  ManifestConfigStore ..> JsonManifestDocument : reads & writes through
+  JsonManifestDocument ..> JsonStyle : preserves formatting with
+  JsonManifestDocument ..> FileSystemWriterError : throws
   ProjectManifestRepository ..> IProjectManifest : coordinates
   ProjectManifestRepository ..> IFileSystemReader : uses
   ProjectManifestRepository ..> IFileSystemWriter : uses
