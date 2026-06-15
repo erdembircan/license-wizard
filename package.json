@@ -1,6 +1,6 @@
 {
   "name": "license-wizard",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Interactive and scriptable CLI that generates a correct LICENSE file from the full SPDX catalog, syncs the chosen license into your package.json/composer.json, stamps source-file headers, and verifies everything stays in sync in CI.",
   "keywords": [
     "license",

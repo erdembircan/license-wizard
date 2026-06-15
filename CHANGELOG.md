@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [1.0.2] - 2026-06-16
+
+### Fixed
+
+- **Manifest indentation preserved on write** — writing the chosen license back into
+  `package.json` or `composer.json` no longer reformats the whole file. The writer now
+  detects each manifest's existing indentation (tabs or spaces, verbatim) and
+  trailing-newline style and reproduces it, so a single-field edit produces a
+  single-line diff. Minified manifests stay minified; files created from scratch use
+  two-space indentation with a trailing newline.
+
+### Changed
+
+- **Internal: unified JSON manifest round-trip** — the license-owning and
+  license-wizard-owning manifest writers now share a single `JsonManifestDocument`
+  value object for the read → mutate → style-preserving-write round-trip, collapsing
+  duplicated parse/guard logic. Manifest config stores were also split into dedicated
+  `NpmConfigStore`/`ComposerConfigStore` classes. No user-facing behavior change.
+
 ## [1.0.1] - 2026-06-11
 
 ### Changed
@@ -51,5 +70,6 @@ Initial public release.
 - **`--help`** — print the complete flag list from the CLI.
 - **`--version`** — print the version number from the CLI.
 
+[1.0.2]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.2
 [1.0.1]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.1
 [1.0.0]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.0
