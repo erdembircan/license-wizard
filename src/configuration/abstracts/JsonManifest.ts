@@ -7,7 +7,7 @@
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { IProjectManifest } from "@configuration/interfaces/IProjectManifest.js";
-import { JsonStyle } from "@configuration/JsonStyle.js";
+import { JsonManifestDocument } from "@configuration/JsonManifestDocument.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -62,8 +62,13 @@ export abstract class JsonManifest implements IProjectManifest {
         return null;
       }
 
-      const raw = await reader.read(this.#fileName);
-      const manifest = JSON.parse(raw) as Record<string, unknown>;
+      // A pure read that never reserializes, so it needs no object-guard: a
+      // manifest whose top level is not an object simply exposes no `license`
+      // field and yields null, rather than failing as it would for a write.
+      const manifest = JSON.parse(await reader.read(this.#fileName)) as Record<
+        string,
+        unknown
+      >;
       return this.extractLicenseId(manifest[LICENSE_FIELD]);
     } catch (cause) {
       if (cause instanceof FileSystemReaderError) {
@@ -96,13 +101,12 @@ export abstract class JsonManifest implements IProjectManifest {
         return;
       }
 
-      const raw = await reader.read(this.#fileName);
-      const manifest = this.#parseObject(raw);
-      manifest[LICENSE_FIELD] = licenseId;
-      await writer.write(
+      const document = JsonManifestDocument.read(
+        await reader.read(this.#fileName),
         this.#fileName,
-        JsonStyle.detect(raw).serialize(manifest),
       );
+      document.set(LICENSE_FIELD, licenseId);
+      await writer.write(this.#fileName, document.serialize());
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -129,38 +133,10 @@ export abstract class JsonManifest implements IProjectManifest {
     if (!(await this.exists(reader))) {
       return;
     }
-    this.#parseObject(await reader.read(this.#fileName));
-  }
-
-  /**
-   * Parses the manifest body and confirms it is a JSON object — the only shape a
-   * `"license"` field can be written into. A JSON array, string, number, or
-   * `null` would silently lose the field on reserialization (`JSON.stringify`
-   * drops own properties set on an array, for one), so those are rejected
-   * outright instead of being reported as a false success.
-   *
-   * @param raw - The raw manifest file contents.
-   */
-  #parseObject(raw: string): Record<string, unknown> {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (cause) {
-      throw new FileSystemWriterError(
-        `Cannot update ${this.#fileName}: it is not valid JSON.`,
-        cause,
-      );
-    }
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed)
-    ) {
-      throw new FileSystemWriterError(
-        `Cannot update ${this.#fileName}: its top level is not a JSON object.`,
-      );
-    }
-    return parsed as Record<string, unknown>;
+    JsonManifestDocument.read(
+      await reader.read(this.#fileName),
+      this.#fileName,
+    );
   }
 
   /**

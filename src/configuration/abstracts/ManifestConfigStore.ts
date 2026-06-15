@@ -11,7 +11,7 @@ import {
   parseWizardConfig,
   type WizardConfig,
 } from "@configuration/WizardConfig.js";
-import { JsonStyle } from "@configuration/JsonStyle.js";
+import { JsonManifestDocument } from "@configuration/JsonManifestDocument.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -64,11 +64,13 @@ export abstract class ManifestConfigStore implements IConfigStore {
       if (!(await reader.exists(this.#fileName))) {
         return null;
       }
-      const manifest = this.#parseObject(await reader.read(this.#fileName));
-      const field = manifest[CONFIG_FIELD];
-      return field === undefined
-        ? null
-        : parseWizardConfig(field, this.#fileName);
+      const document = JsonManifestDocument.read(
+        await reader.read(this.#fileName),
+        this.#fileName,
+      );
+      return document.has(CONFIG_FIELD)
+        ? parseWizardConfig(document.get(CONFIG_FIELD), this.#fileName)
+        : null;
     } catch (cause) {
       if (cause instanceof FileSystemReaderError) {
         throw cause;
@@ -96,18 +98,14 @@ export abstract class ManifestConfigStore implements IConfigStore {
     config: WizardConfig,
   ): Promise<void> {
     try {
-      let manifest: Record<string, unknown>;
-      let style: JsonStyle;
-      if (await reader.exists(this.#fileName)) {
-        const raw = await reader.read(this.#fileName);
-        manifest = this.#parseObject(raw);
-        style = JsonStyle.detect(raw);
-      } else {
-        manifest = {};
-        style = JsonStyle.default();
-      }
-      manifest[CONFIG_FIELD] = config;
-      await this.#writeManifest(writer, manifest, style);
+      const document = (await reader.exists(this.#fileName))
+        ? JsonManifestDocument.read(
+            await reader.read(this.#fileName),
+            this.#fileName,
+          )
+        : JsonManifestDocument.empty();
+      document.set(CONFIG_FIELD, config);
+      await writer.write(this.#fileName, document.serialize());
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -136,13 +134,15 @@ export abstract class ManifestConfigStore implements IConfigStore {
       if (!(await reader.exists(this.#fileName))) {
         return;
       }
-      const raw = await reader.read(this.#fileName);
-      const manifest = this.#parseObject(raw);
-      if (!(CONFIG_FIELD in manifest)) {
+      const document = JsonManifestDocument.read(
+        await reader.read(this.#fileName),
+        this.#fileName,
+      );
+      if (!document.has(CONFIG_FIELD)) {
         return;
       }
-      delete manifest[CONFIG_FIELD];
-      await this.#writeManifest(writer, manifest, JsonStyle.detect(raw));
+      document.delete(CONFIG_FIELD);
+      await writer.write(this.#fileName, document.serialize());
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -152,33 +152,5 @@ export abstract class ManifestConfigStore implements IConfigStore {
         cause,
       );
     }
-  }
-
-  #parseObject(raw: string): Record<string, unknown> {
-    const parsed = JSON.parse(raw) as unknown;
-    // A JSON array, string, number, or null would silently lose the
-    // `license-wizard` field on reserialization (`JSON.stringify` drops own
-    // properties set on an array), so `write`/`clear` would report success while
-    // writing nothing — and `Config.write` would then clear every other store,
-    // stranding the config nowhere. Reject those up front, exactly as the sibling
-    // `JsonManifest.#parseObject` guard does for the `license` field.
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed)
-    ) {
-      throw new FileSystemWriterError(
-        `Cannot update ${this.#fileName}: its top level is not a JSON object.`,
-      );
-    }
-    return parsed as Record<string, unknown>;
-  }
-
-  async #writeManifest(
-    writer: IFileSystemWriter,
-    manifest: Record<string, unknown>,
-    style: JsonStyle,
-  ): Promise<void> {
-    await writer.write(this.#fileName, style.serialize(manifest));
   }
 }
