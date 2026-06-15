@@ -154,6 +154,12 @@ classDiagram
     +licenseId: string | null
   }
 
+  class JsonStyle {
+    +detect(raw: string)$ JsonStyle
+    +default()$ JsonStyle
+    +serialize(value: unknown) string
+  }
+
   NodeFileSystemReader ..|> IFileSystemReader : implements
   NodeFileSystemReader ..|> IPathResolver : implements
   NodeFileSystemWriter ..|> IFileSystemWriter : implements
@@ -188,6 +194,8 @@ classDiagram
   JsonManifest ..> IFileSystemWriter : uses
   JsonManifest ..> FileSystemReaderError : throws
   JsonManifest ..> FileSystemWriterError : throws
+  JsonManifest ..> JsonStyle : preserves formatting with
+  ManifestConfigStore ..> JsonStyle : preserves formatting with
   ProjectManifestRepository ..> IProjectManifest : coordinates
   ProjectManifestRepository ..> IFileSystemReader : uses
   ProjectManifestRepository ..> IFileSystemWriter : uses
