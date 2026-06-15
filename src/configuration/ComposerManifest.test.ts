@@ -198,6 +198,20 @@ describe("ComposerManifest", () => {
       });
     });
 
+    it("preserves the file's existing four-space indentation", async () => {
+      const writer = new FakeWriter();
+      const reader = new FakeReader({
+        [COMPOSER_JSON]:
+          '{\n    "name": "vendor/pkg",\n    "license": "ISC"\n}\n',
+      });
+
+      await new ComposerManifest().writeLicense(reader, writer, "MIT");
+
+      expect(writer.written.get(COMPOSER_JSON)).toBe(
+        '{\n    "name": "vendor/pkg",\n    "license": "MIT"\n}\n',
+      );
+    });
+
     it("does not write when composer.json does not exist", async () => {
       const writer = new FakeWriter();
 

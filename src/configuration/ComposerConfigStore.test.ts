@@ -178,6 +178,30 @@ describe("ComposerConfigStore", () => {
       });
     });
 
+    it("preserves the manifest's existing four-space indentation", async () => {
+      const reader = new FakeReader({
+        [COMPOSER_JSON]: '{\n    "name": "my/app"\n}\n',
+      });
+      const writer = new FakeWriter();
+
+      await makeStore().write(reader, writer, { licenseId: "MIT" });
+
+      expect(writer.written.get(COMPOSER_JSON)).toBe(
+        '{\n    "name": "my/app",\n    "license-wizard": {\n        "licenseId": "MIT"\n    }\n}\n',
+      );
+    });
+
+    it("uses two-space indentation for a manifest created from scratch", async () => {
+      const reader = new FakeReader();
+      const writer = new FakeWriter();
+
+      await makeStore().write(reader, writer, { licenseId: "MIT" });
+
+      expect(writer.written.get(COMPOSER_JSON)).toBe(
+        '{\n  "license-wizard": {\n    "licenseId": "MIT"\n  }\n}\n',
+      );
+    });
+
     it("wraps writer failures in FileSystemWriterError", async () => {
       const cause = new Error("write error");
       const reader = new FakeReader({ [COMPOSER_JSON]: "{}" });

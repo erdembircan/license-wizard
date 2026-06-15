@@ -11,6 +11,7 @@ import {
   parseWizardConfig,
   type WizardConfig,
 } from "@configuration/WizardConfig.js";
+import { JsonStyle } from "@configuration/JsonStyle.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -63,7 +64,7 @@ export abstract class ManifestConfigStore implements IConfigStore {
       if (!(await reader.exists(this.#fileName))) {
         return null;
       }
-      const manifest = await this.#readManifest(reader);
+      const manifest = this.#parseObject(await reader.read(this.#fileName));
       const field = manifest[CONFIG_FIELD];
       return field === undefined
         ? null
@@ -95,11 +96,18 @@ export abstract class ManifestConfigStore implements IConfigStore {
     config: WizardConfig,
   ): Promise<void> {
     try {
-      const manifest = (await reader.exists(this.#fileName))
-        ? await this.#readManifest(reader)
-        : {};
+      let manifest: Record<string, unknown>;
+      let style: JsonStyle;
+      if (await reader.exists(this.#fileName)) {
+        const raw = await reader.read(this.#fileName);
+        manifest = this.#parseObject(raw);
+        style = JsonStyle.detect(raw);
+      } else {
+        manifest = {};
+        style = JsonStyle.default();
+      }
       manifest[CONFIG_FIELD] = config;
-      await this.#writeManifest(writer, manifest);
+      await this.#writeManifest(writer, manifest, style);
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -128,12 +136,13 @@ export abstract class ManifestConfigStore implements IConfigStore {
       if (!(await reader.exists(this.#fileName))) {
         return;
       }
-      const manifest = await this.#readManifest(reader);
+      const raw = await reader.read(this.#fileName);
+      const manifest = this.#parseObject(raw);
       if (!(CONFIG_FIELD in manifest)) {
         return;
       }
       delete manifest[CONFIG_FIELD];
-      await this.#writeManifest(writer, manifest);
+      await this.#writeManifest(writer, manifest, JsonStyle.detect(raw));
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
         throw cause;
@@ -145,10 +154,8 @@ export abstract class ManifestConfigStore implements IConfigStore {
     }
   }
 
-  async #readManifest(
-    reader: IFileSystemReader,
-  ): Promise<Record<string, unknown>> {
-    const parsed = JSON.parse(await reader.read(this.#fileName)) as unknown;
+  #parseObject(raw: string): Record<string, unknown> {
+    const parsed = JSON.parse(raw) as unknown;
     // A JSON array, string, number, or null would silently lose the
     // `license-wizard` field on reserialization (`JSON.stringify` drops own
     // properties set on an array), so `write`/`clear` would report success while
@@ -170,10 +177,8 @@ export abstract class ManifestConfigStore implements IConfigStore {
   async #writeManifest(
     writer: IFileSystemWriter,
     manifest: Record<string, unknown>,
+    style: JsonStyle,
   ): Promise<void> {
-    await writer.write(
-      this.#fileName,
-      `${JSON.stringify(manifest, null, 2)}\n`,
-    );
+    await writer.write(this.#fileName, style.serialize(manifest));
   }
 }

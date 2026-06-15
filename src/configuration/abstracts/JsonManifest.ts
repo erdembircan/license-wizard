@@ -7,6 +7,7 @@
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { IProjectManifest } from "@configuration/interfaces/IProjectManifest.js";
+import { JsonStyle } from "@configuration/JsonStyle.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 import { FileSystemWriterError } from "@configuration/errors/FileSystemWriterError.js";
 
@@ -100,7 +101,7 @@ export abstract class JsonManifest implements IProjectManifest {
       manifest[LICENSE_FIELD] = licenseId;
       await writer.write(
         this.#fileName,
-        `${JSON.stringify(manifest, null, 2)}\n`,
+        JsonStyle.detect(raw).serialize(manifest),
       );
     } catch (cause) {
       if (cause instanceof FileSystemWriterError) {
