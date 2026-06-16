@@ -24,6 +24,7 @@ export type WizardFlags = {
   "save-composer": boolean;
   "get-tokens": boolean;
   headers: string;
+  "headers-comment": string;
   "headers-ignore": string[];
   "force-header": string;
   "remove-headers": boolean;

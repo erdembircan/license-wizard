@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [Unreleased]
+
+### Added
+
+- **`--headers-comment <block|docblock>`** — choose the comment delimiter for stamped
+  source-file headers. `block` (the default) writes the REUSE-conventional `/* … */`
+  block comment; `docblock` writes a `/** … */` documentation comment placed flush
+  against the `<?php` open tag (or shebang). The docblock form is what PHPDoc and the
+  WordPress Coding Standards expect of a file's first comment, so a managed header no
+  longer trips the WPCS file-comment sniffs (`Squiz.Commenting.FileComment.WrongStyle`
+  and `Squiz.Commenting.BlockComment.HasEmptyLineBefore`). SPDX and REUSE recognise the
+  tag in either form. The choice is persisted (only when non-default) so `--verify`
+  reproduces the same block, and headers written before this option keep the `block`
+  style. ([#158](https://github.com/erdembircan/license-wizard/issues/158))
+
 ## [1.0.2] - 2026-06-16
 
 ### Fixed

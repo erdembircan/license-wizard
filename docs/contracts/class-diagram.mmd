@@ -36,9 +36,9 @@ classDiagram
 
   class HeaderApplier {
     +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader & IPathResolver, writer: IFileSystemWriter)
-    +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
-    +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
-    +forceApply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
+    +apply(licenseId: string, style: HeaderStyle, comment: HeaderComment, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
+    +preview(licenseId: string, style: HeaderStyle, comment: HeaderComment, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
+    +forceApply(licenseId: string, style: HeaderStyle, comment: HeaderComment, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
     +remove(extraIgnores: string[]) Promise~HeaderRemovalReport~
     +previewRemoval(extraIgnores: string[]) Promise~HeaderRemovalReport~
   }
@@ -466,6 +466,7 @@ classDiagram
 
     class HeaderConfig {
       +style: HeaderStyle
+      +comment?: HeaderComment
       +ignore?: string[]
     }
 
@@ -576,10 +577,15 @@ classDiagram
     class HeaderPlan {
       +detail: LicenseDetail
       +style: HeaderStyle
+      +comment: HeaderComment
       +tokens: Record~string, string~
     }
 
     class HeaderStyle {
+      <<union>>
+    }
+
+    class HeaderComment {
       <<union>>
     }
 
@@ -645,11 +651,11 @@ classDiagram
     class SourceFile {
       +SourceFile(content: string, path: string)
       +extensionOf(path: string)$ string
-      +commentStyleFor(extension: string)$ CommentStyle
+      +commentStyleFor(extension: string, comment?: HeaderComment)$ CommentStyle
       +hasManagedHeader() boolean
       +canPlaceHeader() boolean
       +withoutManagedHeaders() SourceFile
-      +withManagedHeader(block: string) SourceFile
+      +withManagedHeader(block: string, options?: object) SourceFile
       +toString() string
     }
 
@@ -904,8 +910,11 @@ classDiagram
   MessageReporter ..> HeaderVerifyReport : reads
   MessageReporter ..> HeaderDrift : reduces drift from
   HeaderConfig ..> HeaderStyle : style by
+  HeaderConfig ..> HeaderComment : comment by
   HeaderPlan ..> LicenseDetail : carries
   HeaderPlan ..> HeaderStyle : styled by
+  HeaderPlan ..> HeaderComment : commented as
+  SourceFile ..> HeaderComment : selects opener by
   HeaderRenderer ..> HeaderPlan : renders
   HeaderRenderer ..> HeaderTemplate : substitutes header template with
   HeaderComposer ..> HeaderPlan : composes

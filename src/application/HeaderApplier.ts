@@ -11,7 +11,11 @@ import type { IPathResolver } from "@configuration/interfaces/IPathResolver.js";
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
 import { HeaderInstaller } from "@headers/HeaderInstaller.js";
-import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
+import type {
+  HeaderComment,
+  HeaderPlan,
+  HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import { HeaderRemover } from "@headers/HeaderRemover.js";
 import { NodeFileTreeWalker } from "@headers/NodeFileTreeWalker.js";
 import { SourceFile } from "@headers/SourceFile.js";
@@ -160,12 +164,14 @@ export class HeaderApplier {
    *
    * @param licenseId - The SPDX identifier whose header is written.
    * @param style - The header style (`short` or `full`).
+   * @param comment - The comment delimiter (`block` or `docblock`).
    * @param tokens - Copyright tokens inherited from the license customization.
    * @param extraIgnores - Extra gitignore-style patterns to skip while scanning.
    */
   async apply(
     licenseId: string,
     style: HeaderStyle,
+    comment: HeaderComment,
     tokens: Record<string, string>,
     extraIgnores: string[],
   ): Promise<HeaderApplyReport> {
@@ -183,7 +189,7 @@ export class HeaderApplier {
       };
     }
 
-    const plan: HeaderPlan = { detail, style, tokens };
+    const plan: HeaderPlan = { detail, style, comment, tokens };
     const bar = new ProgressBar("  Inscribing headers");
     bar.start(files.length);
     const summary = await this.#installer.install(files, plan, (p) =>
@@ -210,12 +216,14 @@ export class HeaderApplier {
    *
    * @param licenseId - The SPDX identifier whose header would be written.
    * @param style - The header style (`short` or `full`).
+   * @param comment - The comment delimiter (`block` or `docblock`).
    * @param tokens - Copyright tokens inherited from the license customization.
    * @param extraIgnores - Extra gitignore-style patterns to skip while scanning.
    */
   async preview(
     licenseId: string,
     style: HeaderStyle,
+    comment: HeaderComment,
     tokens: Record<string, string>,
     extraIgnores: string[],
   ): Promise<HeaderPreview | null> {
@@ -226,7 +234,7 @@ export class HeaderApplier {
       return null;
     }
 
-    const composer = new HeaderComposer({ detail, style, tokens });
+    const composer = new HeaderComposer({ detail, style, comment, tokens });
     const writable: string[] = [];
     const skipped: string[] = [];
     for (const file of files) {
@@ -273,6 +281,7 @@ export class HeaderApplier {
    *
    * @param licenseId - The SPDX identifier whose header is written.
    * @param style - The header style (`short` or `full`).
+   * @param comment - The comment delimiter (`block` or `docblock`).
    * @param tokens - Copyright tokens inherited from the saved configuration.
    * @param file - The path to force the header into, relative to the working dir.
    * @param options - `dryRun` computes the outcome without writing.
@@ -280,6 +289,7 @@ export class HeaderApplier {
   async forceApply(
     licenseId: string,
     style: HeaderStyle,
+    comment: HeaderComment,
     tokens: Record<string, string>,
     file: string,
     options: { dryRun?: boolean } = {},
@@ -304,7 +314,7 @@ export class HeaderApplier {
     }
 
     const detail = await this.#licenses.getLicense(licenseId);
-    const composer = new HeaderComposer({ detail, style, tokens });
+    const composer = new HeaderComposer({ detail, style, comment, tokens });
     const existing = await this.#reader.read(file);
     const updated = composer.apply(existing, file);
 

@@ -67,10 +67,12 @@ const sourceFor = (detail: LicenseDetail): ILicenseSource => ({
 });
 
 const headedFile = (source: string, path: string): string =>
-  new HeaderComposer({ detail: MIT, style: "short", tokens: {} }).apply(
-    source,
-    path,
-  );
+  new HeaderComposer({
+    detail: MIT,
+    style: "short",
+    comment: "block",
+    tokens: {},
+  }).apply(source, path);
 
 const setup = (files: Record<string, string>) => {
   const fs = new FakeFs(files);
@@ -108,6 +110,38 @@ describe("HeaderVerifier", () => {
       expect(outcome.matched).toHaveLength(2);
       expect(outcome.missing).toEqual([]);
     }
+  });
+
+  it("matches a docblock-headed file against a docblock config", async () => {
+    const docHeaded = new HeaderComposer({
+      detail: MIT,
+      style: "short",
+      comment: "docblock",
+      tokens: {},
+    }).apply("<?php\necho 1;\n", "index.php");
+    const { verifier } = setup({ "index.php": docHeaded });
+
+    const outcome = await verifier.verify(
+      { licenseId: "MIT", headers: { style: "short", comment: "docblock" } },
+      { fix: false },
+    );
+
+    expect(outcome.kind).toBe("match");
+  });
+
+  it("rewrites a block-headed file to a docblock when the config switches style", async () => {
+    const blockHeaded = headedFile("<?php\necho 1;\n", "index.php");
+    const { fs, verifier } = setup({ "index.php": blockHeaded });
+
+    const outcome = await verifier.verify(
+      { licenseId: "MIT", headers: { style: "short", comment: "docblock" } },
+      { fix: true },
+    );
+
+    expect(outcome.kind).toBe("fixed");
+    const fixed = fs.files.get("index.php");
+    expect(fixed).toContain("<?php\n/**\n");
+    expect(fixed).not.toContain("<?php\n\n/*\n");
   });
 
   it("reports a mismatch under strict mode when a file lacks a header", async () => {
@@ -187,6 +221,7 @@ describe("HeaderVerifier", () => {
     const drifted = new HeaderComposer({
       detail: { ...MIT, licenseId: "Apache-2.0" },
       style: "short",
+      comment: "block",
       tokens: {},
     }).apply("export const x = 1;\n", "a.ts");
     const { fs, verifier } = setup({ "a.ts": drifted });
@@ -211,6 +246,7 @@ describe("HeaderVerifier", () => {
     const previous = new HeaderComposer({
       detail: { ...MIT, licenseId: "Apache-2.0" },
       style: "short",
+      comment: "block",
       tokens: {},
     }).apply("export const x = 1;\n", "a.ts");
     const { verifier } = setup({ "a.ts": previous });

@@ -51,9 +51,9 @@ classDiagram
 
   class HeaderApplier {
     +HeaderApplier(licenses: LicenseRepository, reader: IFileSystemReader & IPathResolver, writer: IFileSystemWriter)
-    +apply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
-    +preview(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
-    +forceApply(licenseId: string, style: HeaderStyle, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
+    +apply(licenseId: string, style: HeaderStyle, comment: HeaderComment, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderApplyReport~
+    +preview(licenseId: string, style: HeaderStyle, comment: HeaderComment, tokens: Record~string, string~, extraIgnores: string[]) Promise~HeaderPreview | null~
+    +forceApply(licenseId: string, style: HeaderStyle, comment: HeaderComment, tokens: Record~string, string~, file: string, options?: object) Promise~HeaderForceReport~
     +remove(extraIgnores: string[]) Promise~HeaderRemovalReport~
     +previewRemoval(extraIgnores: string[]) Promise~HeaderRemovalReport~
   }

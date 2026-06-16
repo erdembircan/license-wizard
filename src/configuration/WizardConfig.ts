@@ -4,10 +4,11 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
-import type { HeaderStyle } from "@headers/HeaderPlan.js";
+import type { HeaderComment, HeaderStyle } from "@headers/HeaderPlan.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 
 const HEADER_STYLES: readonly HeaderStyle[] = ["short", "full"];
+const HEADER_COMMENTS: readonly HeaderComment[] = ["block", "docblock"];
 
 /**
  * The persisted source-file header preference. Present only when the project
@@ -16,6 +17,13 @@ const HEADER_STYLES: readonly HeaderStyle[] = ["short", "full"];
  */
 export type HeaderConfig = {
   style: HeaderStyle;
+  /**
+   * The comment delimiter the headers were written with (from
+   * `--headers-comment`). Absent means the REUSE-conventional `block` style, so
+   * configs written before this option existed keep their original output.
+   * Persisted so verification reproduces the same block the writer wrote.
+   */
+  comment?: HeaderComment;
   /**
    * Extra gitignore-style patterns the headers were scoped to when installed
    * (from `--headers-ignore`). Persisted so verification re-derives the same set
@@ -90,6 +98,13 @@ export function parseWizardConfig(
     const style = (headers as Record<string, unknown>).style;
     if (!HEADER_STYLES.includes(style as HeaderStyle)) {
       return fail('"headers.style" must be "short" or "full"');
+    }
+    const comment = (headers as Record<string, unknown>).comment;
+    if (
+      comment !== undefined &&
+      !HEADER_COMMENTS.includes(comment as HeaderComment)
+    ) {
+      return fail('"headers.comment" must be "block" or "docblock"');
     }
     const ignore = (headers as Record<string, unknown>).ignore;
     if (

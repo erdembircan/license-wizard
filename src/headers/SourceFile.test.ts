@@ -16,10 +16,12 @@ const MIT: LicenseDetail = {
 };
 
 const headed = (source: string, path: string): string =>
-  new HeaderComposer({ detail: MIT, style: "short", tokens: {} }).apply(
-    source,
-    path,
-  );
+  new HeaderComposer({
+    detail: MIT,
+    style: "short",
+    comment: "block",
+    tokens: {},
+  }).apply(source, path);
 
 describe("SourceFile", () => {
   describe("extensionOf", () => {
@@ -31,6 +33,24 @@ describe("SourceFile", () => {
     it("returns empty for a dotfile or extensionless name", () => {
       expect(SourceFile.extensionOf(".gitignore")).toBe("");
       expect(SourceFile.extensionOf("Makefile")).toBe("");
+    });
+  });
+
+  describe("commentStyleFor", () => {
+    it("defaults to a plain block comment opener", () => {
+      expect(SourceFile.commentStyleFor(".ts").blockStart).toBe("/*");
+      expect(SourceFile.commentStyleFor(".php").blockStart).toBe("/*");
+    });
+
+    it("opens a docblock when asked, leaving the prefix and close unchanged", () => {
+      const style = SourceFile.commentStyleFor(".php", "docblock");
+      expect(style.blockStart).toBe("/**");
+      expect(style.linePrefix).toBe(" *");
+      expect(style.blockEnd).toBe(" */");
+    });
+
+    it("keeps the plain opener for the explicit block style", () => {
+      expect(SourceFile.commentStyleFor(".ts", "block").blockStart).toBe("/*");
     });
   });
 
@@ -188,9 +208,12 @@ describe("SourceFile", () => {
 
   describe("withManagedHeader", () => {
     const block = (path: string): string =>
-      new HeaderComposer({ detail: MIT, style: "short", tokens: {} }).block(
-        SourceFile.extensionOf(path),
-      );
+      new HeaderComposer({
+        detail: MIT,
+        style: "short",
+        comment: "block",
+        tokens: {},
+      }).block(SourceFile.extensionOf(path));
 
     it("inserts the block at the top of a plain file", () => {
       const result = new SourceFile("export const x = 1;\n", "a.ts")
@@ -209,6 +232,16 @@ describe("SourceFile", () => {
         .toString();
 
       expect(result.startsWith("#!/usr/bin/env node\n\n/*\n")).toBe(true);
+    });
+
+    it("places the block flush under the preamble when not separating it", () => {
+      const result = new SourceFile("<?php\necho 1;\n", "index.php")
+        .withManagedHeader(block("index.php"), { separateFromPreamble: false })
+        .toString();
+
+      // No blank line between the open tag and the block — what a docblock file
+      // comment needs — while the gap below the block is preserved.
+      expect(result.startsWith(`<?php\n${block("index.php")}\n\n`)).toBe(true);
     });
 
     it("replaces an existing managed header rather than stacking", () => {

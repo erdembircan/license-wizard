@@ -44,6 +44,7 @@ const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
   "save-composer": false,
   "get-tokens": false,
   headers: "",
+  "headers-comment": "",
   "headers-ignore": [],
   "force-header": "",
   "remove-headers": false,
@@ -195,6 +196,67 @@ describe("NonInteractiveMode routing", () => {
     expect(callsOf(d)).toContain("generated");
   });
 
+  it("writes headers as a docblock and persists the comment style with --headers-comment docblock", async () => {
+    const d = makeDeps();
+    await build(
+      d,
+      flags({
+        license: "MIT",
+        headers: "short",
+        "headers-comment": "docblock",
+        "save-rc": true,
+      }),
+    ).run();
+
+    // The comment style flows into the writer...
+    const [, , comment] = d.headers.apply.mock.calls[0];
+    expect(comment).toBe("docblock");
+    // ...and is persisted in the saved header config so verification reproduces it.
+    expect(d.installer.install.mock.calls[0][0]).toMatchObject({
+      headers: { style: "short", comment: "docblock" },
+    });
+  });
+
+  it("omits the comment field from the saved config for the default block style", async () => {
+    const d = makeDeps();
+    await build(
+      d,
+      flags({ license: "MIT", headers: "short", "save-rc": true }),
+    ).run();
+
+    const [, , comment] = d.headers.apply.mock.calls[0];
+    expect(comment).toBe("block");
+    // The default is not persisted, keeping configs (and older ones) unchanged.
+    const selection = d.installer.install.mock.calls[0][0];
+    expect(selection.headers).not.toHaveProperty("comment");
+  });
+
+  it("rejects an invalid --headers-comment value", async () => {
+    const d = makeDeps();
+    await build(
+      d,
+      flags({ license: "MIT", headers: "short", "headers-comment": "slashes" }),
+    ).run();
+
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(d.headers.apply).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("carries the saved comment style through apply-config", async () => {
+    const d = makeDeps({
+      savedConfig: {
+        licenseId: "MIT",
+        headers: { style: "short", comment: "docblock" },
+      },
+    });
+    await build(d, flags({ "apply-config": true })).run();
+
+    const [, , comment] = d.headers.apply.mock.calls[0];
+    expect(comment).toBe("docblock");
+  });
+
   it("fails apply-config when no saved config exists", async () => {
     const d = makeDeps({ savedConfig: null });
     await build(d, flags({ "apply-config": true })).run();
@@ -214,6 +276,7 @@ describe("NonInteractiveMode routing", () => {
     expect(d.headers.forceApply.mock.calls[0]).toEqual([
       "MIT",
       "short",
+      "block",
       {},
       "src/skipped.ts",
       { dryRun: false },
@@ -321,7 +384,7 @@ describe("NonInteractiveMode routing", () => {
       flags({ "force-header": "src/skipped.ts", "dry-run": true }),
     ).run();
 
-    expect(d.headers.forceApply.mock.calls[0][4]).toEqual({ dryRun: true });
+    expect(d.headers.forceApply.mock.calls[0][5]).toEqual({ dryRun: true });
     expect(callsOf(d)).toContain("headersForceApplied");
   });
 
@@ -418,8 +481,9 @@ describe("NonInteractiveMode routing", () => {
     expect(callsOf(d)).not.toContain("error");
     expect(d.installer.install).toHaveBeenCalledOnce();
     expect(d.headers.apply).toHaveBeenCalledOnce();
-    const [, style, tokens] = d.headers.apply.mock.calls[0];
+    const [, style, comment, tokens] = d.headers.apply.mock.calls[0];
     expect(style).toBe("full");
+    expect(comment).toBe("block");
     expect(tokens).toMatchObject({
       "<year>": "2026",
       "<name of author>": "Jane Doe",

@@ -56,10 +56,12 @@ const reader: IFileSystemReader & IPathResolver = {
 };
 
 const headed = (source: string, path: string): string =>
-  new HeaderComposer({ detail: DETAIL, style: "short", tokens: {} }).apply(
-    source,
-    path,
-  );
+  new HeaderComposer({
+    detail: DETAIL,
+    style: "short",
+    comment: "block",
+    tokens: {},
+  }).apply(source, path);
 
 function makeWriter(): {
   writer: IFileSystemWriter;
@@ -87,7 +89,7 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const report = await applier.apply("MIT", "short", {}, []);
+      const report = await applier.apply("MIT", "short", "block", {}, []);
 
       expect(report).toEqual({
         licenseId: "MIT",
@@ -110,7 +112,7 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const report = await applier.apply("MIT", "short", {}, []);
+      const report = await applier.apply("MIT", "short", "block", {}, []);
 
       expect(report.written).toBe(1);
       expect(report.skipped).toEqual(["foreign.ts"]);
@@ -121,7 +123,7 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const report = await applier.apply("MIT", "short", {}, []);
+      const report = await applier.apply("MIT", "short", "block", {}, []);
 
       expect(report).toEqual({
         licenseId: "MIT",
@@ -141,7 +143,7 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const preview = await applier.preview("MIT", "short", {}, []);
+      const preview = await applier.preview("MIT", "short", "block", {}, []);
 
       expect(preview?.files).toEqual(["a.ts"]);
       expect(preview?.skipped).toEqual([]);
@@ -158,7 +160,7 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const preview = await applier.preview("MIT", "short", {}, []);
+      const preview = await applier.preview("MIT", "short", "block", {}, []);
 
       expect(preview?.files).toEqual(["a.ts"]);
       expect(preview?.skipped).toEqual(["foreign.ts"]);
@@ -177,7 +179,7 @@ describe("HeaderApplier", () => {
       const { writer } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const preview = await applier.preview("MIT", "short", {}, []);
+      const preview = await applier.preview("MIT", "short", "block", {}, []);
 
       expect(preview?.files).toEqual(["forced.ts"]);
       expect(preview?.skipped).toEqual([]);
@@ -187,7 +189,7 @@ describe("HeaderApplier", () => {
       const { writer } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      expect(await applier.preview("MIT", "short", {}, [])).toBeNull();
+      expect(await applier.preview("MIT", "short", "block", {}, [])).toBeNull();
     });
   });
 
@@ -200,7 +202,13 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const report = await applier.forceApply("MIT", "short", {}, "foreign.ts");
+      const report = await applier.forceApply(
+        "MIT",
+        "short",
+        "block",
+        {},
+        "foreign.ts",
+      );
 
       expect(report.outcome).toBe("written");
       expect(report.file).toBe("foreign.ts");
@@ -214,7 +222,13 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const report = await applier.forceApply("MIT", "short", {}, "a.ts");
+      const report = await applier.forceApply(
+        "MIT",
+        "short",
+        "block",
+        {},
+        "a.ts",
+      );
 
       expect(report.outcome).toBe("unchanged");
       expect(writes).toEqual([]);
@@ -224,7 +238,13 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, reader, writer);
 
-      const report = await applier.forceApply("MIT", "short", {}, "nope.ts");
+      const report = await applier.forceApply(
+        "MIT",
+        "short",
+        "block",
+        {},
+        "nope.ts",
+      );
 
       expect(report.outcome).toBe("missing");
       expect(writes).toEqual([]);
@@ -241,6 +261,7 @@ describe("HeaderApplier", () => {
       const report = await applier.forceApply(
         "MIT",
         "short",
+        "block",
         {},
         "foreign.ts",
         {
@@ -260,6 +281,7 @@ describe("HeaderApplier", () => {
       const report = await applier.forceApply(
         "MIT",
         "short",
+        "block",
         {},
         "package.json",
       );
@@ -282,7 +304,13 @@ describe("HeaderApplier", () => {
       const { writer, writes } = makeWriter();
       const applier = new HeaderApplier(licenses, symlinkReader, writer);
 
-      const report = await applier.forceApply("MIT", "short", {}, "link/b.ts");
+      const report = await applier.forceApply(
+        "MIT",
+        "short",
+        "block",
+        {},
+        "link/b.ts",
+      );
 
       expect(report.outcome).toBe("outside");
       expect(writes).toEqual([]);

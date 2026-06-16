@@ -69,7 +69,14 @@ export class HeaderRenderer {
     if (headerSlots.length === 0) {
       return false;
     }
-    const body = new HeaderRenderer({ detail, style: "full", tokens }).body();
+    // The comment delimiter does not affect the rendered body, which is what
+    // this check inspects; any value satisfies the plan shape.
+    const body = new HeaderRenderer({
+      detail,
+      style: "full",
+      comment: "block",
+      tokens,
+    }).body();
     return headerSlots.some((slot) => body.includes(slot.token));
   }
 

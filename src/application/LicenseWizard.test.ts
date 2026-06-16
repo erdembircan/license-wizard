@@ -1325,6 +1325,7 @@ describe("LicenseWizard header removal", () => {
     new HeaderComposer({
       detail: { licenseId: "MIT", name: "MIT License", licenseText: "x" },
       style: "short",
+      comment: "block",
       tokens: {},
     }).apply(source, path);
 

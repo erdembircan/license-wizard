@@ -93,6 +93,7 @@ describe("HeaderRenderer", () => {
       const body = new HeaderRenderer({
         detail: MIT,
         style: "short",
+        comment: "block",
         tokens: {},
       }).body();
 
@@ -103,6 +104,7 @@ describe("HeaderRenderer", () => {
       const body = new HeaderRenderer({
         detail: APACHE,
         style: "short",
+        comment: "block",
         tokens: {
           "[yyyy]": "2026",
           "[name of copyright owner]": "Erdem Bircan",
@@ -119,6 +121,7 @@ describe("HeaderRenderer", () => {
       const body = new HeaderRenderer({
         detail: MIT,
         style: "short",
+        comment: "block",
         tokens: { "<year>": "2026", "<copyright holders>": "Erdem Bircan" },
       }).body();
 
@@ -134,6 +137,7 @@ describe("HeaderRenderer", () => {
       const body = new HeaderRenderer({
         detail: APACHE,
         style: "full",
+        comment: "block",
         tokens: {},
       }).body();
 
@@ -148,6 +152,7 @@ describe("HeaderRenderer", () => {
       const body = new HeaderRenderer({
         detail: APACHE,
         style: "full",
+        comment: "block",
         tokens: {
           "[yyyy]": "2026",
           "[name of copyright owner]": "Erdem Bircan",
@@ -162,6 +167,7 @@ describe("HeaderRenderer", () => {
       const body = new HeaderRenderer({
         detail: APACHE,
         style: "full",
+        comment: "block",
         tokens: {},
       }).body();
 

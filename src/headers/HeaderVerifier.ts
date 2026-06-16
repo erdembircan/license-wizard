@@ -134,6 +134,10 @@ export class HeaderVerifier {
     const plan: HeaderPlan = {
       detail,
       style: config.headers.style,
+      // An absent comment preference means the original REUSE-conventional
+      // `block` style, so headers written before this option existed still
+      // verify as a match rather than being reported as drift.
+      comment: config.headers.comment ?? "block",
       tokens: config.tokens ?? {},
     };
     const composer = new HeaderComposer(plan);

@@ -117,6 +117,7 @@ const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
   "save-composer": false,
   "get-tokens": false,
   headers: "",
+  "headers-comment": "",
   "headers-ignore": [],
   "force-header": "",
   "remove-headers": false,
@@ -345,11 +346,13 @@ describe("InteractiveMode", () => {
     const call = d.headers.apply.mock.calls[0] as unknown as [
       string,
       string,
+      string,
       Record<string, string>,
       string[],
     ];
     expect(call[1]).toBe("full");
-    expect(Object.values(call[2])).toContain("2026");
+    expect(call[2]).toBe("block");
+    expect(Object.values(call[3])).toContain("2026");
   });
 
   it("offers the Full header style once the copyright is customized (Apache)", async () => {
