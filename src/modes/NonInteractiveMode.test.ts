@@ -231,19 +231,6 @@ describe("NonInteractiveMode routing", () => {
     expect(selection.headers).not.toHaveProperty("comment");
   });
 
-  it("rejects --headers-comment supplied without --headers", async () => {
-    const d = makeDeps();
-    await build(
-      d,
-      flags({ license: "MIT", "headers-comment": "docblock" }),
-    ).run();
-
-    expect(d.installer.install).not.toHaveBeenCalled();
-    expect(d.headers.apply).not.toHaveBeenCalled();
-    expect(callsOf(d)).toContain("error");
-    expect(process.exitCode).toBe(1);
-  });
-
   it("rejects an invalid --headers-comment value", async () => {
     const d = makeDeps();
     await build(
@@ -410,15 +397,6 @@ describe("NonInteractiveMode routing", () => {
       licenseId: "MIT",
     });
     expect(callsOf(d)).toContain("generated");
-  });
-
-  it("requires --license when only a save flag is given", async () => {
-    const d = makeDeps();
-    await build(d, flags({ "save-rc": true })).run();
-
-    expect(d.installer.install).not.toHaveBeenCalled();
-    expect(callsOf(d)).toContain("error");
-    expect(process.exitCode).toBe(1);
   });
 
   it("lists tokens and skips generation for --get-tokens", async () => {

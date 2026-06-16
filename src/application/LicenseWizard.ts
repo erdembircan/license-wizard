@@ -38,6 +38,12 @@ import { VerifyMode } from "../modes/VerifyMode.js";
 import type { WizardFlags } from "../modes/WizardFlags.js";
 import pkg from "../../package.json" with { type: "json" };
 
+// Shared by every selection/output flag that has no meaning on its own: each one
+// describes a license, so the chosen license must be known. Declared once so the
+// six flags that depend on it can never drift apart in wording.
+const LICENSE_REQUIRED =
+  "The --license <spdx-id> flag is required when using --set, --headers, --get-tokens, or a --save-* flag.";
+
 /**
  * Entry point and composition root for the license-wizard CLI application. It
  * parses the CLI flags, wires up the shared application graph, and selects one
@@ -241,6 +247,11 @@ export class LicenseWizard {
         default: false,
         description:
           "With --verify, fail (exit non-zero) on any drift instead of reconciling it (for CI).",
+        requires: {
+          anyOf: ["verify"],
+          message:
+            "--strict has no effect without --verify. Add --verify, or drop --strict.",
+        },
       },
       "apply-config": {
         type: "boolean",
@@ -254,31 +265,56 @@ export class LicenseWizard {
         description: "Select a license by SPDX id (non-interactive).",
         placeholder: "<spdx-id>",
       },
+      // The selection/output flags below all describe what to do with a chosen
+      // license, so each requires --license. (The standalone flows that supply a
+      // license another way — --apply-config — or ignore these flags entirely —
+      // --remove-headers, --verify, --force-header — take priority and never reach
+      // the generation flow where this requirement is enforced.)
       set: {
         type: "list",
         default: [],
         description: 'Set a copyright field, e.g. "year=2026" (repeatable).',
         placeholder: "<field=value>",
+        requires: {
+          anyOf: ["license"],
+          message: LICENSE_REQUIRED,
+        },
       },
       "save-rc": {
         type: "boolean",
         default: false,
         description: "Save config to .licensewizardrc.json.",
+        requires: {
+          anyOf: ["license"],
+          message: LICENSE_REQUIRED,
+        },
       },
       "save-npm": {
         type: "boolean",
         default: false,
         description: "Save config to package.json (must exist).",
+        requires: {
+          anyOf: ["license"],
+          message: LICENSE_REQUIRED,
+        },
       },
       "save-composer": {
         type: "boolean",
         default: false,
         description: "Save config to composer.json (must exist).",
+        requires: {
+          anyOf: ["license"],
+          message: LICENSE_REQUIRED,
+        },
       },
       "get-tokens": {
         type: "boolean",
         default: false,
         description: "List the license's copyright fields and exit.",
+        requires: {
+          anyOf: ["license"],
+          message: LICENSE_REQUIRED,
+        },
       },
       headers: {
         type: "string",
@@ -286,6 +322,10 @@ export class LicenseWizard {
         description:
           'Also write SPDX license headers into source files: "short" (SPDX tags) or "full" (the license notice).',
         placeholder: "<short|full>",
+        requires: {
+          anyOf: ["license"],
+          message: LICENSE_REQUIRED,
+        },
       },
       "headers-comment": {
         type: "string",
@@ -293,7 +333,17 @@ export class LicenseWizard {
         description:
           'Comment style for headers: "block" (/*, default) or "docblock" (/**, for PHPDoc/WPCS).',
         placeholder: "<block|docblock>",
+        requires: {
+          anyOf: ["headers"],
+          message:
+            '--headers-comment has no effect without --headers. Add "--headers short" (or "full"), or drop --headers-comment.',
+        },
       },
+      // No `requires`: --headers-ignore is a deliberate silent no-op when nothing
+      // writes headers. Its requirement ("headers are being written") is
+      // multi-source — --headers, --remove-headers, or a saved config that opted
+      // into headers — and the config case can't be seen from the flags alone, so
+      // it is intentionally not modeled as a flag-on-flag dependency here.
       "headers-ignore": {
         type: "list",
         default: [],
@@ -301,6 +351,9 @@ export class LicenseWizard {
           "Extra gitignore-style pattern to skip when writing headers (repeatable).",
         placeholder: "<glob>",
       },
+      // No `requires`: --force-header depends on the *saved config* having headers
+      // enabled, not on another flag, so it is checked (and silently disregarded)
+      // against the config in NonInteractiveMode rather than resolved here.
       "force-header": {
         type: "string",
         default: "",
@@ -342,6 +395,27 @@ export class LicenseWizard {
   }
 
   /**
+   * Reports whether the run resolves to the selection-flag generation flow — the
+   * one flow that actually consumes `--license`, `--set`, `--headers`, and their
+   * companions. It is reached when a selection flag is present and no
+   * higher-priority standalone flow (`--remove-headers`, `--verify`,
+   * `--apply-config`, `--force-header`) owns the run instead. This gates
+   * flag-dependency resolution: the dependencies enforced here belong to flags
+   * this flow reads, so a standalone flow that deliberately ignores those flags is
+   * left untouched, and so is a bare interactive run (a flag riding along with it
+   * is its own concern — see #163).
+   */
+  #isGenerateRun(): boolean {
+    return (
+      this.#isNonInteractive() &&
+      !this.#flags["remove-headers"] &&
+      !this.#flags.verify &&
+      !this.#flags["apply-config"] &&
+      this.#flags["force-header"] === ""
+    );
+  }
+
+  /**
    * Selects and runs the matching mode. `--help` prints the usage screen and
    * `--version` prints the version number, each exiting immediately (help takes
    * priority when both are given). Otherwise the flags route to one of the three modes, in priority
@@ -365,11 +439,26 @@ export class LicenseWizard {
     // Reject typo'd or malformed flags before dispatching: an unknown flag must
     // not silently fall through to the interactive prompt, and a value-accepting
     // flag with no value must not crash the run it would otherwise drive.
-    const usageErrors = this.#createFlagParser().validate(this.#args);
+    const parser = this.#createFlagParser();
+    const usageErrors = parser.validate(this.#args);
     if (usageErrors.length > 0) {
       this.#reporter.error(usageErrors[0]);
       process.exitCode = 1;
       return [];
+    }
+
+    // Enforce the flags' declared dependencies in one place, before any mode
+    // runs — but only for the generation flow that actually consumes them; a flag
+    // accompanying a standalone flow that ignores it, or a bare interactive run,
+    // is handled separately (see #163). A flag supplied without the one it
+    // requires fails here rather than ad hoc inside a mode.
+    if (this.#isGenerateRun()) {
+      const dependencyError = parser.resolveDependencies(this.#flags);
+      if (dependencyError !== null) {
+        this.#reporter.error(dependencyError);
+        process.exitCode = 1;
+        return [];
+      }
     }
 
     try {

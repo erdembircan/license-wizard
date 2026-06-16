@@ -257,6 +257,96 @@ describe("FlagParser", () => {
     expect(parser.parse(["--verbose", "--unknown"])).toEqual({ verbose: true });
   });
 
+  describe("resolveDependencies", () => {
+    // A representative slice of the real flag graph: two flags that require
+    // another (one boolean, one with a shared message), plus the flags that
+    // satisfy them and one independent flag with no dependency.
+    const DEPENDENT_FLAGS = {
+      license: {
+        type: "string" as const,
+        default: "",
+        description: "License.",
+      },
+      headers: {
+        type: "string" as const,
+        default: "",
+        description: "Headers.",
+      },
+      verify: {
+        type: "boolean" as const,
+        default: false,
+        description: "Verify.",
+      },
+      set: {
+        type: "list" as const,
+        default: [] as string[],
+        description: "Set.",
+        requires: { anyOf: ["license"], message: "needs --license" },
+      },
+      "headers-comment": {
+        type: "string" as const,
+        default: "",
+        description: "Comment.",
+        requires: { anyOf: ["headers"], message: "needs --headers" },
+      },
+      strict: {
+        type: "boolean" as const,
+        default: false,
+        description: "Strict.",
+        requires: { anyOf: ["verify"], message: "needs --verify" },
+      },
+    };
+
+    const resolve = (args: string[]) => {
+      const parser = new FlagParser(DEPENDENT_FLAGS);
+      return parser.resolveDependencies(parser.parse(args));
+    };
+
+    it("returns null when no flag is supplied", () => {
+      expect(resolve([])).toBeNull();
+    });
+
+    it("returns null when a flag with no dependency is supplied alone", () => {
+      expect(resolve(["--license", "MIT"])).toBeNull();
+    });
+
+    it("reports a list flag supplied without the flag it requires", () => {
+      expect(resolve(["--set", "year=2026"])).toBe("needs --license");
+    });
+
+    it("is satisfied once the required flag is also supplied", () => {
+      expect(resolve(["--set", "year=2026", "--license", "MIT"])).toBeNull();
+    });
+
+    it("reports a string flag supplied without the flag it requires", () => {
+      expect(resolve(["--headers-comment", "docblock"])).toBe(
+        "needs --headers",
+      );
+    });
+
+    it("is satisfied once the required string flag is non-empty", () => {
+      expect(
+        resolve(["--headers-comment", "docblock", "--headers", "short"]),
+      ).toBeNull();
+    });
+
+    it("reports a boolean flag supplied without the flag it requires", () => {
+      expect(resolve(["--strict"])).toBe("needs --verify");
+    });
+
+    it("is satisfied once the required boolean flag is set", () => {
+      expect(resolve(["--strict", "--verify"])).toBeNull();
+    });
+
+    it("returns the first unmet dependency in declared order", () => {
+      // Both --set (needs --license) and --strict (needs --verify) are unmet;
+      // --set is declared first, so its message is the one returned.
+      expect(resolve(["--strict", "--set", "year=2026"])).toBe(
+        "needs --license",
+      );
+    });
+  });
+
   describe("formatHelp", () => {
     it("lists every flag with its description", () => {
       const parser = new FlagParser({

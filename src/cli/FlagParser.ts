@@ -24,6 +24,15 @@ type FlagDefinition<T extends FlagType = FlagType> = {
    * `list` flags the placeholder is suffixed with `...` to signal repeatability.
    */
   placeholder?: string;
+  /**
+   * This flag's hard dependency: it has effect only when at least one of the
+   * named flags in `anyOf` is also active. Supplying this flag with none of them
+   * present is a usage error carrying `message`. Declaring the dependency here —
+   * alongside the flag itself — keeps "what a flag requires" in the one place the
+   * flag is defined, rather than scattered across the call sites that consume it.
+   * A flag whose missing dependency is a deliberate silent no-op simply omits this.
+   */
+  requires?: { anyOf: string[]; message: string };
 };
 
 type FlagDefinitions = Record<string, FlagDefinition>;
@@ -180,6 +189,56 @@ export class FlagParser<T extends FlagDefinitions> {
     }
 
     return errors;
+  }
+
+  /**
+   * Resolves the flags' hard dependencies against each other and returns the
+   * first unmet one's message, in the order the flags are defined, or null when
+   * every supplied flag's requirement is satisfied. A flag declares its
+   * dependency through its `requires` definition; it is unmet when the flag is
+   * active yet none of the flags it requires is. Centralizing the check here —
+   * where the flags and their requirements are defined — means "this flag needs
+   * that one" is resolved one consistent way rather than ad hoc at each call site.
+   *
+   * @param flags - The resolved flag values, as returned by {@link parse}.
+   */
+  resolveDependencies(flags: ParsedFlags<T>): string | null {
+    const values = flags as Record<string, boolean | string | string[]>;
+
+    for (const [name, def] of Object.entries(this.#flags)) {
+      if (def.requires === undefined || !this.#isActive(def, values[name])) {
+        continue;
+      }
+
+      const satisfied = def.requires.anyOf.some((required) =>
+        this.#isActive(this.#flags[required], values[required]),
+      );
+      if (!satisfied) {
+        return def.requires.message;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Reports whether a resolved flag value carries an actual selection rather than
+   * its inert default: a `true` boolean, a non-empty string, or a non-empty list.
+   * This is the same notion of "the user supplied this flag" the dispatcher uses
+   * to leave the interactive prompt, applied here to decide whether a dependency
+   * is in play and whether the flag that would satisfy it is present.
+   *
+   * @param def - The definition of the flag whose value is being weighed.
+   * @param value - The resolved value for that flag.
+   */
+  #isActive(def: FlagDefinition, value: boolean | string | string[]): boolean {
+    if (def.type === "boolean") {
+      return value === true;
+    }
+    if (def.type === "list") {
+      return Array.isArray(value) && value.length > 0;
+    }
+    return typeof value === "string" && value !== "";
   }
 
   /**

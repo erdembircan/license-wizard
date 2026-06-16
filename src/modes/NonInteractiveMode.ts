@@ -112,22 +112,17 @@ export class NonInteractiveMode implements IWizardMode {
   }
 
   /**
-   * Generates from selection flags. Requires `--license`; with it the method
-   * either lists the license's customizable fields (`--get-tokens`), reports the
-   * fields still needed when `--set` values are incomplete, or generates the
-   * `LICENSE` file — standard text when no `--set` values are given, or a
-   * customized copyright when every field is supplied — and records the selection
-   * in every project manifest present.
+   * Generates from selection flags. `--license` is guaranteed present by the
+   * dependency resolution that runs before dispatch (every selection flag
+   * requires it), so this method goes straight to the work: it either lists the
+   * license's customizable fields (`--get-tokens`), reports the fields still
+   * needed when `--set` values are incomplete, or generates the `LICENSE` file —
+   * standard text when no `--set` values are given, or a customized copyright when
+   * every field is supplied — and records the selection in every project manifest
+   * present.
    */
   async #generate(): Promise<void> {
     const licenseId = this.#flags.license;
-
-    if (licenseId === "") {
-      this.#fail(
-        "The --license <spdx-id> flag is required when using --set, --headers, --get-tokens, or a --save-* flag.",
-      );
-      return;
-    }
 
     const detail = await this.#resolveLicenseDetail(licenseId);
     if (detail === null) {
@@ -162,7 +157,7 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    const headerComment = this.#resolveHeaderComment(headerStyle);
+    const headerComment = this.#resolveHeaderComment();
     if (headerComment === null) {
       return;
     }
@@ -531,27 +526,18 @@ export class NonInteractiveMode implements IWizardMode {
   }
 
   /**
-   * Resolves the `--headers-comment` flag into a comment delimiter. The flag only
-   * governs how a written header is wrapped, so it is tied to headers being
-   * enabled: supplying it without `--headers` is a usage error rather than a
-   * silently-dropped no-op. When absent it defaults to `block` (the
-   * REUSE-conventional block-comment style); otherwise it must be `block` or
-   * `docblock`. Returns null after reporting the error on either failure.
-   *
-   * @param headerStyle - The resolved header style, or the empty string when no
-   *   header is being written.
+   * Resolves the `--headers-comment` flag into a comment delimiter. The flag's
+   * dependency on `--headers` is enforced upstream by dependency resolution
+   * (supplying it without `--headers` fails before this runs), so this method only
+   * resolves the value: absent, it defaults to `block` (the REUSE-conventional
+   * block-comment style); otherwise it must be `block` or `docblock`. Returns null
+   * after reporting the error when the value is unrecognized.
    */
-  #resolveHeaderComment(headerStyle: "" | HeaderStyle): HeaderComment | null {
+  #resolveHeaderComment(): HeaderComment | null {
     const raw = this.#flags["headers-comment"].trim().toLowerCase();
 
     if (raw === "") {
       return HEADER_COMMENT_BLOCK;
-    }
-    if (headerStyle === "") {
-      this.#fail(
-        '--headers-comment has no effect without --headers. Add "--headers short" (or "full"), or drop --headers-comment.',
-      );
-      return null;
     }
     if (!HEADER_COMMENTS.includes(raw as HeaderComment)) {
       this.#fail(

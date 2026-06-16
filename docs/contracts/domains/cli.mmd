@@ -18,6 +18,7 @@ classDiagram
     +FlagParser(flags: object)
     +parse(args: string[]) object
     +validate(args: string[]) string[]
+    +resolveDependencies(flags: object) string
     +formatHelp() string
   }
 
