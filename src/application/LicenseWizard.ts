@@ -287,6 +287,13 @@ export class LicenseWizard {
           'Also write SPDX license headers into source files: "short" (SPDX tags) or "full" (the license notice).',
         placeholder: "<short|full>",
       },
+      "headers-comment": {
+        type: "string",
+        default: "",
+        description:
+          'Comment style for headers: "block" (/*, default) or "docblock" (/**, for PHPDoc/WPCS).',
+        placeholder: "<block|docblock>",
+      },
       "headers-ignore": {
         type: "list",
         default: [],

@@ -4,7 +4,11 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
-import type { HeaderPlan } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_DOCBLOCK,
+  type HeaderComment,
+  type HeaderPlan,
+} from "@headers/HeaderPlan.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import { buildMarker, digestBody } from "@headers/HeaderMarker.js";
 import { SourceFile } from "@headers/SourceFile.js";
@@ -25,15 +29,18 @@ export class HeaderComposer {
   readonly #body: string;
   readonly #marker: string;
   readonly #fingerprint: string;
+  readonly #comment: HeaderComment;
 
   /**
    * Creates a new HeaderComposer for the given selection.
    *
-   * @param plan - The license detail, header style, and copyright tokens.
+   * @param plan - The license detail, header style, comment delimiter, and
+   *   copyright tokens.
    */
   constructor(plan: HeaderPlan) {
     this.#body = new HeaderRenderer(plan).body();
     this.#fingerprint = digestBody(this.#body);
+    this.#comment = plan.comment;
     this.#marker = buildMarker(
       plan.detail.licenseId,
       plan.style,
@@ -52,14 +59,11 @@ export class HeaderComposer {
   }
 
   /**
-   * Builds the managed comment block for a file with the given extension: the
-   * rendered body and the marker line, each wrapped in that language's comment
-   * syntax.
-   *
-   * @param extension - The file extension (e.g. `.ts`), selecting the comment style.
+   * Builds the managed comment block: the rendered body and the marker line,
+   * wrapped in the selection's comment style (a plain block or a docblock).
    */
-  block(extension: string): string {
-    const style = SourceFile.commentStyleFor(extension);
+  block(): string {
+    const style = SourceFile.commentStyleFor(this.#comment);
     const lines = [style.blockStart];
 
     for (const line of this.#body.split("\n")) {
@@ -90,9 +94,10 @@ export class HeaderComposer {
    * Returns the file content with this selection's header applied: any existing
    * managed block at the top is replaced, the new block is inserted below the
    * file's preamble (shebang and/or PHP open tag), and a single blank line
-   * separates the block from the preamble above and the code below. Hand-written
-   * comments without the marker are left in place. The result always ends with a
-   * trailing newline.
+   * separates the block from the code below. A `block` header is also separated
+   * from the preamble above by a blank line; a `docblock` header sits flush
+   * against it, as a PHPDoc/WPCS file comment must. Hand-written comments without
+   * the marker are left in place. The result always ends with a trailing newline.
    *
    * Because the block is deterministic, applying the same selection twice yields
    * identical output — the second call is a no-op — so callers can compare the
@@ -103,9 +108,10 @@ export class HeaderComposer {
    *   a PHP preamble.
    */
   apply(content: string, filePath: string): string {
-    const block = this.block(SourceFile.extensionOf(filePath));
     return new SourceFile(content, filePath)
-      .withManagedHeader(block)
+      .withManagedHeader(this.block(), {
+        separateFromPreamble: this.#comment !== HEADER_COMMENT_DOCBLOCK,
+      })
       .toString();
   }
 }

@@ -16,10 +16,15 @@ classDiagram
   class HeaderPlan {
     +detail: LicenseDetail
     +style: HeaderStyle
+    +comment: HeaderComment
     +tokens: Record~string, string~
   }
 
   class HeaderStyle {
+    <<union>>
+  }
+
+  class HeaderComment {
     <<union>>
   }
 
@@ -37,7 +42,7 @@ classDiagram
   class HeaderComposer {
     +HeaderComposer(plan: HeaderPlan)
     +fingerprint() string
-    +block(extension: string) string
+    +block() string
     +hasManaged(content: string) boolean
     +apply(content: string, filePath: string) string
   }
@@ -85,12 +90,12 @@ classDiagram
   class SourceFile {
     +SourceFile(content: string, path: string)
     +extensionOf(path: string)$ string
-    +commentStyleFor(extension: string)$ CommentStyle
+    +commentStyleFor(comment?: HeaderComment)$ CommentStyle
     +hasManagedHeader() boolean
     +hasForeignLicenseNotice() boolean
     +canPlaceHeader() boolean
     +withoutManagedHeaders() SourceFile
-    +withManagedHeader(block: string) SourceFile
+    +withManagedHeader(block: string, options?: object) SourceFile
     +toString() string
   }
 
@@ -145,6 +150,8 @@ classDiagram
   }
 
   HeaderPlan ..> HeaderStyle : styled by
+  HeaderPlan ..> HeaderComment : commented as
+  SourceFile ..> HeaderComment : selects opener by
   HeaderRenderer ..> HeaderPlan : renders
   HeaderRenderer ..> HeaderTemplate : substitutes header template with
   HeaderComposer ..> HeaderPlan : composes

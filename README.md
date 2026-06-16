@@ -80,7 +80,7 @@ Full documentation lives on the docs site:
 It covers everything beyond the quick start:
 
 - **Interactive wizard** and **one-shot generation** (`--license`, `--set`, `--get-tokens`)
-- **Source-file headers** — `short` vs `full`, and removing them
+- **Source-file headers** — `short` vs `full`, `block` vs `docblock` comments (for PHPDoc/WPCS), and removing them
 - **Verify & CI** — `--verify`, `--strict`, and the drop-in CI step
 - **Apply saved config** — replaying a saved license with `--apply-config`
 - **Configuration files** — `.licensewizardrc.json` and manifest fields

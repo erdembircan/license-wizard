@@ -24,7 +24,12 @@ import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import type { HeaderStyle } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENT_DOCBLOCK,
+  type HeaderComment,
+  type HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
@@ -155,16 +160,21 @@ export class InteractiveMode implements IWizardMode {
     if (typeof licenseAnswer?.value === "string") {
       const tokens = this.#slotValuesFrom(licenseAnswer.fields);
       const headerStyle = this.#headerStyleFrom(headersAnswer);
+      const headerComment = this.#headerComment();
       const extraIgnores = this.#flags["headers-ignore"];
       const selection: LicenseSelection = {
         licenseId: licenseAnswer.value,
         tokens,
         save: this.#saveFrom(saveConfigAnswer),
-        // Persist the ignore scope alongside the style so verification re-scans
-        // the same files this run headed.
+        // Persist the comment delimiter (only when non-default) and the ignore
+        // scope alongside the style so verification reproduces the same block
+        // and re-scans the same files this run headed.
         headers: headerStyle
           ? {
               style: headerStyle,
+              ...(headerComment !== HEADER_COMMENT_BLOCK
+                ? { comment: headerComment }
+                : {}),
               ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
             }
           : undefined,
@@ -173,7 +183,12 @@ export class InteractiveMode implements IWizardMode {
       if (this.#flags["dry-run"]) {
         await this.#preview(selection);
         if (headerStyle) {
-          await this.#previewHeaders(selection.licenseId, headerStyle, tokens);
+          await this.#previewHeaders(
+            selection.licenseId,
+            headerStyle,
+            headerComment,
+            tokens,
+          );
         }
       } else {
         await this.#installer.install(selection);
@@ -182,6 +197,7 @@ export class InteractiveMode implements IWizardMode {
               await this.#headers.apply(
                 selection.licenseId,
                 headerStyle,
+                headerComment,
                 tokens,
                 this.#flags["headers-ignore"],
               ),
@@ -497,16 +513,19 @@ export class InteractiveMode implements IWizardMode {
    *
    * @param licenseId - The SPDX identifier whose header would be written.
    * @param style - The header style (`short` or `full`).
+   * @param comment - The comment delimiter (`block` or `docblock`).
    * @param tokens - Copyright tokens inherited from the license customization.
    */
   async #previewHeaders(
     licenseId: string,
     style: HeaderStyle,
+    comment: HeaderComment,
     tokens: Record<string, string>,
   ): Promise<void> {
     const preview = await this.#headers.preview(
       licenseId,
       style,
+      comment,
       tokens,
       this.#flags["headers-ignore"],
     );
@@ -537,6 +556,21 @@ export class InteractiveMode implements IWizardMode {
     }
     const style = headersAnswer.fields?.[HEADERS_STYLE_ID];
     return style === "full" ? "full" : "short";
+  }
+
+  /**
+   * Resolves the comment delimiter for written headers from the
+   * `--headers-comment` flag — an advanced knob honored in the interactive flow
+   * just as `--headers-ignore` is, rather than asked as a prompt. Defaults to
+   * `block`; only an explicit `docblock` switches the style. (The non-interactive
+   * path validates the flag value; here an unrecognised value simply keeps the
+   * default.)
+   */
+  #headerComment(): HeaderComment {
+    return this.#flags["headers-comment"].trim().toLowerCase() ===
+      HEADER_COMMENT_DOCBLOCK
+      ? HEADER_COMMENT_DOCBLOCK
+      : HEADER_COMMENT_BLOCK;
   }
 
   /**

@@ -159,6 +159,35 @@ describe("RcConfigStore", () => {
       expect(error).toBeInstanceOf(FileSystemReaderError);
       expect(error.message).toContain("headers.style");
     });
+
+    it("rejects an unknown header comment style", async () => {
+      const store = new RcConfigStore();
+
+      const error = await store
+        .read(
+          new FakeReader({
+            [RC_FILE]:
+              '{"licenseId":"MIT","headers":{"style":"short","comment":"slashes"}}',
+          }),
+        )
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(FileSystemReaderError);
+      expect(error.message).toContain("headers.comment");
+    });
+
+    it("accepts a docblock header comment style", async () => {
+      const store = new RcConfigStore();
+
+      const config = await store.read(
+        new FakeReader({
+          [RC_FILE]:
+            '{"licenseId":"MIT","headers":{"style":"short","comment":"docblock"}}',
+        }),
+      );
+
+      expect(config?.headers?.comment).toBe("docblock");
+    });
   });
 
   describe("write", () => {

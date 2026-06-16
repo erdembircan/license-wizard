@@ -5,6 +5,11 @@
  */
 
 import { isMarkerLine } from "@headers/HeaderMarker.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENT_DOCBLOCK,
+  type HeaderComment,
+} from "@headers/HeaderPlan.js";
 
 export type CommentStyle = {
   blockStart: string;
@@ -13,17 +18,23 @@ export type CommentStyle = {
 };
 
 // Every ecosystem this tool supports (the npm and Composer worlds) writes its
-// source in C-family syntax, so a single block-comment style covers them all.
+// source in C-family syntax, so these two styles cover them all. The variants
+// differ only in their opener — a plain block comment "/*" versus a
+// documentation comment "/**". They share the same ` *` body prefix and " */"
+// terminator, so a docblock managed header is recognised, walked, and stripped
+// by exactly the same machinery as a plain one ("/**" still satisfies the "/*"
+// opener test in enclosingComment).
 const C_BLOCK: CommentStyle = {
   blockStart: "/*",
   linePrefix: " *",
   blockEnd: " */",
 };
 
-// Per-language comment styles. Empty today — every language the wizard supports
-// uses the C-family block style (the fallback below) — but routing a lookup
-// through a map keeps the door open for a language that needs its own.
-const STYLE_BY_EXTENSION: Record<string, CommentStyle> = {};
+const C_DOCBLOCK: CommentStyle = {
+  blockStart: "/**",
+  linePrefix: " *",
+  blockEnd: " */",
+};
 
 /**
  * A source file as the wizard sees it: its content paired with its path, and the
@@ -68,13 +79,17 @@ export class SourceFile {
   }
 
   /**
-   * Returns the comment style used to embed a header in files of the given
-   * extension. Every supported extension shares the C-family block style.
+   * Returns the comment style used to embed a header: a plain block comment (the
+   * default) or a documentation comment, which differ only in their opener. Every
+   * supported source type uses the same C-family style, so the choice depends
+   * only on the `comment` preference.
    *
-   * @param extension - The file extension (e.g. `.ts`).
+   * @param comment - Whether to open the block as a plain comment or a docblock.
    */
-  static commentStyleFor(extension: string): CommentStyle {
-    return STYLE_BY_EXTENSION[extension] ?? C_BLOCK;
+  static commentStyleFor(
+    comment: HeaderComment = HEADER_COMMENT_BLOCK,
+  ): CommentStyle {
+    return comment === HEADER_COMMENT_DOCBLOCK ? C_DOCBLOCK : C_BLOCK;
   }
 
   /**
@@ -151,17 +166,27 @@ export class SourceFile {
   /**
    * Returns a copy with `block` placed as the managed header: any existing
    * managed block is replaced, the new block is inserted below the preamble, and
-   * a single blank line separates it from the preamble above and the code below.
-   * Hand-written comments without the marker are left in place. The file's line
-   * ending is preserved and the result always ends with a trailing newline.
+   * a single blank line separates it from the code below. By default a blank line
+   * also separates it from the preamble above; `separateFromPreamble: false`
+   * omits that gap so the block sits flush under a `<?php` open tag or shebang —
+   * what a docblock file comment needs to satisfy the PHPDoc/WPCS sniffs that
+   * forbid a blank line before it. Hand-written comments without the marker are
+   * left in place. The file's line ending is preserved and the result always
+   * ends with a trailing newline.
    *
    * @param block - The fully comment-wrapped managed block to place.
+   * @param options - `separateFromPreamble` controls the blank line above the
+   *   block (defaults to `true`, the spaced placement).
    */
-  withManagedHeader(block: string): SourceFile {
+  withManagedHeader(
+    block: string,
+    options: { separateFromPreamble?: boolean } = {},
+  ): SourceFile {
+    const { separateFromPreamble = true } = options;
     const { head, body } = this.#split();
 
     const out: string[] = [...head];
-    if (head.length > 0) {
+    if (head.length > 0 && separateFromPreamble) {
       out.push("");
     }
     out.push(...block.split("\n"));

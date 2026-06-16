@@ -18,10 +18,12 @@ const MIT: LicenseDetail = {
 };
 
 const headed = (source: string, path: string): string =>
-  new HeaderComposer({ detail: MIT, style: "short", tokens: {} }).apply(
-    source,
-    path,
-  );
+  new HeaderComposer({
+    detail: MIT,
+    style: "short",
+    comment: "block",
+    tokens: {},
+  }).apply(source, path);
 
 class FakeFs implements IFileSystemReader, IFileSystemWriter {
   readonly files: Map<string, string>;

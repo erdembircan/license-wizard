@@ -10,7 +10,12 @@ import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import type { HeaderStyle } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENTS,
+  type HeaderComment,
+  type HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import { SUPPORTED_EXTENSIONS } from "@headers/SourceFileScanner.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -157,6 +162,11 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
+    const headerComment = this.#resolveHeaderComment(headerStyle);
+    if (headerComment === null) {
+      return;
+    }
+
     const setEntries = this.#parseSetEntries(this.#flags.set);
     if (setEntries === null) {
       return;
@@ -218,6 +228,7 @@ export class NonInteractiveMode implements IWizardMode {
       values,
       saveTarget,
       headerStyle,
+      headerComment,
       this.#flags["headers-ignore"],
     );
   }
@@ -314,6 +325,7 @@ export class NonInteractiveMode implements IWizardMode {
       config.tokens ?? {},
       "",
       config.headers?.style ?? "",
+      config.headers?.comment ?? HEADER_COMMENT_BLOCK,
       config.headers?.ignore ?? [],
     );
   }
@@ -366,6 +378,7 @@ export class NonInteractiveMode implements IWizardMode {
     const report = await this.#headers.forceApply(
       config.licenseId,
       config.headers.style,
+      config.headers.comment ?? HEADER_COMMENT_BLOCK,
       config.tokens ?? {},
       target,
       { dryRun: this.#flags["dry-run"] },
@@ -518,6 +531,38 @@ export class NonInteractiveMode implements IWizardMode {
   }
 
   /**
+   * Resolves the `--headers-comment` flag into a comment delimiter. The flag only
+   * governs how a written header is wrapped, so it is tied to headers being
+   * enabled: supplying it without `--headers` is a usage error rather than a
+   * silently-dropped no-op. When absent it defaults to `block` (the
+   * REUSE-conventional block-comment style); otherwise it must be `block` or
+   * `docblock`. Returns null after reporting the error on either failure.
+   *
+   * @param headerStyle - The resolved header style, or the empty string when no
+   *   header is being written.
+   */
+  #resolveHeaderComment(headerStyle: "" | HeaderStyle): HeaderComment | null {
+    const raw = this.#flags["headers-comment"].trim().toLowerCase();
+
+    if (raw === "") {
+      return HEADER_COMMENT_BLOCK;
+    }
+    if (headerStyle === "") {
+      this.#fail(
+        '--headers-comment has no effect without --headers. Add "--headers short" (or "full"), or drop --headers-comment.',
+      );
+      return null;
+    }
+    if (!HEADER_COMMENTS.includes(raw as HeaderComment)) {
+      this.#fail(
+        `Invalid --headers-comment value "${this.#flags["headers-comment"]}". Use "${HEADER_COMMENTS.join('" or "')}".`,
+      );
+      return null;
+    }
+    return raw as HeaderComment;
+  }
+
+  /**
    * Applies the resolved selection through the installer — persisting the config
    * to the requested save location, writing the `LICENSE`, and recording the
    * selection in every present manifest — then reports the result. Under
@@ -529,6 +574,9 @@ export class NonInteractiveMode implements IWizardMode {
    *   to save nowhere.
    * @param headerStyle - The header style to also write into source files, or
    *   the empty string to write no headers.
+   * @param headerComment - The comment delimiter (`block` or `docblock`) the
+   *   header is wrapped in; persisted only when it differs from the `block`
+   *   default, keeping pre-existing configs byte-for-byte unchanged.
    * @param extraIgnores - Extra gitignore-style patterns scoping which files are
    *   headed; persisted into the saved header config so verification reuses the
    *   same scope.
@@ -538,6 +586,7 @@ export class NonInteractiveMode implements IWizardMode {
     slotValues: Record<string, string>,
     saveTarget: string,
     headerStyle: "" | HeaderStyle,
+    headerComment: HeaderComment,
     extraIgnores: string[],
   ): Promise<void> {
     const selection: LicenseSelection = {
@@ -552,6 +601,9 @@ export class NonInteractiveMode implements IWizardMode {
           ? undefined
           : {
               style: headerStyle,
+              ...(headerComment !== HEADER_COMMENT_BLOCK
+                ? { comment: headerComment }
+                : {}),
               ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
             },
     };
@@ -562,6 +614,7 @@ export class NonInteractiveMode implements IWizardMode {
         await this.#previewHeaders(
           licenseId,
           headerStyle,
+          headerComment,
           slotValues,
           extraIgnores,
         );
@@ -576,6 +629,7 @@ export class NonInteractiveMode implements IWizardMode {
       const report = await this.#headers.apply(
         licenseId,
         headerStyle,
+        headerComment,
         slotValues,
         extraIgnores,
       );
@@ -617,18 +671,21 @@ export class NonInteractiveMode implements IWizardMode {
    *
    * @param licenseId - The SPDX identifier whose header would be written.
    * @param style - The header style (`short` or `full`).
+   * @param comment - The comment delimiter (`block` or `docblock`).
    * @param tokens - Copyright tokens inherited from the license customization.
    * @param extraIgnores - Extra gitignore-style patterns scoping the scan.
    */
   async #previewHeaders(
     licenseId: string,
     style: HeaderStyle,
+    comment: HeaderComment,
     tokens: Record<string, string>,
     extraIgnores: string[],
   ): Promise<void> {
     const preview = await this.#headers.preview(
       licenseId,
       style,
+      comment,
       tokens,
       extraIgnores,
     );

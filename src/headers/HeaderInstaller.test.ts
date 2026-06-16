@@ -19,7 +19,12 @@ const MIT: LicenseDetail = {
   licenseText: "Permission is hereby granted...",
 };
 
-const plan: HeaderPlan = { detail: MIT, style: "short", tokens: {} };
+const plan: HeaderPlan = {
+  detail: MIT,
+  style: "short",
+  comment: "block",
+  tokens: {},
+};
 
 /**
  * In-memory file system backing both reader and writer roles.

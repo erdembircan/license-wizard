@@ -11,8 +11,9 @@ classDiagram
   %% Verify; HeaderConfig references HeaderStyle from Headers) are intentionally
   %% omitted — see ../class-diagram.mmd for the full picture.
   %%
-  %% HeaderConfig belongs to this domain but its only relationship (to HeaderStyle)
-  %% crosses into Headers, so it appears here without intra-domain edges.
+  %% HeaderConfig belongs to this domain but its only relationships (to HeaderStyle
+  %% and HeaderComment) cross into Headers, so it appears here without intra-domain
+  %% edges.
 
   class IFileSystemReader {
     <<interface>>
@@ -59,6 +60,7 @@ classDiagram
 
   class HeaderConfig {
     +style: HeaderStyle
+    +comment?: HeaderComment
     +ignore?: string[]
   }
 
