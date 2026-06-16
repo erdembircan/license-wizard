@@ -255,12 +255,7 @@ export class HeaderApplier {
       }
     }
 
-    // Render the sample in a file's own comment style — preferring one that would
-    // actually be headed, but falling back to a skipped one when every file would
-    // be skipped, so the preview still shows the block.
-    const sampleFrom = writable[0] ?? skipped[0];
-    const sample = composer.block(SourceFile.extensionOf(sampleFrom));
-    return { files: writable, skipped, sample };
+    return { files: writable, skipped, sample: composer.block() };
   }
 
   /**

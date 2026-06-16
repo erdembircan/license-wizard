@@ -8,7 +8,11 @@ import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemRea
 import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWriter.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderComposer } from "@headers/HeaderComposer.js";
-import type { HeaderPlan, HeaderStyle } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  type HeaderPlan,
+  type HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import { parseMarker } from "@headers/HeaderMarker.js";
 import { SourceFile } from "@headers/SourceFile.js";
 import type { SourceFileScanner } from "@headers/SourceFileScanner.js";
@@ -137,7 +141,7 @@ export class HeaderVerifier {
       // An absent comment preference means the original REUSE-conventional
       // `block` style, so headers written before this option existed still
       // verify as a match rather than being reported as drift.
-      comment: config.headers.comment ?? "block",
+      comment: config.headers.comment ?? HEADER_COMMENT_BLOCK,
       tokens: config.tokens ?? {},
     };
     const composer = new HeaderComposer(plan);

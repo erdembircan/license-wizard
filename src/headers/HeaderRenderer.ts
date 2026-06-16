@@ -6,7 +6,7 @@
 
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import { HeaderTemplate } from "@headers/HeaderTemplate.js";
-import type { HeaderPlan } from "@headers/HeaderPlan.js";
+import { HEADER_COMMENT_BLOCK, type HeaderPlan } from "@headers/HeaderPlan.js";
 
 /**
  * Renders the body text of a license header — the notice or tag lines that go
@@ -74,7 +74,7 @@ export class HeaderRenderer {
     const body = new HeaderRenderer({
       detail,
       style: "full",
-      comment: "block",
+      comment: HEADER_COMMENT_BLOCK,
       tokens,
     }).body();
     return headerSlots.some((slot) => body.includes(slot.token));

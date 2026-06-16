@@ -38,7 +38,13 @@ export const HEADER_STYLES: readonly HeaderStyle[] = ["short", "full"];
  */
 export type HeaderComment = "block" | "docblock";
 
-export const HEADER_COMMENTS: readonly HeaderComment[] = ["block", "docblock"];
+export const HEADER_COMMENT_BLOCK: HeaderComment = "block";
+export const HEADER_COMMENT_DOCBLOCK: HeaderComment = "docblock";
+
+export const HEADER_COMMENTS: readonly HeaderComment[] = [
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENT_DOCBLOCK,
+];
 
 /**
  * Everything needed to render the header for a selection: the license detail

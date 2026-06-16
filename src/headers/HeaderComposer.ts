@@ -4,7 +4,11 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
-import type { HeaderComment, HeaderPlan } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_DOCBLOCK,
+  type HeaderComment,
+  type HeaderPlan,
+} from "@headers/HeaderPlan.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import { buildMarker, digestBody } from "@headers/HeaderMarker.js";
 import { SourceFile } from "@headers/SourceFile.js";
@@ -55,14 +59,11 @@ export class HeaderComposer {
   }
 
   /**
-   * Builds the managed comment block for a file with the given extension: the
-   * rendered body and the marker line, each wrapped in that language's comment
-   * syntax.
-   *
-   * @param extension - The file extension (e.g. `.ts`), selecting the comment style.
+   * Builds the managed comment block: the rendered body and the marker line,
+   * wrapped in the selection's comment style (a plain block or a docblock).
    */
-  block(extension: string): string {
-    const style = SourceFile.commentStyleFor(extension, this.#comment);
+  block(): string {
+    const style = SourceFile.commentStyleFor(this.#comment);
     const lines = [style.blockStart];
 
     for (const line of this.#body.split("\n")) {
@@ -107,10 +108,9 @@ export class HeaderComposer {
    *   a PHP preamble.
    */
   apply(content: string, filePath: string): string {
-    const block = this.block(SourceFile.extensionOf(filePath));
     return new SourceFile(content, filePath)
-      .withManagedHeader(block, {
-        separateFromPreamble: this.#comment !== "docblock",
+      .withManagedHeader(this.block(), {
+        separateFromPreamble: this.#comment !== HEADER_COMMENT_DOCBLOCK,
       })
       .toString();
   }

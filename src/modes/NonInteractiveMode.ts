@@ -10,7 +10,12 @@ import type { IReporter } from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import type { HeaderComment, HeaderStyle } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENTS,
+  type HeaderComment,
+  type HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import { SUPPORTED_EXTENSIONS } from "@headers/SourceFileScanner.js";
 import { LicenseNotFoundError } from "@licensing/errors/LicenseNotFoundError.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
@@ -320,7 +325,7 @@ export class NonInteractiveMode implements IWizardMode {
       config.tokens ?? {},
       "",
       config.headers?.style ?? "",
-      config.headers?.comment ?? "block",
+      config.headers?.comment ?? HEADER_COMMENT_BLOCK,
       config.headers?.ignore ?? [],
     );
   }
@@ -373,7 +378,7 @@ export class NonInteractiveMode implements IWizardMode {
     const report = await this.#headers.forceApply(
       config.licenseId,
       config.headers.style,
-      config.headers.comment ?? "block",
+      config.headers.comment ?? HEADER_COMMENT_BLOCK,
       config.tokens ?? {},
       target,
       { dryRun: this.#flags["dry-run"] },
@@ -540,7 +545,7 @@ export class NonInteractiveMode implements IWizardMode {
     const raw = this.#flags["headers-comment"].trim().toLowerCase();
 
     if (raw === "") {
-      return "block";
+      return HEADER_COMMENT_BLOCK;
     }
     if (headerStyle === "") {
       this.#fail(
@@ -548,13 +553,13 @@ export class NonInteractiveMode implements IWizardMode {
       );
       return null;
     }
-    if (raw !== "block" && raw !== "docblock") {
+    if (!HEADER_COMMENTS.includes(raw as HeaderComment)) {
       this.#fail(
-        `Invalid --headers-comment value "${this.#flags["headers-comment"]}". Use "block" or "docblock".`,
+        `Invalid --headers-comment value "${this.#flags["headers-comment"]}". Use "${HEADER_COMMENTS.join('" or "')}".`,
       );
       return null;
     }
-    return raw;
+    return raw as HeaderComment;
   }
 
   /**
@@ -596,7 +601,9 @@ export class NonInteractiveMode implements IWizardMode {
           ? undefined
           : {
               style: headerStyle,
-              ...(headerComment !== "block" ? { comment: headerComment } : {}),
+              ...(headerComment !== HEADER_COMMENT_BLOCK
+                ? { comment: headerComment }
+                : {}),
               ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
             },
     };

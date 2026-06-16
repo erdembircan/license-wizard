@@ -5,7 +5,11 @@
  */
 
 import { isMarkerLine } from "@headers/HeaderMarker.js";
-import type { HeaderComment } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENT_DOCBLOCK,
+  type HeaderComment,
+} from "@headers/HeaderPlan.js";
 
 export type CommentStyle = {
   blockStart: string;
@@ -14,12 +18,12 @@ export type CommentStyle = {
 };
 
 // Every ecosystem this tool supports (the npm and Composer worlds) writes its
-// source in C-family syntax, so a single block-comment style covers them all.
-// The two variants differ only in their opener — a plain block comment "/*"
-// versus a documentation comment "/**". They share the same ` *` body prefix and
-// " */" terminator, so a docblock managed header is recognised, walked, and
-// stripped by exactly the same machinery as a plain one ("/**" still satisfies
-// the "/*" opener test in enclosingComment).
+// source in C-family syntax, so these two styles cover them all. The variants
+// differ only in their opener — a plain block comment "/*" versus a
+// documentation comment "/**". They share the same ` *` body prefix and " */"
+// terminator, so a docblock managed header is recognised, walked, and stripped
+// by exactly the same machinery as a plain one ("/**" still satisfies the "/*"
+// opener test in enclosingComment).
 const C_BLOCK: CommentStyle = {
   blockStart: "/*",
   linePrefix: " *",
@@ -31,11 +35,6 @@ const C_DOCBLOCK: CommentStyle = {
   linePrefix: " *",
   blockEnd: " */",
 };
-
-// Per-language comment styles. Empty today — every language the wizard supports
-// uses the C-family block style (the fallback below) — but routing a lookup
-// through a map keeps the door open for a language that needs its own.
-const STYLE_BY_EXTENSION: Record<string, CommentStyle> = {};
 
 /**
  * A source file as the wizard sees it: its content paired with its path, and the
@@ -80,22 +79,17 @@ export class SourceFile {
   }
 
   /**
-   * Returns the comment style used to embed a header in files of the given
-   * extension. Every supported extension shares the C-family style; the
-   * `comment` preference then selects between a plain block comment (the
-   * default) and a documentation comment, which differ only in their opener.
+   * Returns the comment style used to embed a header: a plain block comment (the
+   * default) or a documentation comment, which differ only in their opener. Every
+   * supported source type uses the same C-family style, so the choice depends
+   * only on the `comment` preference.
    *
-   * @param extension - The file extension (e.g. `.ts`).
    * @param comment - Whether to open the block as a plain comment or a docblock.
    */
   static commentStyleFor(
-    extension: string,
-    comment: HeaderComment = "block",
+    comment: HeaderComment = HEADER_COMMENT_BLOCK,
   ): CommentStyle {
-    const base = STYLE_BY_EXTENSION[extension] ?? C_BLOCK;
-    return comment === "docblock"
-      ? { ...base, blockStart: C_DOCBLOCK.blockStart }
-      : base;
+    return comment === HEADER_COMMENT_DOCBLOCK ? C_DOCBLOCK : C_BLOCK;
   }
 
   /**

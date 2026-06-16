@@ -24,7 +24,12 @@ import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import type { HeaderComment, HeaderStyle } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENT_BLOCK,
+  HEADER_COMMENT_DOCBLOCK,
+  type HeaderComment,
+  type HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
@@ -167,7 +172,9 @@ export class InteractiveMode implements IWizardMode {
         headers: headerStyle
           ? {
               style: headerStyle,
-              ...(headerComment !== "block" ? { comment: headerComment } : {}),
+              ...(headerComment !== HEADER_COMMENT_BLOCK
+                ? { comment: headerComment }
+                : {}),
               ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
             }
           : undefined,
@@ -560,9 +567,10 @@ export class InteractiveMode implements IWizardMode {
    * default.)
    */
   #headerComment(): HeaderComment {
-    return this.#flags["headers-comment"].trim().toLowerCase() === "docblock"
-      ? "docblock"
-      : "block";
+    return this.#flags["headers-comment"].trim().toLowerCase() ===
+      HEADER_COMMENT_DOCBLOCK
+      ? HEADER_COMMENT_DOCBLOCK
+      : HEADER_COMMENT_BLOCK;
   }
 
   /**

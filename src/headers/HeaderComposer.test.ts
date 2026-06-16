@@ -28,7 +28,7 @@ const composer = () => new HeaderComposer(shortPlan);
 describe("HeaderComposer", () => {
   describe("block", () => {
     it("wraps the body and a marker line in a block comment", () => {
-      const block = composer().block(".ts");
+      const block = composer().block();
 
       expect(block.startsWith("/*\n")).toBe(true);
       expect(block).toContain(" * SPDX-License-Identifier: MIT");
@@ -41,9 +41,7 @@ describe("HeaderComposer", () => {
     it("inserts the header at the very top of a plain file", () => {
       const result = composer().apply("export const x = 1;\n", "a.ts");
 
-      expect(result).toBe(
-        `${composer().block(".ts")}\n\nexport const x = 1;\n`,
-      );
+      expect(result).toBe(`${composer().block()}\n\nexport const x = 1;\n`);
     });
 
     it("keeps a shebang above the header", () => {
@@ -96,13 +94,13 @@ describe("HeaderComposer", () => {
       const result = composer().apply(shifted, "a.ts");
 
       // The header is back on top, the import follows it, and only one remains.
-      expect(result.startsWith(composer().block(".ts"))).toBe(true);
+      expect(result.startsWith(composer().block())).toBe(true);
       expect(result).toContain('import "./shim";');
       expect(result.split(markerToken()).length - 1).toBe(1);
     });
 
     it("collapses duplicate managed blocks left by an earlier run into one", () => {
-      const block = composer().block(".ts");
+      const block = composer().block();
       const doubled = `${block}\n\n${block}\n\nexport const x = 1;\n`;
 
       const result = composer().apply(doubled, "a.ts");
@@ -125,7 +123,7 @@ describe("HeaderComposer", () => {
       const result = composer().apply(source, "a.ts");
 
       // The header is added on top; none of the original code is excised.
-      expect(result.startsWith(composer().block(".ts"))).toBe(true);
+      expect(result.startsWith(composer().block())).toBe(true);
       expect(result).toContain(`const TOKEN = "${markerToken()}";`);
       expect(result).toContain("const SAMPLE =");
       expect(result).toContain("export const x = 1;");
@@ -150,7 +148,7 @@ describe("HeaderComposer", () => {
     it("heads an empty file with just the block", () => {
       const result = composer().apply("", "a.ts");
 
-      expect(result).toBe(`${composer().block(".ts")}\n`);
+      expect(result).toBe(`${composer().block()}\n`);
     });
   });
 
@@ -175,7 +173,7 @@ describe("HeaderComposer", () => {
     const docComposer = () => new HeaderComposer(docPlan);
 
     it("opens the block with a docblock delimiter, not a plain comment", () => {
-      const block = docComposer().block(".php");
+      const block = docComposer().block();
 
       expect(block.startsWith("/**\n")).toBe(true);
       expect(block).toContain(" * SPDX-License-Identifier: MIT");
@@ -187,8 +185,8 @@ describe("HeaderComposer", () => {
       // The body, the ` *` body prefix, the marker line, and the ` */` close are
       // all identical; only the first line changes. This is what lets a docblock
       // header share the block-detection and fingerprint machinery.
-      const plain = composer().block(".php").split("\n");
-      const doc = docComposer().block(".php").split("\n");
+      const plain = composer().block().split("\n");
+      const doc = docComposer().block().split("\n");
 
       expect(doc[0]).toBe("/**");
       expect(plain[0]).toBe("/*");
@@ -218,9 +216,7 @@ describe("HeaderComposer", () => {
     it("heads a plain file with the docblock and a blank line before code", () => {
       const result = docComposer().apply("export const x = 1;\n", "a.ts");
 
-      expect(result).toBe(
-        `${docComposer().block(".ts")}\n\nexport const x = 1;\n`,
-      );
+      expect(result).toBe(`${docComposer().block()}\n\nexport const x = 1;\n`);
     });
 
     it("is idempotent — re-applying the same docblock header changes nothing", () => {

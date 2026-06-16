@@ -603,7 +603,7 @@ classDiagram
     class HeaderComposer {
       +HeaderComposer(plan: HeaderPlan)
       +fingerprint() string
-      +block(extension: string) string
+      +block() string
       +hasManaged(content: string) boolean
       +apply(content: string, filePath: string) string
     }
@@ -651,7 +651,7 @@ classDiagram
     class SourceFile {
       +SourceFile(content: string, path: string)
       +extensionOf(path: string)$ string
-      +commentStyleFor(extension: string, comment?: HeaderComment)$ CommentStyle
+      +commentStyleFor(comment?: HeaderComment)$ CommentStyle
       +hasManagedHeader() boolean
       +canPlaceHeader() boolean
       +withoutManagedHeaders() SourceFile

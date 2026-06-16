@@ -38,19 +38,18 @@ describe("SourceFile", () => {
 
   describe("commentStyleFor", () => {
     it("defaults to a plain block comment opener", () => {
-      expect(SourceFile.commentStyleFor(".ts").blockStart).toBe("/*");
-      expect(SourceFile.commentStyleFor(".php").blockStart).toBe("/*");
+      expect(SourceFile.commentStyleFor().blockStart).toBe("/*");
     });
 
     it("opens a docblock when asked, leaving the prefix and close unchanged", () => {
-      const style = SourceFile.commentStyleFor(".php", "docblock");
+      const style = SourceFile.commentStyleFor("docblock");
       expect(style.blockStart).toBe("/**");
       expect(style.linePrefix).toBe(" *");
       expect(style.blockEnd).toBe(" */");
     });
 
     it("keeps the plain opener for the explicit block style", () => {
-      expect(SourceFile.commentStyleFor(".ts", "block").blockStart).toBe("/*");
+      expect(SourceFile.commentStyleFor("block").blockStart).toBe("/*");
     });
   });
 
@@ -207,20 +206,20 @@ describe("SourceFile", () => {
   });
 
   describe("withManagedHeader", () => {
-    const block = (path: string): string =>
+    const block = (): string =>
       new HeaderComposer({
         detail: MIT,
         style: "short",
         comment: "block",
         tokens: {},
-      }).block(SourceFile.extensionOf(path));
+      }).block();
 
     it("inserts the block at the top of a plain file", () => {
       const result = new SourceFile("export const x = 1;\n", "a.ts")
-        .withManagedHeader(block("a.ts"))
+        .withManagedHeader(block())
         .toString();
 
-      expect(result).toBe(`${block("a.ts")}\n\nexport const x = 1;\n`);
+      expect(result).toBe(`${block()}\n\nexport const x = 1;\n`);
     });
 
     it("keeps a shebang above the header", () => {
@@ -228,7 +227,7 @@ describe("SourceFile", () => {
         "#!/usr/bin/env node\nconsole.log(1);\n",
         "cli.js",
       )
-        .withManagedHeader(block("cli.js"))
+        .withManagedHeader(block())
         .toString();
 
       expect(result.startsWith("#!/usr/bin/env node\n\n/*\n")).toBe(true);
@@ -236,20 +235,20 @@ describe("SourceFile", () => {
 
     it("places the block flush under the preamble when not separating it", () => {
       const result = new SourceFile("<?php\necho 1;\n", "index.php")
-        .withManagedHeader(block("index.php"), { separateFromPreamble: false })
+        .withManagedHeader(block(), { separateFromPreamble: false })
         .toString();
 
       // No blank line between the open tag and the block — what a docblock file
       // comment needs — while the gap below the block is preserved.
-      expect(result.startsWith(`<?php\n${block("index.php")}\n\n`)).toBe(true);
+      expect(result.startsWith(`<?php\n${block()}\n\n`)).toBe(true);
     });
 
     it("replaces an existing managed header rather than stacking", () => {
       const once = new SourceFile("export const x = 1;\n", "a.ts")
-        .withManagedHeader(block("a.ts"))
+        .withManagedHeader(block())
         .toString();
       const twice = new SourceFile(once, "a.ts")
-        .withManagedHeader(block("a.ts"))
+        .withManagedHeader(block())
         .toString();
 
       expect(twice).toBe(once);
@@ -258,7 +257,7 @@ describe("SourceFile", () => {
     it("leaves code that names the marker token in place", () => {
       const source = 'const T = "license-wizard managed-header";\n';
       const result = new SourceFile(source, "a.ts")
-        .withManagedHeader(block("a.ts"))
+        .withManagedHeader(block())
         .toString();
 
       expect(result).toContain('const T = "license-wizard managed-header";');
@@ -266,7 +265,7 @@ describe("SourceFile", () => {
 
     it("preserves CRLF line endings throughout the file", () => {
       const result = new SourceFile("const x = 1;\r\nconst y = 2;\r\n", "a.ts")
-        .withManagedHeader(block("a.ts"))
+        .withManagedHeader(block())
         .toString();
 
       // Every line — the inserted header included — ends with CRLF, leaving no
@@ -281,7 +280,7 @@ describe("SourceFile", () => {
     it("round-trips a CRLF file byte-for-byte through add then remove", () => {
       const original = "const x = 1;\r\nconst y = 2;\r\n";
       const headedSource = new SourceFile(original, "a.ts")
-        .withManagedHeader(block("a.ts"))
+        .withManagedHeader(block())
         .toString();
       const restored = new SourceFile(headedSource, "a.ts")
         .withoutManagedHeaders()

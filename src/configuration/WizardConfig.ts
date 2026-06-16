@@ -4,11 +4,14 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
-import type { HeaderComment, HeaderStyle } from "@headers/HeaderPlan.js";
+import {
+  HEADER_COMMENTS,
+  type HeaderComment,
+  type HeaderStyle,
+} from "@headers/HeaderPlan.js";
 import { FileSystemReaderError } from "@configuration/errors/FileSystemReaderError.js";
 
 const HEADER_STYLES: readonly HeaderStyle[] = ["short", "full"];
-const HEADER_COMMENTS: readonly HeaderComment[] = ["block", "docblock"];
 
 /**
  * The persisted source-file header preference. Present only when the project
