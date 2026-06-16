@@ -53,6 +53,27 @@ describe("JsonStyle", () => {
       expect(out.endsWith("}\r\n")).toBe(true);
     });
 
+    it("preserves CRLF internal separators throughout a CRLF document", () => {
+      const raw =
+        '{\r\n  "name": "a",\r\n  "version": "1.0.0",\r\n  "license": "ISC"\r\n}\r\n';
+      const out = JsonStyle.detect(raw).serialize({
+        name: "a",
+        version: "1.0.0",
+        license: "MIT",
+      });
+      expect(out).toBe(
+        '{\r\n  "name": "a",\r\n  "version": "1.0.0",\r\n  "license": "MIT"\r\n}\r\n',
+      );
+      // No bare LF survives — the output must not be mixed-ending (issue #155).
+      expect(out.replace(/\r\n/g, "")).not.toContain("\n");
+    });
+
+    it("keeps LF internal separators when only the trailing newline is CRLF", () => {
+      const raw = '{\n  "name": "pkg"\n}\r\n';
+      const out = JsonStyle.detect(raw).serialize({ name: "pkg" });
+      expect(out).toBe('{\n  "name": "pkg"\n}\r\n');
+    });
+
     it("does not mistake escaped newlines inside strings for layout", () => {
       const raw = '{"description":"line1\\nline2"}';
       const out = JsonStyle.detect(raw).serialize({
