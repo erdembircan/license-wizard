@@ -157,7 +157,7 @@ export class NonInteractiveMode implements IWizardMode {
       return;
     }
 
-    const headerComment = this.#resolveHeaderComment();
+    const headerComment = this.#resolveHeaderComment(headerStyle);
     if (headerComment === null) {
       return;
     }
@@ -526,18 +526,27 @@ export class NonInteractiveMode implements IWizardMode {
   }
 
   /**
-   * Resolves the `--headers-comment` flag into a comment delimiter, defaulting to
-   * `block` (the REUSE-conventional `/*` style) when the flag is absent. Returns
-   * null after reporting the error when the value is neither `block` nor
-   * `docblock`. The choice is independent of whether headers are enabled or which
-   * style they use — it only governs how the block is wrapped — so it is not
-   * gated on `--headers`.
+   * Resolves the `--headers-comment` flag into a comment delimiter. The flag only
+   * governs how a written header is wrapped, so it is tied to headers being
+   * enabled: supplying it without `--headers` is a usage error rather than a
+   * silently-dropped no-op. When absent it defaults to `block` (the
+   * REUSE-conventional block-comment style); otherwise it must be `block` or
+   * `docblock`. Returns null after reporting the error on either failure.
+   *
+   * @param headerStyle - The resolved header style, or the empty string when no
+   *   header is being written.
    */
-  #resolveHeaderComment(): HeaderComment | null {
+  #resolveHeaderComment(headerStyle: "" | HeaderStyle): HeaderComment | null {
     const raw = this.#flags["headers-comment"].trim().toLowerCase();
 
     if (raw === "") {
       return "block";
+    }
+    if (headerStyle === "") {
+      this.#fail(
+        '--headers-comment has no effect without --headers. Add "--headers short" (or "full"), or drop --headers-comment.',
+      );
+      return null;
     }
     if (raw !== "block" && raw !== "docblock") {
       this.#fail(

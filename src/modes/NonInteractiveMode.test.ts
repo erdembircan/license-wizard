@@ -231,6 +231,19 @@ describe("NonInteractiveMode routing", () => {
     expect(selection.headers).not.toHaveProperty("comment");
   });
 
+  it("rejects --headers-comment supplied without --headers", async () => {
+    const d = makeDeps();
+    await build(
+      d,
+      flags({ license: "MIT", "headers-comment": "docblock" }),
+    ).run();
+
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(d.headers.apply).not.toHaveBeenCalled();
+    expect(callsOf(d)).toContain("error");
+    expect(process.exitCode).toBe(1);
+  });
+
   it("rejects an invalid --headers-comment value", async () => {
     const d = makeDeps();
     await build(
