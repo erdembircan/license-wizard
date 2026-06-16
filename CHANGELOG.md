@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   trailing-newline style and reproduces it, so a single-field edit produces a
   single-line diff. Minified manifests stay minified; files created from scratch use
   two-space indentation with a trailing newline.
+- **CRLF line endings preserved on write** — manifests that use Windows-style `\r\n`
+  line endings now keep them. The writer detects the document's dominant internal line
+  separator and reproduces it on write, so a single-field edit on a CRLF repo no longer
+  rewrites every line. Escaped newlines inside string values are left untouched.
 
 ### Changed
 
