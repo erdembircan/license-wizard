@@ -1,15 +1,39 @@
-const FILE_NAME = "notes-to-self.md";
+import { useState } from "react";
 
-// The note's body, written out the way it would actually sit in the file — the
-// little TextEdit window below renders these lines verbatim.
-const HEADING = "# notes to self";
-const NOTES = [
-  "the LICENSE file is not optional",
-  '"All rights reserved" is not open source',
-  "nobody reads the README either",
-  "this desktop is fake, btw 👋",
-  "yes, you found the easter egg",
-  "go star the repo or something. hi.",
+interface DesktopFile {
+  id: string;
+  name: string;
+  /** Raw Markdown, rendered verbatim in the TextEdit-style window. */
+  body: string;
+}
+
+// Files scattered on the desktop. `notes-to-self.md` winks at whoever found the
+// desktop; `angry-gnome.md` is a breadcrumb — its haiku points at the gnome mode
+// hiding on the author's personal site (tap the profile photo five times).
+const FILES: DesktopFile[] = [
+  {
+    id: "notes",
+    name: "notes-to-self.md",
+    body: `# notes to self
+
+- the LICENSE file is not optional
+- "All rights reserved" is not open source
+- nobody reads the README either
+- this desktop is fake, btw 👋
+- yes, you found the easter egg
+- go star the repo or something. hi.`,
+  },
+  {
+    id: "gnome",
+    name: "angry-gnome.md",
+    body: `# how to summon him
+
+tap the friendly face
+five times where the writer dwells —
+a gnome wakes, fuming
+
+🍄`,
+  },
 ];
 
 /** A generic .md document icon — folded-corner page with a Markdown badge. */
@@ -51,48 +75,57 @@ function MarkdownFileIcon() {
   );
 }
 
-interface DesktopNotesProps {
-  open: boolean;
-  onOpen: () => void;
-  onClose: () => void;
+/** Renders one Markdown line: heading, blank gap, or plain verbatim text. */
+function NoteLine({ line }: { line: string }) {
+  if (line.startsWith("#")) {
+    return <div className="notes-line notes-line--head">{line}</div>;
+  }
+  if (line.trim() === "") {
+    return <div className="notes-line notes-line--gap"></div>;
+  }
+  return <div className="notes-line">{line}</div>;
 }
 
 /**
- * A stray Markdown file on the mini desktop. Clicking the icon opens a small
- * TextEdit-style window that renders the note verbatim — an Easter egg tucked
- * inside the desktop Easter egg.
+ * The stray Markdown files on the mini desktop. Each icon opens a small
+ * TextEdit-style window that renders the file verbatim — Easter eggs tucked
+ * inside the desktop Easter egg. One window is open at a time.
  */
-export default function DesktopNotes({
-  open,
-  onOpen,
-  onClose,
-}: DesktopNotesProps) {
+export default function DesktopNotes() {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openFile = FILES.find((file) => file.id === openId) ?? null;
+
   return (
     <>
-      <button
-        type="button"
-        className="desktop-file"
-        onClick={onOpen}
-        aria-label={`Open ${FILE_NAME}`}
-      >
-        <span className="desktop-file__tile">
-          <MarkdownFileIcon />
-        </span>
-        <span className="desktop-file__name">{FILE_NAME}</span>
-      </button>
+      <div className="desktop-files">
+        {FILES.map((file) => (
+          <button
+            key={file.id}
+            type="button"
+            className="desktop-file"
+            onClick={() => setOpenId(file.id)}
+            aria-label={`Open ${file.name}`}
+          >
+            <span className="desktop-file__tile">
+              <MarkdownFileIcon />
+            </span>
+            <span className="desktop-file__name">{file.name}</span>
+          </button>
+        ))}
+      </div>
 
-      {open && (
+      {openFile && (
         <div
           className="notes-window"
           role="dialog"
-          aria-label={FILE_NAME}
+          aria-label={openFile.name}
           aria-modal="false"
         >
           <div className="notes-window__bar">
             <button
               type="button"
               className="notes-dot notes-dot--close"
-              onClick={onClose}
+              onClick={() => setOpenId(null)}
               aria-label="Close note"
             >
               <span className="notes-dot__glyph" aria-hidden="true">
@@ -101,15 +134,11 @@ export default function DesktopNotes({
             </button>
             <span className="notes-dot"></span>
             <span className="notes-dot"></span>
-            <span className="notes-window__title">{FILE_NAME}</span>
+            <span className="notes-window__title">{openFile.name}</span>
           </div>
           <div className="notes-window__body">
-            <div className="notes-line notes-line--head">{HEADING}</div>
-            <div className="notes-line notes-line--gap"></div>
-            {NOTES.map((note) => (
-              <div className="notes-line" key={note}>
-                - {note}
-              </div>
+            {openFile.body.split("\n").map((line, i) => (
+              <NoteLine key={`${openFile.id}-${i}`} line={line} />
             ))}
           </div>
         </div>

@@ -121,7 +121,6 @@ function MacMenuBar({ active }: { active: boolean }) {
  */
 export default function HeroWindow() {
   const [state, setState] = useState<WindowState>("open");
-  const [notesOpen, setNotesOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   // The ancestor whose entrance transform we suppress while maximized (see below).
@@ -219,11 +218,7 @@ export default function HeroWindow() {
     <div ref={stageRef} className={`mac-stage is-${state}`}>
       <div className="mac-stage__desktop">
         <MacMenuBar active={stowed} />
-        <DesktopNotes
-          open={notesOpen}
-          onOpen={() => setNotesOpen(true)}
-          onClose={() => setNotesOpen(false)}
-        />
+        <DesktopNotes />
         <MacDock onLaunch={open} running={stowed} />
       </div>
 
