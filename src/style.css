@@ -422,6 +422,19 @@
     @apply flex items-center gap-3;
     color: rgba(255, 255, 255, 0.72);
   }
+  .mac-menubar__battery {
+    @apply flex items-center gap-1.5;
+  }
+  .mac-menubar__battglyph {
+    display: block;
+  }
+  .mac-menubar__clock {
+    /* Tabular figures + a fixed min-width so the per-second tick never reflows
+       the cluster as digit widths change. */
+    font-variant-numeric: tabular-nums;
+    min-width: 5.4em;
+    text-align: right;
+  }
 
   /* dock: glassy pill of app tiles pinned to the bottom of the desktop */
   .mac-dock {
@@ -531,13 +544,68 @@
       transform 0.34s cubic-bezier(0.4, 0, 0.7, 0.2),
       opacity 0.34s ease;
   }
+  /* minimize: the macOS genie. The window necks down (scaleX → a sliver) and
+     pours along the --genie-x/--genie-y vector into the dock icon, draining from
+     the top via the clip-path so it reads as a warp rather than a plain shrink.
+     Relaunching (`.is-launching`) plays the same warp in reverse. */
   .is-minimized .mac-stage__window {
-    transform: translateY(58%) scaleX(0.16) scaleY(0.04);
-    opacity: 0;
     pointer-events: none;
-    transition:
-      transform 0.5s cubic-bezier(0.5, 0, 0.75, 0.15),
-      opacity 0.4s ease 0.1s;
+    animation: genie-out 0.58s cubic-bezier(0.5, 0, 0.85, 0.32) forwards;
+  }
+  .mac-stage__window.is-launching {
+    animation: genie-in 0.55s cubic-bezier(0.16, 0.7, 0.4, 1) forwards;
+  }
+
+  @keyframes genie-out {
+    0% {
+      transform: translate(0, 0) scaleX(1) scaleY(1);
+      clip-path: inset(0 0 0 0 round 14px);
+      opacity: 1;
+    }
+    24% {
+      transform: translate(calc(var(--genie-x, 0px) * 0.07), 8px) scaleX(0.72)
+        scaleY(1.05);
+      clip-path: inset(0 0 0 0 round 14px);
+      opacity: 1;
+    }
+    70% {
+      transform: translate(calc(var(--genie-x, 0px) * 0.55), calc(var(--genie-y, 0px) * 0.5))
+        scaleX(0.18) scaleY(0.62);
+      clip-path: inset(34% 0 0 0 round 10px);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--genie-x, 0px), var(--genie-y, 0px)) scaleX(0.03)
+        scaleY(0.1);
+      clip-path: inset(82% 0 0 0 round 50%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes genie-in {
+    0% {
+      transform: translate(var(--genie-x, 0px), var(--genie-y, 0px)) scaleX(0.03)
+        scaleY(0.1);
+      clip-path: inset(82% 0 0 0 round 50%);
+      opacity: 0;
+    }
+    35% {
+      transform: translate(calc(var(--genie-x, 0px) * 0.55), calc(var(--genie-y, 0px) * 0.5))
+        scaleX(0.18) scaleY(0.62);
+      clip-path: inset(34% 0 0 0 round 10px);
+      opacity: 1;
+    }
+    80% {
+      transform: translate(calc(var(--genie-x, 0px) * 0.07), 8px) scaleX(0.72)
+        scaleY(1.05);
+      clip-path: inset(0 0 0 0 round 14px);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(0, 0) scaleX(1) scaleY(1);
+      clip-path: inset(0 0 0 0 round 14px);
+      opacity: 1;
+    }
   }
 
   /* maximize: pin the window to the viewport over a dimmed backdrop, and let the

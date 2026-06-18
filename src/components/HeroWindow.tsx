@@ -1,16 +1,73 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Terminal from "./Terminal";
 import MacDock from "./MacDock";
+import { useBattery } from "../hooks/useBattery";
+import { useClock } from "../hooks/useClock";
 import { scenes } from "../data/scenes";
 
 type WindowState = "open" | "minimized" | "closed" | "maximized";
 
 /**
- * The slim faux menu bar that sits atop the mini desktop revealed behind the
- * terminal — brand mark, dummy app menus, and a static status cluster. Pure
- * chrome; nothing here is interactive.
+ * The small battery indicator in the menu bar: an outline cell whose inner fill
+ * tracks the charge level, plus a bolt when charging.
  */
-function MacMenuBar() {
+function BatteryGlyph({
+  percent,
+  charging,
+}: {
+  percent: number;
+  charging: boolean;
+}) {
+  const fill = Math.max(2, (Math.min(100, percent) / 100) * 18);
+  return (
+    <svg
+      className="mac-menubar__battglyph"
+      viewBox="0 0 26 13"
+      width="24"
+      height="12"
+      aria-hidden="true"
+    >
+      <rect
+        x="0.75"
+        y="0.75"
+        width="22"
+        height="11.5"
+        rx="3"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.6"
+      />
+      <rect
+        x="24"
+        y="4.2"
+        width="2"
+        height="4.6"
+        rx="1"
+        fill="currentColor"
+        fillOpacity="0.6"
+      />
+      <rect x="2" y="2" width={fill} height="9" rx="1.5" fill="currentColor" />
+      {charging && (
+        <path
+          d="M13.2 1.6 8.6 7.4h3.1l-1 4 4.8-5.8h-3.1z"
+          fill="#0e1830"
+          stroke="currentColor"
+          strokeWidth="0.5"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  );
+}
+
+/**
+ * The slim faux menu bar atop the mini desktop: brand mark, dummy app menus, and
+ * a live status cluster — the real device battery (Battery Status API) and a
+ * wall clock that ticks every second while the desktop is showing.
+ */
+function MacMenuBar({ active }: { active: boolean }) {
+  const battery = useBattery();
+  const { time, date } = useClock(active);
   return (
     <div className="mac-menubar" aria-hidden="true">
       <div className="mac-menubar__left">
@@ -27,9 +84,12 @@ function MacMenuBar() {
         <span className="mac-menubar__menu">Help</span>
       </div>
       <div className="mac-menubar__right">
-        <span>100%</span>
-        <span>Wed 18 Jun</span>
-        <span>9:41</span>
+        <span className="mac-menubar__battery">
+          {battery.percent}%
+          <BatteryGlyph percent={battery.percent} charging={battery.charging} />
+        </span>
+        <span>{date}</span>
+        <span className="mac-menubar__clock">{time}</span>
       </div>
     </div>
   );
@@ -41,8 +101,8 @@ function MacMenuBar() {
  * drive a small macOS-style state machine instead:
  *
  * - **close** poofs the window out, revealing a mini desktop with a dock;
- * - **minimize** genies it down into that dock;
- * - clicking the License Wizard dock icon brings it back with the same rise;
+ * - **minimize** plays the genie effect — warping the window down into the
+ *   License Wizard dock icon — and clicking that icon plays it in reverse;
  * - **maximize** pins the window to the whole viewport, and clicking it again
  *   (or pressing Escape) restores the inline size.
  *
@@ -53,13 +113,46 @@ function MacMenuBar() {
  */
 export default function HeroWindow() {
   const [state, setState] = useState<WindowState>("open");
+  // Set for the duration of the genie-in animation when relaunching from the
+  // dock, so the window warps back out of its icon instead of snapping open.
+  const [launching, setLaunching] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
+  const windowRef = useRef<HTMLDivElement>(null);
   // The ancestor whose entrance transform we suppress while maximized (see below).
   const riseRef = useRef<HTMLElement | null>(null);
 
-  const open = useCallback(() => setState("open"), []);
+  // Point the genie at the dock's License Wizard icon: stash, as CSS vars on the
+  // window, the translation from the window's centre to the icon's centre. Both
+  // the out (minimize) and in (relaunch) keyframes travel along that vector.
+  const aimGenieAtDock = useCallback((): void => {
+    const win = windowRef.current;
+    const icon = stageRef.current?.querySelector(".dock-item--app");
+    if (!win || !icon) return;
+    const w = win.getBoundingClientRect();
+    const i = icon.getBoundingClientRect();
+    win.style.setProperty(
+      "--genie-x",
+      `${i.left + i.width / 2 - (w.left + w.width / 2)}px`,
+    );
+    win.style.setProperty(
+      "--genie-y",
+      `${i.top + i.height / 2 - (w.top + w.height / 2)}px`,
+    );
+  }, []);
+
+  const minimize = useCallback(() => {
+    aimGenieAtDock();
+    setState("minimized");
+  }, [aimGenieAtDock]);
+
   const close = useCallback(() => setState("closed"), []);
-  const minimize = useCallback(() => setState("minimized"), []);
+
+  const open = useCallback(() => {
+    // Relaunching from a genied-down window plays the reverse warp; a closed
+    // window simply pops back via its transition.
+    setLaunching(state === "minimized");
+    setState("open");
+  }, [state]);
 
   const toggleMaximize = useCallback(() => {
     if (state === "maximized") {
@@ -118,7 +211,7 @@ export default function HeroWindow() {
   return (
     <div ref={stageRef} className={`mac-stage is-${state}`}>
       <div className="mac-stage__desktop">
-        <MacMenuBar />
+        <MacMenuBar active={stowed} />
         <MacDock onLaunch={open} running={stowed} />
       </div>
 
@@ -131,7 +224,11 @@ export default function HeroWindow() {
         ></button>
       )}
 
-      <div className="mac-stage__window">
+      <div
+        ref={windowRef}
+        className={`mac-stage__window${launching ? " is-launching" : ""}`}
+        onAnimationEnd={() => setLaunching(false)}
+      >
         <Terminal
           scenes={scenes}
           ariaLabel="License Wizard examples"
