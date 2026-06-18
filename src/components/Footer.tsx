@@ -1,6 +1,7 @@
 /**
  * Site footer with the logo, copyright line (current year rendered
- * dynamically), and links to GitHub and npm.
+ * dynamically, author name linking to the author's homepage), and links
+ * to GitHub and npm.
  */
 export default function Footer() {
   return (
@@ -13,7 +14,15 @@ export default function Footer() {
             className="h-8 w-auto"
           />
           <span className="text-sm text-ink-faint">
-            Apache-2.0 © {new Date().getFullYear()} Erdem Bircan
+            Apache-2.0 © {new Date().getFullYear()}{" "}
+            <a
+              href="https://erdembircan.github.io"
+              target="_blank"
+              rel="noopener"
+              className="nav-link"
+            >
+              Erdem Bircan
+            </a>
           </span>
         </div>
         <nav className="flex flex-wrap items-center gap-x-7 gap-y-2 text-sm">
