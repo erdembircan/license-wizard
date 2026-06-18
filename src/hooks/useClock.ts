@@ -11,9 +11,10 @@ function read(): ClockReading {
   const now = new Date();
   return {
     time: now.toLocaleTimeString([], {
-      hour: "numeric",
+      hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
+      hour12: false,
     }),
     date: now.toLocaleDateString([], {
       weekday: "short",
