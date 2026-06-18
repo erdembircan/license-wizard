@@ -21,8 +21,11 @@ const toneClass: Record<NonNullable<TerminalLine["tone"]>, string> = {
  * Runs the interactive terminal engine for the given `scenes` against the tabs
  * container and body elements: builds the scene tabs, types each prompt, plays
  * back the shell scenes line-by-line, streams the agent turn with the thinking
- * spinner, and auto-advances between scenes. The whole engine lives inside a
- * single useEffect whose cleanup clears every pending timeout/interval so
+ * spinner, and auto-advances between scenes. Playback is deferred until the
+ * terminal scrolls into view (via an IntersectionObserver), so a window below
+ * the fold doesn't run its simulation before the visitor sees it. The whole
+ * engine lives inside a single useEffect whose cleanup clears every pending
+ * timeout/interval so
  * nothing leaks on unmount or a StrictMode double-invoke. `scenes` should be a
  * stable reference (a module constant) so the effect doesn't re-run each render.
  */
@@ -365,9 +368,38 @@ export function useTerminalPlayer(
       play(scenes[index]!, runToken);
     }
 
-    select(0);
+    // Defer the first scene until the terminal scrolls into view, so a window
+    // that's still below the fold doesn't burn through its simulation before the
+    // visitor ever sees it. The hero terminal is on screen at load and starts at
+    // once; the agents terminal waits until it's reached. Mirrors the lazy-start
+    // pattern the CI pipeline uses (see useCIPipeline).
+    let started = false;
+    const start = (): void => {
+      if (started) return;
+      started = true;
+      select(0);
+    };
+
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver === "undefined") {
+      start();
+    } else {
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && !started) {
+              start();
+              observer!.unobserve(entry.target);
+            }
+          }
+        },
+        { threshold: 0.3 },
+      );
+      observer.observe(bodyEl);
+    }
 
     return () => {
+      observer?.disconnect();
       runToken += 1;
       clearPending();
       tabButtons.forEach((b) => b.remove());
