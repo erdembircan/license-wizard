@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import Terminal from "./Terminal";
 import MacDock from "./MacDock";
 import { useBattery } from "../hooks/useBattery";
 import { useClock } from "../hooks/useClock";
+import { playGenie } from "../lib/genieWarp";
 import { scenes } from "../data/scenes";
 
 type WindowState = "open" | "minimized" | "closed" | "maximized";
@@ -113,45 +120,43 @@ function MacMenuBar({ active }: { active: boolean }) {
  */
 export default function HeroWindow() {
   const [state, setState] = useState<WindowState>("open");
-  // Set for the duration of the genie-in animation when relaunching from the
-  // dock, so the window warps back out of its icon instead of snapping open.
-  const [launching, setLaunching] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
   // The ancestor whose entrance transform we suppress while maximized (see below).
   const riseRef = useRef<HTMLElement | null>(null);
+  // Tears down any genie warp in flight; the previous state, so we can tell a
+  // genie transition (minimize / relaunch) from the others.
+  const cancelGenieRef = useRef<(() => void) | null>(null);
+  const prevStateRef = useRef<WindowState>("open");
 
-  // Point the genie at the dock's License Wizard icon: stash, as CSS vars on the
-  // window, the translation from the window's centre to the icon's centre. Both
-  // the out (minimize) and in (relaunch) keyframes travel along that vector.
-  const aimGenieAtDock = useCallback((): void => {
+  const minimize = useCallback(() => setState("minimized"), []);
+  const close = useCallback(() => setState("closed"), []);
+  const open = useCallback(() => setState("open"), []);
+
+  // Drive the genie warp on the minimize ⇄ relaunch transitions. The warp clones
+  // the live window into dock-bound strips, so it runs from the layout effect
+  // (after the new state has committed) and hides the real window meanwhile.
+  useLayoutEffect(() => {
+    const prev = prevStateRef.current;
+    prevStateRef.current = state;
+    if (prev === state) return;
+
     const win = windowRef.current;
     const icon = stageRef.current?.querySelector(".dock-item--app");
-    if (!win || !icon) return;
-    const w = win.getBoundingClientRect();
-    const i = icon.getBoundingClientRect();
-    win.style.setProperty(
-      "--genie-x",
-      `${i.left + i.width / 2 - (w.left + w.width / 2)}px`,
+    const isGenie =
+      (state === "minimized" && prev === "open") ||
+      (state === "open" && prev === "minimized");
+    if (!win || !icon || !isGenie) return;
+
+    cancelGenieRef.current?.();
+    cancelGenieRef.current = playGenie(
+      win,
+      icon,
+      state === "minimized" ? "out" : "in",
+      () => {
+        cancelGenieRef.current = null;
+      },
     );
-    win.style.setProperty(
-      "--genie-y",
-      `${i.top + i.height / 2 - (w.top + w.height / 2)}px`,
-    );
-  }, []);
-
-  const minimize = useCallback(() => {
-    aimGenieAtDock();
-    setState("minimized");
-  }, [aimGenieAtDock]);
-
-  const close = useCallback(() => setState("closed"), []);
-
-  const open = useCallback(() => {
-    // Relaunching from a genied-down window plays the reverse warp; a closed
-    // window simply pops back via its transition.
-    setLaunching(state === "minimized");
-    setState("open");
   }, [state]);
 
   const toggleMaximize = useCallback(() => {
@@ -224,11 +229,7 @@ export default function HeroWindow() {
         ></button>
       )}
 
-      <div
-        ref={windowRef}
-        className={`mac-stage__window${launching ? " is-launching" : ""}`}
-        onAnimationEnd={() => setLaunching(false)}
-      >
+      <div ref={windowRef} className="mac-stage__window">
         <Terminal
           scenes={scenes}
           ariaLabel="License Wizard examples"
