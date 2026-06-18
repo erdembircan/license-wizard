@@ -346,6 +346,417 @@
     white-space: pre-wrap;
   }
 
+  /* hero window Easter egg ------------------------------------------------- */
+  /* The three lights become real buttons; the macOS hover glyph fades in only
+     while the title-bar cluster is hovered or a light is focused. */
+  .term-lights {
+    @apply flex items-center gap-2;
+  }
+  .term-dot-btn {
+    @apply relative grid place-items-center rounded-full p-0;
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .term-dot-glyph {
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  .term-lights:hover .term-dot-glyph,
+  .term-dot-btn:focus-visible .term-dot-glyph {
+    opacity: 1;
+  }
+
+  /* the stage holds the window and the mini desktop revealed behind it */
+  .mac-stage {
+    position: relative;
+    border-radius: 1rem;
+  }
+
+  /* mini macOS desktop: soft wallpaper with a menu bar and a dock. Sits behind
+     the window and only shows once the window is closed or minimized. */
+  .mac-stage__desktop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #3a6fd0 0%, transparent 55%),
+      linear-gradient(160deg, #1f3a6b 0%, #16223d 60%, #0e1830 100%);
+    box-shadow: inset 0 0 0 1px var(--color-term-line);
+  }
+
+  .mac-menubar {
+    @apply flex items-center justify-between px-3 text-[10px] font-medium;
+    height: 1.4rem;
+    color: rgba(255, 255, 255, 0.86);
+    background: rgba(12, 20, 40, 0.55);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .mac-menubar__left {
+    @apply flex items-center gap-3;
+  }
+  .mac-menubar__mark {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 4px;
+  }
+  .mac-menubar__app {
+    font-weight: 700;
+  }
+  .mac-menubar__menu {
+    color: rgba(255, 255, 255, 0.66);
+  }
+  .mac-menubar__right {
+    @apply flex items-center gap-3;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  .mac-menubar__battery {
+    @apply flex items-center gap-1.5;
+  }
+  .mac-menubar__battglyph {
+    display: block;
+  }
+  .mac-menubar__clock {
+    /* Tabular figures + a fixed min-width so the per-second tick never reflows
+       the cluster as digit widths change. */
+    font-variant-numeric: tabular-nums;
+    min-width: 5.4em;
+    text-align: right;
+  }
+
+  /* dock: glassy pill of app tiles pinned to the bottom of the desktop */
+  .mac-dock {
+    margin-top: auto;
+    margin-bottom: 0.75rem;
+    align-self: center;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 1rem;
+    background: rgba(236, 242, 252, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow:
+      0 10px 30px -10px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(14px);
+    /* floats up from the wallpaper once the window stows */
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.32s ease,
+      transform 0.32s cubic-bezier(0.34, 1.4, 0.5, 1);
+  }
+  .is-closed .mac-dock,
+  .is-minimized .mac-dock {
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: 0.12s;
+  }
+
+  .dock-item {
+    @apply relative grid cursor-default place-items-center p-0;
+    border: 0;
+    background: transparent;
+    transition: transform 0.18s cubic-bezier(0.34, 1.5, 0.5, 1);
+  }
+  .dock-item--app {
+    cursor: pointer;
+  }
+  .dock-item:hover {
+    transform: translateY(-6px) scale(1.16);
+  }
+  .dock-tile {
+    display: block;
+    width: 2.3rem;
+    height: 2.3rem;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+  }
+  .dock-glyph {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .dock-running {
+    position: absolute;
+    bottom: -0.45rem;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.85);
+    opacity: 0;
+  }
+  .dock-running.is-on {
+    opacity: 1;
+  }
+  .is-closed .dock-item--app,
+  .is-minimized .dock-item--app {
+    animation: dock-bounce 1s ease 0.4s 2;
+  }
+  .dock-divider {
+    width: 1px;
+    align-self: stretch;
+    margin: 0.2rem 0.1rem;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  @keyframes dock-bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-9px);
+    }
+  }
+
+  /* stray .md files stacked top-left on the desktop, under the menu bar */
+  .desktop-files {
+    position: absolute;
+    top: 2rem;
+    left: 0.5rem;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .desktop-file {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    width: 4.6rem;
+    padding: 0.3rem 0.2rem 0.2rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .desktop-file:hover,
+  .desktop-file:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+  }
+  .desktop-file__tile {
+    width: 2.5rem;
+    height: 2.9rem;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
+  }
+  .desktop-file__glyph {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .desktop-file__name {
+    max-width: 100%;
+    border-radius: 0.25rem;
+    padding: 0.05rem 0.3rem;
+    font-size: 10px;
+    line-height: 1.3;
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+    overflow-wrap: break-word;
+  }
+  .desktop-file:hover .desktop-file__name,
+  .desktop-file:focus-visible .desktop-file__name {
+    background: rgba(47, 111, 224, 0.9);
+    text-shadow: none;
+  }
+
+  /* the little TextEdit-style window the note opens into */
+  .notes-window {
+    position: absolute;
+    top: 16%;
+    left: 50%;
+    z-index: 3;
+    width: min(20.5rem, 88%);
+    transform: translateX(-50%);
+    overflow: hidden;
+    border-radius: 0.7rem;
+    background: #fdfdfb;
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 24px 48px -18px rgba(8, 14, 30, 0.65);
+    transform-origin: 50% 0;
+    animation: notes-pop 0.22s cubic-bezier(0.34, 1.4, 0.5, 1);
+  }
+  .notes-window__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.7rem;
+    background: linear-gradient(#ededf0, #dedee3);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  }
+  .notes-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border: 0;
+    padding: 0;
+    border-radius: 999px;
+    background: #c7ccd3;
+    display: grid;
+    place-items: center;
+  }
+  .notes-dot--close {
+    background: #ff5f57;
+    cursor: pointer;
+  }
+  .notes-dot__glyph {
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  .notes-window__bar:hover .notes-dot__glyph {
+    opacity: 1;
+  }
+  .notes-window__title {
+    flex: 1;
+    text-align: center;
+    margin-right: 1.4rem;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5b6373;
+  }
+  .notes-window__body {
+    padding: 0.8rem 0.9rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.55;
+    color: #2b3346;
+  }
+  .notes-line--head {
+    color: #1f53c4;
+    font-weight: 600;
+  }
+  .notes-line--gap {
+    height: 0.55rem;
+  }
+
+  @keyframes notes-pop {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+  }
+
+  /* the window: only transformed (never unmounted) so playback survives every
+     close/minimize/restore. transform-origin sits at the dock, so minimize reads
+     as a genie suck-down toward the icons. */
+  .mac-stage__window {
+    position: relative;
+    z-index: 2;
+    transform-origin: 50% 100%;
+    transition:
+      transform 0.46s cubic-bezier(0.34, 1.28, 0.5, 1),
+      opacity 0.34s ease;
+    will-change: transform, opacity;
+  }
+  .is-closed .mac-stage__window {
+    transform: scale(0.32) rotate(-1.5deg);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 0.34s cubic-bezier(0.4, 0, 0.7, 0.2),
+      opacity 0.34s ease;
+  }
+  /* minimize: the macOS genie effect, played in JS (see lib/genieWarp.ts) by
+     slicing the window into dock-bound strips. The resting minimized state is
+     simply hidden; the warp draws the motion over the top and hides the real
+     window while it runs. */
+  .is-minimized .mac-stage__window {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* genie strips are clones of the window; drop the per-strip shadow so the
+     sliced rows don't each cast their own. */
+  .genie-overlay .terminal {
+    box-shadow: none;
+  }
+
+  /* maximize: pin the window to the viewport over a dimmed backdrop, and let the
+     terminal body grow to fill instead of keeping its fixed scroll height. */
+  .mac-stage__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    border: 0;
+    cursor: default;
+    background: rgba(8, 14, 30, 0.55);
+    backdrop-filter: blur(2px);
+    animation: mac-fade-in 0.3s ease;
+  }
+  .is-maximized .mac-stage__window {
+    position: fixed;
+    inset: clamp(0.5rem, 3vh, 2.5rem);
+    z-index: 50;
+    transform-origin: 50% 50%;
+    animation: mac-zoom-in 0.34s cubic-bezier(0.34, 1.2, 0.5, 1);
+  }
+  .is-maximized .mac-stage__window .terminal {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .is-maximized .mac-stage__window .terminal-body {
+    height: auto;
+    flex: 1 1 auto;
+  }
+
+  @keyframes mac-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes mac-zoom-in {
+    from {
+      transform: scale(0.92);
+      opacity: 0.4;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mac-stage__window,
+    .mac-dock,
+    .dock-item,
+    .dock-item--app,
+    .mac-stage__backdrop {
+      transition-duration: 0.01ms !important;
+      animation: none !important;
+    }
+  }
+
   .copy-field {
     @apply flex items-center justify-between gap-3 rounded-xl border border-line-strong bg-paper-raised px-4 py-3 font-mono text-sm;
     box-shadow: 0 1px 2px rgba(22, 34, 61, 0.04);
