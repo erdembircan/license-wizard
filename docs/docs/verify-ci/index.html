@@ -58,7 +58,7 @@
 </code></pre>
 <p>By default, verification <strong>self-heals</strong>: anything out of sync — an edited copyright line, a stale <code>LICENSE</code>, a hand-changed manifest field, a source file missing its header — is brought back in line with the license you chose. When nothing has drifted, it confirms and exits zero.</p>
 <h3 id="strict-mode-for-ci">Strict mode for CI</h3>
-<p>Add <code>--strict</code> to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted, and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step:</p>
+<p>Add <code>--strict</code> to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted, and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step. <code>--strict</code> only modifies a <code>--verify</code> run; supplied on its own it errors with a clear message rather than being silently ignored.</p>
 <pre><code class="language-yaml">- name: Check the license is in sync
   run: npx license-wizard --verify --strict
 </code></pre>

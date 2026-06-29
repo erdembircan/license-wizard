@@ -96,6 +96,10 @@ npx license-wizard --license MIT --headers short --save-npm
 
 The header is filled from the same copyright values you supply when customizing — you're never asked for them twice. A `full` notice that carries copyright placeholders can only be written once those values are provided: in the wizard, **Full** is offered only after you've customized the copyright; non-interactively, `--headers full` requires the matching `--set` values and otherwise stops, listing the fields it needs.
 
+### Comment style
+
+By default the header is wrapped in a block comment (`/* … */`). Pass `--headers-comment docblock` to use a documentation block (`/** … */`) instead — the form PHPDoc and the WordPress Coding Standards expect. It applies only when a header is being written, so it requires `--headers`; on its own it errors rather than being silently ignored.
+
 ### What gets a header
 
 Only the source files the npm and Composer ecosystems use: `.js`, `.jsx`, `.mjs`, `.cjs`, `.ts`, `.tsx`, `.cts`, `.mts`, and `.php`. JSON, stylesheets, markdown, and generated output are left alone. Dependencies (`node_modules/`, `vendor/`), `.git/`, and everything your `.gitignore` excludes are skipped automatically — add more with a repeatable `--headers-ignore <glob>`. A `#!` shebang stays on top, and the header sits inside PHP's `<?php` tag — a `.php` file that opens with HTML rather than `<?php` is skipped instead, so the header is never emitted as page output.
@@ -136,7 +140,7 @@ By default, verification **self-heals**: anything out of sync — an edited copy
 
 ### Strict mode for CI
 
-Add `--strict` to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted, and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step:
+Add `--strict` to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted, and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step. `--strict` only modifies a `--verify` run; supplied on its own it errors with a clear message rather than being silently ignored.
 
 ```yaml
 - name: Check the license is in sync
@@ -207,15 +211,16 @@ The complete flag list. Run `npx license-wizard --help` to print the same refere
 | `--help` | Show the help message and exit. |
 | `--version` | Print the version number and exit. |
 | `--verify` | Check the `LICENSE` file, every manifest's `license` field, and (when configured) the source-file headers against your saved configuration, reconciling any drift. Standalone mode. |
-| `--strict` | With `--verify`, fail on any drift instead of reconciling it — for CI. |
+| `--strict` | With `--verify`, fail on any drift instead of reconciling it — for CI. Requires `--verify`; on its own it errors. |
 | `--apply-config` | Regenerate the `LICENSE`, manifest fields, and configured headers from the saved config; errors if none exists. Standalone — takes priority over selection flags; honors `--dry-run`. |
 | `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively. |
-| `--set <field=value>` | Set a copyright field for the chosen license (repeatable). Implies non-interactive mode. |
-| `--save-rc` | Save the resolved config to `.licensewizardrc.json`. Implies non-interactive mode. |
-| `--save-npm` | Save the resolved config to the `license-wizard` field of `package.json` (must exist). |
-| `--save-composer` | Save the resolved config to the `license-wizard` field of `composer.json` (must exist). |
+| `--set <field=value>` | Set a copyright field for the chosen license (repeatable, requires `--license`). Implies non-interactive mode. |
+| `--save-rc` | Save the resolved config to `.licensewizardrc.json` (requires `--license`). Implies non-interactive mode. |
+| `--save-npm` | Save the resolved config to the `license-wizard` field of `package.json` (must exist; requires `--license`). |
+| `--save-composer` | Save the resolved config to the `license-wizard` field of `composer.json` (must exist; requires `--license`). |
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit. |
-| `--headers <short\|full>` | Also write SPDX license headers into source files — `short` (tag lines) or `full` (the standard notice). |
+| `--headers <short\|full>` | Also write SPDX license headers into source files — `short` (tag lines) or `full` (the standard notice). Requires `--license`. |
+| `--headers-comment <block\|docblock>` | Comment style for written headers — `block` (`/* */`, default) or `docblock` (`/** */`, for PHPDoc/WPCS). Requires `--headers`. |
 | `--headers-ignore <glob>` | Extra gitignore-style pattern to skip when writing headers, on top of the defaults and `.gitignore` (repeatable). |
 | `--force-header <path>` | Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors `--dry-run`. |
 | `--remove-headers` | Strip License Wizard's headers and drop the saved headers preference. Standalone; takes priority over `--headers`; honors `--headers-ignore` and `--dry-run`. |

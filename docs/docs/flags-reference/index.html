@@ -72,7 +72,7 @@
 </tr>
 <tr>
 <td><code>--strict</code></td>
-<td>With <code>--verify</code>, fail on any drift instead of reconciling it — for CI.</td>
+<td>With <code>--verify</code>, fail on any drift instead of reconciling it — for CI. Requires <code>--verify</code>; on its own it errors.</td>
 </tr>
 <tr>
 <td><code>--apply-config</code></td>
@@ -84,19 +84,19 @@
 </tr>
 <tr>
 <td><code>--set &lt;field=value&gt;</code></td>
-<td>Set a copyright field for the chosen license (repeatable). Implies non-interactive mode.</td>
+<td>Set a copyright field for the chosen license (repeatable, requires <code>--license</code>). Implies non-interactive mode.</td>
 </tr>
 <tr>
 <td><code>--save-rc</code></td>
-<td>Save the resolved config to <code>.licensewizardrc.json</code>. Implies non-interactive mode.</td>
+<td>Save the resolved config to <code>.licensewizardrc.json</code> (requires <code>--license</code>). Implies non-interactive mode.</td>
 </tr>
 <tr>
 <td><code>--save-npm</code></td>
-<td>Save the resolved config to the <code>license-wizard</code> field of <code>package.json</code> (must exist).</td>
+<td>Save the resolved config to the <code>license-wizard</code> field of <code>package.json</code> (must exist; requires <code>--license</code>).</td>
 </tr>
 <tr>
 <td><code>--save-composer</code></td>
-<td>Save the resolved config to the <code>license-wizard</code> field of <code>composer.json</code> (must exist).</td>
+<td>Save the resolved config to the <code>license-wizard</code> field of <code>composer.json</code> (must exist; requires <code>--license</code>).</td>
 </tr>
 <tr>
 <td><code>--get-tokens</code></td>
@@ -104,7 +104,11 @@
 </tr>
 <tr>
 <td><code>--headers &lt;short|full&gt;</code></td>
-<td>Also write SPDX license headers into source files — <code>short</code> (tag lines) or <code>full</code> (the standard notice).</td>
+<td>Also write SPDX license headers into source files — <code>short</code> (tag lines) or <code>full</code> (the standard notice). Requires <code>--license</code>.</td>
+</tr>
+<tr>
+<td><code>--headers-comment &lt;block|docblock&gt;</code></td>
+<td>Comment style for written headers — <code>block</code> (<code>/* */</code>, default) or <code>docblock</code> (<code>/** */</code>, for PHPDoc/WPCS). Requires <code>--headers</code>.</td>
 </tr>
 <tr>
 <td><code>--headers-ignore &lt;glob&gt;</code></td>
