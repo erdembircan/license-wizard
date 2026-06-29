@@ -414,6 +414,45 @@ describe("FlagParser", () => {
       expect(parser.formatHelp()).not.toContain("--verbose <");
     });
 
+    it("appends the required flag to a dependent flag's description", () => {
+      const parser = new FlagParser({
+        strict: {
+          type: "boolean",
+          default: false,
+          description: "Fail on drift.",
+          requires: { anyOf: ["verify"], message: "needs --verify" },
+        },
+      });
+      expect(parser.formatHelp()).toContain(
+        "Fail on drift. (requires --verify)",
+      );
+    });
+
+    it("joins multiple required flags with 'or'", () => {
+      const parser = new FlagParser({
+        save: {
+          type: "boolean",
+          default: false,
+          description: "Save config.",
+          requires: { anyOf: ["npm", "composer"], message: "needs a manifest" },
+        },
+      });
+      expect(parser.formatHelp()).toContain(
+        "Save config. (requires --npm or --composer)",
+      );
+    });
+
+    it("appends no requirement note to a flag without a dependency", () => {
+      const parser = new FlagParser({
+        verbose: {
+          type: "boolean",
+          default: false,
+          description: "Be verbose.",
+        },
+      });
+      expect(parser.formatHelp()).not.toContain("requires");
+    });
+
     it("aligns descriptions across flags of differing name lengths", () => {
       const parser = new FlagParser({
         h: { type: "boolean", default: false, description: "Short." },

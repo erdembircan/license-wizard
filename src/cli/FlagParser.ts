@@ -245,7 +245,9 @@ export class FlagParser<T extends FlagDefinitions> {
    * Renders an aligned listing of every defined flag, its accepted value (for
    * string and list flags) and its description, suitable for a `--help` screen.
    * List flags append `...` after their placeholder to signal that they may be
-   * passed more than once.
+   * passed more than once. A flag that declares a `requires` dependency has the
+   * flag(s) it needs appended to its description (e.g. `(requires --license)`),
+   * so the same "what a flag needs" the resolver enforces is also visible here.
    */
   formatHelp(): string {
     const entries = Object.entries(this.#flags).map(([name, config]) => {
@@ -256,9 +258,15 @@ export class FlagParser<T extends FlagDefinitions> {
           : config.type === "list"
             ? ` ${placeholder}...`
             : "";
+      const requirement =
+        config.requires === undefined
+          ? ""
+          : ` (requires ${config.requires.anyOf
+              .map((required) => `--${required}`)
+              .join(" or ")})`;
       return {
         invocation: `--${name}${value}`,
-        description: config.description,
+        description: `${config.description}${requirement}`,
       };
     });
 
