@@ -5,20 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
-## [Unreleased]
-
-### Changed
-
-- **`--strict` now errors without `--verify`** — previously it sat inert when supplied to a
-  non-verify run; now, on a flag-driven generation run, passing `--strict` without `--verify`
-  fails with a clear message, matching how the other modifier flags report a missing host flag.
-- **Flag dependencies resolved in one place** — each flag that needs another (the `--license`
-  requirement of `--set`/`--headers`/`--get-tokens`/`--save-*`, `--headers-comment` needing
-  `--headers`, `--strict` needing `--verify`) now declares that dependency on its own flag
-  definition, and a single resolver enforces it before any mode runs, instead of ad-hoc checks
-  scattered across the modes. Behavior is unchanged except for the `--strict` case above, plus
-  `--headers-comment` now also reports the missing `--headers` when combined with `--get-tokens`.
-
 ## [1.0.2] - 2026-06-16
 
 ### Fixed
