@@ -870,6 +870,32 @@ describe("LicenseWizard non-interactive mode", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("errors when --headers-comment is given without --headers", async () => {
+    await lw(["--license", "MIT", "--headers-comment", "docblock"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("--headers-comment"),
+      }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when --strict is given without --verify", async () => {
+    await lw(["--license", "MIT", "--strict"]).run();
+
+    expect(state.generateCalls).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message: expect.stringContaining("--verify"),
+      }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
   it("does not write any config when no --save-* flag is given", async () => {
     state.configTargets = [
       { id: ".licensewizardrc.json", label: ".licensewizardrc.json" },
@@ -1557,6 +1583,20 @@ describe("LicenseWizard apply-config mode", () => {
     expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
     expect(state.writtenConfig).toBeNull();
     expect(state.saveTarget).toBeNull();
+  });
+
+  it("ignores a save flag given without --license rather than erroring", async () => {
+    state.config = { licenseId: "MIT" };
+
+    // --save-rc would require --license in the generation flow, but --apply-config
+    // owns the run and ignores it — so this stays a no-op, not a dependency error.
+    await lw(["--apply-config", "--save-rc"]).run();
+
+    expect(state.generateCalls).toEqual([{ licenseId: "MIT", slotValues: {} }]);
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "error" }),
+    );
+    expect(process.exitCode).not.toBe(1);
   });
 
   it("previews from the saved config but writes nothing under --dry-run", async () => {
