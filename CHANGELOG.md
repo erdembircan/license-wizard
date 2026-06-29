@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [1.1.0] - 2026-06-29
+
+### Added
+
+- **`--headers-comment <block|docblock>`** — choose the comment style for written
+  source-file headers: `block` (`/* … */`, the default) or `docblock` (`/** … */`),
+  the form PHPDoc and the WordPress Coding Standards expect. It applies only when a
+  header is being written, so it requires `--headers`. (#160)
+
+### Changed
+
+- **`--strict` now errors without `--verify`** — previously it sat inert when supplied
+  to a non-verify run; now passing `--strict` on its own fails with a clear message,
+  matching how the other modifier flags report a missing host flag. (#165)
+- **`--help` lists a flag's dependencies** — each flag that requires another now shows
+  it in the help listing (e.g. `(requires --license)`), so the requirement the CLI
+  enforces is visible up front. (#165)
+- **Internal: flag dependencies resolved in one place** — each flag that needs another
+  (the `--license` requirement of `--set`/`--headers`/`--get-tokens`/`--save-*`,
+  `--headers-comment` needing `--headers`, `--strict` needing `--verify`) declares that
+  dependency on its own definition, and a single resolver enforces it before any mode
+  runs, instead of ad-hoc checks scattered across the modes. (#164, #165)
+
 ## [1.0.2] - 2026-06-16
 
 ### Fixed
@@ -74,6 +97,7 @@ Initial public release.
 - **`--help`** — print the complete flag list from the CLI.
 - **`--version`** — print the version number from the CLI.
 
+[1.1.0]: https://github.com/erdembircan/license-wizard/releases/tag/v1.1.0
 [1.0.2]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.2
 [1.0.1]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.1
 [1.0.0]: https://github.com/erdembircan/license-wizard/releases/tag/v1.0.0
