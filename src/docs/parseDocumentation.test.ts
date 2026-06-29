@@ -105,6 +105,7 @@ describe("getSubsections", () => {
     const headers = sections.find((s) => s.id === "source-file-headers");
     expect(getSubsections(headers!.markdown).map((s) => s.title)).toEqual([
       "Two styles",
+      "Comment style",
       "What gets a header",
       "Safe to re-run",
       "Forcing a header into a skipped file",
