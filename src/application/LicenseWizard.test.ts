@@ -1044,6 +1044,60 @@ describe("LicenseWizard non-interactive mode", () => {
   });
 });
 
+describe("LicenseWizard interactive flag screen", () => {
+  const originalExitCode = process.exitCode;
+
+  beforeEach(() => {
+    state.reset();
+  });
+
+  afterEach(() => {
+    process.exitCode = originalExitCode;
+  });
+
+  it("errors when --strict accompanies an interactive run", async () => {
+    await lw(["--strict"]).run();
+
+    expect(state.rendered).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message:
+          "--strict has no effect without --verify. Add --verify, or drop --strict.",
+      }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when --headers-comment accompanies an interactive run", async () => {
+    await lw(["--headers-comment", "docblock"]).run();
+
+    expect(state.rendered).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message:
+          '--headers-comment has no effect without --headers. Add "--headers short" (or "full"), or drop --headers-comment.',
+      }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("errors when --headers-ignore accompanies an interactive run", async () => {
+    await lw(["--headers-ignore", "dist/**"]).run();
+
+    expect(state.rendered).toEqual([]);
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "error",
+        message:
+          "--headers-ignore has no effect in the interactive wizard, which runs on prompts alone (--dry-run is the only flag it takes). Drop --headers-ignore, or use it in a flag-driven run (see --help).",
+      }),
+    );
+    expect(process.exitCode).toBe(1);
+  });
+});
+
 describe("LicenseWizard verify mode", () => {
   const originalExitCode = process.exitCode;
 
@@ -1155,6 +1209,25 @@ describe("LicenseWizard verify mode", () => {
       }),
     );
     expect(state.writtenConfig).toBeNull();
+  });
+
+  it("does not error when --headers-ignore accompanies --verify (standalone flow left untouched)", async () => {
+    state.config = { licenseId: "MIT" };
+    state.licenseFile = "RENDERED LICENSE";
+    state.renderedContent = "RENDERED LICENSE";
+
+    await lw(["--verify", "--headers-ignore", "dist/**"]).run();
+
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "error" }),
+    );
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyMatch",
+        licenseId: "MIT",
+        manifestsChecked: false,
+      }),
+    );
   });
 
   it("confirms LICENSE and manifests together when both are in sync", async () => {

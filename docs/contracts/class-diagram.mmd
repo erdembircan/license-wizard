@@ -16,7 +16,7 @@ classDiagram
   }
 
   class InteractiveMode {
-    +InteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, renderer: IRenderer, reporter: IReporter, flags: WizardFlags)
+    +InteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, renderer: IRenderer, reporter: IReporter, dryRun: boolean)
     +run() Promise~Answer[]~
   }
 
@@ -119,7 +119,9 @@ classDiagram
     class FlagParser {
       +FlagParser(flags: object)
       +parse(args: string[]) object
+      +validate(args: string[]) string[]
       +resolveDependencies(flags: object) string
+      +activeFlagNames(flags: object) string[]
       +formatHelp() string
     }
 
