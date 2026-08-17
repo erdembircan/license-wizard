@@ -62,6 +62,7 @@
 <blockquote>
 <p>Prefer to skip the prompts? Every step has a flag equivalent — see <a href="/license-wizard/docs/one-shot-generation/">one-shot generation</a> and <a href="/license-wizard/docs/scripting-agents/">scripting &amp; agents</a>.</p>
 </blockquote>
+<p>The wizard runs on prompts alone — <code>--dry-run</code> is the only flag it accepts, and it simply previews the run without writing anything. Any other flag passed alongside an interactive invocation is rejected before the prompts even start: License Wizard prints what&#39;s wrong and exits non-zero, rather than silently applying the flag or quietly ignoring it. Advanced knobs such as <code>--headers-comment</code> and <code>--headers-ignore</code> only mean something on a flag-driven run, so they can&#39;t ride along and reshape the guided flow behind your back — switch to <a href="/license-wizard/docs/one-shot-generation/">one-shot generation</a> when you want that level of control.</p>
 </article>
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/getting-started/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Getting started</span></a><a href="/license-wizard/docs/one-shot-generation/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">One-shot generation</span></a></nav>
       </main>

@@ -48,6 +48,8 @@ When you're done, License Wizard writes the `LICENSE` file and records the selec
 
 > Prefer to skip the prompts? Every step has a flag equivalent — see [one-shot generation](/license-wizard/docs/one-shot-generation/) and [scripting & agents](/license-wizard/docs/scripting-agents/).
 
+The wizard runs on prompts alone — `--dry-run` is the only flag it accepts, and it simply previews the run without writing anything. Any other flag passed alongside an interactive invocation is rejected before the prompts even start: License Wizard prints what's wrong and exits non-zero, rather than silently applying the flag or quietly ignoring it. Advanced knobs such as `--headers-comment` and `--headers-ignore` only mean something on a flag-driven run, so they can't ride along and reshape the guided flow behind your back — switch to [one-shot generation](/license-wizard/docs/one-shot-generation/) when you want that level of control.
+
 ## One-shot generation
 
 Passing `--license`, `--set`, or `--get-tokens` runs License Wizard as a single command — no prompts — so it fits cleanly into scripts and CI. Generate a license in one shot:
