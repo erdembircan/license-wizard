@@ -24,12 +24,7 @@ import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
-import {
-  HEADER_COMMENT_BLOCK,
-  HEADER_COMMENT_DOCBLOCK,
-  type HeaderComment,
-  type HeaderStyle,
-} from "@headers/HeaderPlan.js";
+import { HEADER_COMMENT_BLOCK, type HeaderStyle } from "@headers/HeaderPlan.js";
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
@@ -45,7 +40,6 @@ import type {
   LicenseInstaller,
 } from "@application/LicenseInstaller.js";
 import type { IWizardMode } from "./IWizardMode.js";
-import type { WizardFlags } from "./WizardFlags.js";
 
 const GENERATION_MODE_ID = "generationMode";
 const SAVE_CONFIG_ID = "saveConfig";
@@ -58,12 +52,14 @@ const REMOVE_HEADERS_ID = "removeHeaders";
 const SKIP_SAVE = "skip";
 
 /**
- * The interactive run mode: the prompt-driven wizard that runs when no
- * selection flags are given. It builds the ordered setup questions
- * (license → headers → save), drives them through the orchestrator, and applies
- * the resulting selection through the installer — or previews it under
- * `--dry-run`. When the saved configuration already opts into headers it opens
- * with a setup/remove choice, short-circuiting to header removal when chosen.
+ * The interactive run mode: the prompt-driven wizard that runs when no flags
+ * are given (`--dry-run`, which previews the run, is the one exception —
+ * anything else is rejected before this mode is reached). It builds the
+ * ordered setup questions (license → headers → save), drives them through the
+ * orchestrator, and applies the resulting selection through the installer — or
+ * previews it under `--dry-run`. When the saved configuration already opts
+ * into headers it opens with a setup/remove choice, short-circuiting to header
+ * removal when chosen.
  */
 export class InteractiveMode implements IWizardMode {
   readonly #licenses: LicenseRepository;
@@ -74,7 +70,9 @@ export class InteractiveMode implements IWizardMode {
   readonly #headers: HeaderApplier;
   readonly #renderer: IRenderer;
   readonly #reporter: IReporter;
-  readonly #flags: WizardFlags;
+  // Whether the run previews instead of writing (--dry-run) — the one flag an
+  // interactive run accepts; every other flag is rejected before this mode runs.
+  readonly #dryRun: boolean;
   // The detail of the license chosen in the flow, captured when the license is
   // answered so the later header questions can decide whether the `full` style
   // is available without fetching it again.
@@ -95,7 +93,7 @@ export class InteractiveMode implements IWizardMode {
    * @param headers - Writes, previews, and strips source-file headers.
    * @param renderer - Renders questions and the closing completion summary.
    * @param reporter - Renders the dry-run previews.
-   * @param flags - The resolved CLI flags driving the run.
+   * @param dryRun - Whether the run previews instead of writing (`--dry-run`).
    */
   constructor(
     licenses: LicenseRepository,
@@ -106,7 +104,7 @@ export class InteractiveMode implements IWizardMode {
     headers: HeaderApplier,
     renderer: IRenderer,
     reporter: IReporter,
-    flags: WizardFlags,
+    dryRun: boolean,
   ) {
     this.#licenses = licenses;
     this.#config = config;
@@ -116,7 +114,7 @@ export class InteractiveMode implements IWizardMode {
     this.#headers = headers;
     this.#renderer = renderer;
     this.#reporter = reporter;
-    this.#flags = flags;
+    this.#dryRun = dryRun;
   }
 
   /**
@@ -160,35 +158,17 @@ export class InteractiveMode implements IWizardMode {
     if (typeof licenseAnswer?.value === "string") {
       const tokens = this.#slotValuesFrom(licenseAnswer.fields);
       const headerStyle = this.#headerStyleFrom(headersAnswer);
-      const headerComment = this.#headerComment();
-      const extraIgnores = this.#flags["headers-ignore"];
       const selection: LicenseSelection = {
         licenseId: licenseAnswer.value,
         tokens,
         save: this.#saveFrom(saveConfigAnswer),
-        // Persist the comment delimiter (only when non-default) and the ignore
-        // scope alongside the style so verification reproduces the same block
-        // and re-scans the same files this run headed.
-        headers: headerStyle
-          ? {
-              style: headerStyle,
-              ...(headerComment !== HEADER_COMMENT_BLOCK
-                ? { comment: headerComment }
-                : {}),
-              ...(extraIgnores.length > 0 ? { ignore: extraIgnores } : {}),
-            }
-          : undefined,
+        headers: headerStyle ? { style: headerStyle } : undefined,
       };
 
-      if (this.#flags["dry-run"]) {
+      if (this.#dryRun) {
         await this.#preview(selection);
         if (headerStyle) {
-          await this.#previewHeaders(
-            selection.licenseId,
-            headerStyle,
-            headerComment,
-            tokens,
-          );
+          await this.#previewHeaders(selection.licenseId, headerStyle, tokens);
         }
       } else {
         await this.#installer.install(selection);
@@ -197,9 +177,9 @@ export class InteractiveMode implements IWizardMode {
               await this.#headers.apply(
                 selection.licenseId,
                 headerStyle,
-                headerComment,
+                HEADER_COMMENT_BLOCK,
                 tokens,
-                this.#flags["headers-ignore"],
+                [],
               ),
             )
           : undefined;
@@ -226,7 +206,7 @@ export class InteractiveMode implements IWizardMode {
       // A license must be chosen: an empty submission would otherwise sail
       // through every later question and exit having written nothing at all.
       required: true,
-      defaultValue: this.#flags.license || projectLicense || config?.licenseId,
+      defaultValue: projectLicense || config?.licenseId,
       search: async (query) => {
         const results = await this.#licenses.search(query);
         return results.map((entry) => ({
@@ -467,19 +447,17 @@ export class InteractiveMode implements IWizardMode {
 
   /**
    * Strips wizard-written headers from every source file and drops the saved
-   * headers preference. Honors `--headers-ignore` for scope and `--dry-run`,
-   * which lists the files that would be cleared without touching them.
+   * headers preference. Honors `--dry-run`, which lists the files that would
+   * be cleared without touching them.
    */
   async #removeHeaders(): Promise<void> {
-    const extraIgnores = this.#flags["headers-ignore"];
-
-    if (this.#flags["dry-run"]) {
-      const report = await this.#headers.previewRemoval(extraIgnores);
+    if (this.#dryRun) {
+      const report = await this.#headers.previewRemoval([]);
       this.#reporter.headersRemoveDryRun(report);
       return;
     }
 
-    const report = await this.#headers.remove(extraIgnores);
+    const report = await this.#headers.remove([]);
     this.#reporter.headersRemoved(report);
     await this.#config.clearHeaders();
   }
@@ -509,25 +487,25 @@ export class InteractiveMode implements IWizardMode {
 
   /**
    * Previews the header that would be written and the files it would touch,
-   * writing nothing.
+   * writing nothing. Interactive headers always use the `block` comment style
+   * and the full scan scope — the flags that would change them never reach an
+   * interactive run.
    *
    * @param licenseId - The SPDX identifier whose header would be written.
    * @param style - The header style (`short` or `full`).
-   * @param comment - The comment delimiter (`block` or `docblock`).
    * @param tokens - Copyright tokens inherited from the license customization.
    */
   async #previewHeaders(
     licenseId: string,
     style: HeaderStyle,
-    comment: HeaderComment,
     tokens: Record<string, string>,
   ): Promise<void> {
     const preview = await this.#headers.preview(
       licenseId,
       style,
-      comment,
+      HEADER_COMMENT_BLOCK,
       tokens,
-      this.#flags["headers-ignore"],
+      [],
     );
 
     if (preview === null) {
@@ -556,21 +534,6 @@ export class InteractiveMode implements IWizardMode {
     }
     const style = headersAnswer.fields?.[HEADERS_STYLE_ID];
     return style === "full" ? "full" : "short";
-  }
-
-  /**
-   * Resolves the comment delimiter for written headers from the
-   * `--headers-comment` flag — an advanced knob honored in the interactive flow
-   * just as `--headers-ignore` is, rather than asked as a prompt. Defaults to
-   * `block`; only an explicit `docblock` switches the style. (The non-interactive
-   * path validates the flag value; here an unrecognised value simply keeps the
-   * default.)
-   */
-  #headerComment(): HeaderComment {
-    return this.#flags["headers-comment"].trim().toLowerCase() ===
-      HEADER_COMMENT_DOCBLOCK
-      ? HEADER_COMMENT_DOCBLOCK
-      : HEADER_COMMENT_BLOCK;
   }
 
   /**

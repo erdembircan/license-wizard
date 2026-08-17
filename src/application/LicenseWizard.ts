@@ -45,6 +45,17 @@ const LICENSE_REQUIRED =
   "The --license <spdx-id> flag is required when using --set, --headers, --get-tokens, or a --save-* flag.";
 
 /**
+ * Renders the rejection message for a flag riding along with an otherwise-
+ * interactive invocation. Interactive runs are prompt-driven by design: every
+ * flag except --dry-run is rejected up front rather than silently honored or
+ * ignored.
+ *
+ * @param name - The offending flag's name, without the leading dashes.
+ */
+const interactiveFlagRejected = (name: string): string =>
+  `--${name} has no effect in the interactive wizard, which runs on prompts alone (--dry-run is the only flag it takes). Drop --${name}, or use it in a flag-driven run (see --help).`;
+
+/**
  * Entry point and composition root for the license-wizard CLI application. It
  * parses the CLI flags, wires up the shared application graph, and selects one
  * of the three run modes — interactive, non-interactive, or verify — to which
@@ -158,7 +169,7 @@ export class LicenseWizard {
         this.#headerApplier,
         renderer,
         this.#reporter,
-        this.#flags,
+        this.#flags["dry-run"],
       );
     }
     return this.#interactiveModeInstance;
@@ -401,13 +412,31 @@ export class LicenseWizard {
    * higher-priority standalone flow (`--remove-headers`, `--verify`,
    * `--apply-config`, `--force-header`) owns the run instead. This gates
    * flag-dependency resolution: the dependencies enforced here belong to flags
-   * this flow reads, so a standalone flow that deliberately ignores those flags is
-   * left untouched, and so is a bare interactive run (a flag riding along with it
-   * is its own concern — see #163).
+   * this flow reads, so a standalone flow that deliberately ignores those flags
+   * is left untouched. An interactive run is screened separately: it rejects
+   * every flag but `--dry-run`.
    */
   #isGenerateRun(): boolean {
     return (
       this.#isNonInteractive() &&
+      !this.#flags["remove-headers"] &&
+      !this.#flags.verify &&
+      !this.#flags["apply-config"] &&
+      this.#flags["force-header"] === ""
+    );
+  }
+
+  /**
+   * Reports whether the run resolves to the interactive prompt flow — no
+   * selection flag and no standalone flow present, the dispatcher's final
+   * fallthrough. This gates the interactive flag screen: an interactive run is
+   * prompt-driven by design, so any flag riding along with it (except
+   * `--dry-run`, which legitimately previews one) is rejected up front rather
+   * than silently honored or ignored (#163).
+   */
+  #isInteractiveRun(): boolean {
+    return (
+      !this.#isNonInteractive() &&
       !this.#flags["remove-headers"] &&
       !this.#flags.verify &&
       !this.#flags["apply-config"] &&
@@ -448,14 +477,30 @@ export class LicenseWizard {
     }
 
     // Enforce the flags' declared dependencies in one place, before any mode
-    // runs — but only for the generation flow that actually consumes them; a flag
-    // accompanying a standalone flow that ignores it, or a bare interactive run,
-    // is handled separately (see #163). A flag supplied without the one it
-    // requires fails here rather than ad hoc inside a mode.
-    if (this.#isGenerateRun()) {
+    // runs — for the generation flow that consumes them, and for an interactive
+    // run so that a dependent flag riding along fails with the same message it
+    // would anywhere else. A flag accompanying a standalone flow that
+    // deliberately ignores it is left untouched. A flag supplied without the
+    // one it requires fails here rather than ad hoc inside a mode.
+    if (this.#isGenerateRun() || this.#isInteractiveRun()) {
       const dependencyError = parser.resolveDependencies(this.#flags);
       if (dependencyError !== null) {
         this.#reporter.error(dependencyError);
+        process.exitCode = 1;
+        return [];
+      }
+    }
+
+    // Interactive mode is purely prompt-driven: after the dependency screen,
+    // any remaining flag other than --dry-run (e.g. --headers-ignore, which
+    // declares no dependency) is rejected rather than silently applied to or
+    // swallowed by the guided flow (#163).
+    if (this.#isInteractiveRun()) {
+      const riding = parser
+        .activeFlagNames(this.#flags)
+        .find((name) => name !== "dry-run");
+      if (riding !== undefined) {
+        this.#reporter.error(interactiveFlagRejected(riding));
         process.exitCode = 1;
         return [];
       }

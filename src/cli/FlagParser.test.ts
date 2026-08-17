@@ -347,6 +347,55 @@ describe("FlagParser", () => {
     });
   });
 
+  describe("activeFlagNames", () => {
+    // Three flags, one of each type, none with a dependency — activeFlagNames
+    // has nothing to do with `requires`, only with what counts as "supplied".
+    const ACTIVE_FLAGS = {
+      license: {
+        type: "string" as const,
+        default: "",
+        description: "License.",
+      },
+      set: {
+        type: "list" as const,
+        default: [] as string[],
+        description: "Set.",
+      },
+      verify: {
+        type: "boolean" as const,
+        default: false,
+        description: "Verify.",
+      },
+    };
+
+    const active = (args: string[]) => {
+      const parser = new FlagParser(ACTIVE_FLAGS);
+      return parser.activeFlagNames(parser.parse(args));
+    };
+
+    it("returns an empty array when every flag is at its default", () => {
+      expect(active([])).toEqual([]);
+    });
+
+    it("reports an active boolean flag, excluding its false default", () => {
+      expect(active(["--verify"])).toEqual(["verify"]);
+    });
+
+    it("reports an active string flag, excluding its empty default", () => {
+      expect(active(["--license", "MIT"])).toEqual(["license"]);
+    });
+
+    it("reports an active list flag, excluding its empty default", () => {
+      expect(active(["--set", "year=2026"])).toEqual(["set"]);
+    });
+
+    it("returns names in definition order when several flags are active", () => {
+      expect(
+        active(["--verify", "--license", "MIT", "--set", "year=2026"]),
+      ).toEqual(["license", "set", "verify"]);
+    });
+  });
+
   describe("formatHelp", () => {
     it("lists every flag with its description", () => {
       const parser = new FlagParser({

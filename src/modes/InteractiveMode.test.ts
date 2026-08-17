@@ -24,7 +24,6 @@ import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { HeaderApplier } from "@application/HeaderApplier.js";
 import type { LicenseInstaller } from "@application/LicenseInstaller.js";
-import type { WizardFlags } from "./WizardFlags.js";
 import { InteractiveMode } from "./InteractiveMode.js";
 
 const MIT: LicenseDetail = {
@@ -104,27 +103,6 @@ class FakeRenderer implements IRenderer {
   }
 }
 
-const flags = (over: Partial<WizardFlags> = {}): WizardFlags => ({
-  help: false,
-  version: false,
-  verify: false,
-  strict: false,
-  "apply-config": false,
-  license: "",
-  set: [],
-  "save-rc": false,
-  "save-npm": false,
-  "save-composer": false,
-  "get-tokens": false,
-  headers: "",
-  "headers-comment": "",
-  "headers-ignore": [],
-  "force-header": "",
-  "remove-headers": false,
-  "dry-run": false,
-  ...over,
-});
-
 function makeDeps(savedConfig: WizardConfig | null = null) {
   const installer: { install: ReturnType<typeof vi.fn> } = {
     install: vi.fn(async () => {}),
@@ -178,7 +156,7 @@ function makeDeps(savedConfig: WizardConfig | null = null) {
 const build = (
   d: ReturnType<typeof makeDeps>,
   renderer: IRenderer,
-  f: WizardFlags,
+  dryRun: boolean,
 ): InteractiveMode =>
   new InteractiveMode(
     d.licenses,
@@ -189,7 +167,7 @@ const build = (
     d.headers as unknown as HeaderApplier,
     renderer,
     d.reporter,
-    f,
+    dryRun,
   );
 
 describe("InteractiveMode", () => {
@@ -201,7 +179,7 @@ describe("InteractiveMode", () => {
       q.id === "saveConfig" ? "skip" : q.type === "confirm" ? false : "MIT",
     );
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     expect(d.installer.install).toHaveBeenCalledOnce();
     expect(d.installer.install.mock.calls[0][0]).toMatchObject({
@@ -221,7 +199,7 @@ describe("InteractiveMode", () => {
       q.id === "saveConfig" ? "skip" : q.type === "confirm" ? false : "MIT",
     );
 
-    await build(d, renderer, flags({ "dry-run": true })).run();
+    await build(d, renderer, true).run();
 
     expect(d.installer.install).not.toHaveBeenCalled();
     expect(d.reporterCalls).toContain("dryRun");
@@ -236,7 +214,7 @@ describe("InteractiveMode", () => {
       return q.type === "confirm" ? false : "MIT";
     });
 
-    const answers = await build(d, renderer, flags()).run();
+    const answers = await build(d, renderer, false).run();
 
     expect(renderer.rendered.some((q) => q.id === "mode")).toBe(true);
     expect(d.headers.remove).toHaveBeenCalledOnce();
@@ -251,7 +229,7 @@ describe("InteractiveMode", () => {
       q.id === "saveConfig" ? "skip" : q.type === "confirm" ? false : "MIT",
     );
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     expect(renderer.rendered.some((q) => q.id === "mode")).toBe(false);
     expect(renderer.rendered.some((q) => q.id === "license")).toBe(true);
@@ -263,7 +241,7 @@ describe("InteractiveMode", () => {
       q.id === "saveConfig" ? "skip" : q.type === "confirm" ? false : "MIT",
     );
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     const license = renderer.rendered.find((q) => q.id === "license");
     expect((license as AutocompleteQuestion).required).toBe(true);
@@ -280,7 +258,7 @@ describe("InteractiveMode", () => {
       return q.type === "confirm" ? false : "MIT";
     });
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     const slots = renderer.rendered.filter(
       (q): q is TextQuestion => q.type === "text",
@@ -300,7 +278,7 @@ describe("InteractiveMode", () => {
       return q.type === "confirm" ? false : "GPL-3.0-only";
     });
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     // GPL has no body copyright, but its header does — so the Customize choice
     // must still be offered (it was not, before tokens were unioned).
@@ -318,7 +296,7 @@ describe("InteractiveMode", () => {
       return q.type === "confirm" ? false : "GPL-3.0-only";
     });
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     // Standard (no copyright supplied) → the header can't be filled → no Full.
     expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(false);
@@ -337,7 +315,7 @@ describe("InteractiveMode", () => {
       return q.type === "confirm" ? false : "GPL-3.0-only";
     });
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     // The Full option is now offered (the header can be filled)...
     expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(true);
@@ -368,7 +346,7 @@ describe("InteractiveMode", () => {
       return q.type === "confirm" ? false : "Apache-2.0";
     });
 
-    await build(d, renderer, flags()).run();
+    await build(d, renderer, false).run();
 
     expect(renderer.rendered.some((q) => q.id === "headerStyle")).toBe(true);
   });

@@ -26,7 +26,7 @@ classDiagram
   }
 
   class InteractiveMode {
-    +InteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, renderer: IRenderer, reporter: IReporter, flags: WizardFlags)
+    +InteractiveMode(licenses: LicenseRepository, config: Config, manifests: ProjectManifestRepository, installer: LicenseInstaller, generator: LicenseGenerator, headers: HeaderApplier, renderer: IRenderer, reporter: IReporter, dryRun: boolean)
     +run() Promise~Answer[]~
   }
 
@@ -114,7 +114,6 @@ classDiagram
   NonInteractiveMode ..> HeaderApplier : applies headers through
   InteractiveMode ..> LicenseSelection : builds
   NonInteractiveMode ..> LicenseSelection : builds
-  InteractiveMode ..> WizardFlags : reads
   NonInteractiveMode ..> WizardFlags : reads
 
   LicenseInstaller ..> LicenseSelection : applies

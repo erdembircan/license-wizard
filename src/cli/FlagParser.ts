@@ -222,6 +222,22 @@ export class FlagParser<T extends FlagDefinitions> {
   }
 
   /**
+   * Lists the names of the flags whose resolved value carries an actual
+   * selection rather than its inert default, in the order the flags are
+   * defined. This is how a caller asks "which flags did the user actually
+   * supply?" without re-deriving per-type activity checks — e.g. to screen the
+   * flags accompanying a run that, by design, takes none.
+   *
+   * @param flags - The resolved flag values, as returned by {@link parse}.
+   */
+  activeFlagNames(flags: ParsedFlags<T>): string[] {
+    const values = flags as Record<string, boolean | string | string[]>;
+    return Object.keys(this.#flags).filter((name) =>
+      this.#isActive(this.#flags[name], values[name]),
+    );
+  }
+
+  /**
    * Reports whether a resolved flag value carries an actual selection rather than
    * its inert default: a `true` boolean, a non-empty string, or a non-empty list.
    * This is the same notion of "the user supplied this flag" the dispatcher uses

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [Unreleased]
+
+### Changed
+
+- **Interactive runs now reject every flag except `--dry-run`** — the guided wizard
+  is prompt-driven, so a flag riding along with an otherwise-interactive invocation
+  now fails with exit code 1 instead of being silently applied or ignored. On an
+  interactive run specifically:
+  - `--headers-comment` now errors — it previously styled the headers the prompt
+    opts into. Generation runs already errored here (since #165); only interactive
+    runs changed.
+  - `--headers-ignore` now errors, including the interactive header-removal path —
+    it previously scoped which files were headed.
+  - `--strict` now errors — it previously sat inert on an interactive run.
+    Generation runs already errored here (since #165); only interactive runs changed.
+
+  `--dry-run` alone still previews an interactive run, unchanged. This breaks
+  previously-working combinations, so the release shipping it is not a patch. (#172)
+
 ## [1.1.0] - 2026-06-29
 
 ### Added
