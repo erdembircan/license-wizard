@@ -1897,6 +1897,21 @@
   color: var(--color-brand-strong);
   font-weight: 600;
 }
+/*
+ * The first entry links back to the section heading itself (see toc() in
+ * scripts/lib/render-docs.mjs). It reads as the parent of the subsection links
+ * below it: inked a touch darker and weightier, and set off by a hairline rule.
+ */
+.docs-toc-top {
+  color: var(--color-ink);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.docs-toc-top.is-active {
+  color: var(--color-brand-strong);
+}
 @media (min-width: 1200px) {
   .docs-toc {
     position: sticky;
