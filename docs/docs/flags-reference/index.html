@@ -42,15 +42,19 @@
         </div>
       </div>
     </header>
-    <div class="docs-shell">
+    <div class="docs-shell has-toc">
       <nav class="docs-side" aria-label="Documentation sections">
     <p class="docs-side-title">Documentation</p>
     <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link is-active" aria-current="page">Flags reference</a></li></ul>
   </nav>
-      
+      <details class="docs-toc" open>
+    <summary class="docs-toc-summary">On this page</summary>
+    <ul class="docs-toc-list"><li><a href="#how-flags-combine" class="docs-toc-link" data-toc-target="how-flags-combine">How flags combine</a></li><li><a href="#priority-when-flags-are-combined" class="docs-toc-link" data-toc-target="priority-when-flags-are-combined">Priority when flags are combined</a></li></ul>
+  </details>
       <main class="docs-main">
         <article class="doc-prose"><h2 id="flags-reference">Flags reference</h2>
 <p>The complete flag list. Run <code>npx license-wizard --help</code> to print the same reference from the CLI.</p>
+<p>Seven <strong>selection flags</strong> — <code>--license</code>, <code>--set</code>, <code>--headers</code>, <code>--get-tokens</code>, <code>--save-rc</code>, <code>--save-npm</code>, and <code>--save-composer</code> — each switch the wizard out of the prompts and into a one-shot run. The <strong>standalone modes</strong> (<code>--verify</code>, <code>--apply-config</code>, <code>--remove-headers</code>, <code>--force-header</code>) and the <strong>modifiers</strong> (<code>--strict</code>, <code>--dry-run</code>, <code>--headers-comment</code>, <code>--headers-ignore</code>) behave differently again — see <a href="#how-flags-combine">How flags combine</a> below for what each one depends on, what runs on its own, and the order they resolve in when combined.</p>
 <table>
 <thead>
 <tr>
@@ -84,11 +88,11 @@
 </tr>
 <tr>
 <td><code>--set &lt;field=value&gt;</code></td>
-<td>Set a copyright field for the chosen license (repeatable, requires <code>--license</code>). Implies non-interactive mode.</td>
+<td>Set a copyright field for the chosen license (repeatable, requires <code>--license</code>).</td>
 </tr>
 <tr>
 <td><code>--save-rc</code></td>
-<td>Save the resolved config to <code>.licensewizardrc.json</code> (requires <code>--license</code>). Implies non-interactive mode.</td>
+<td>Save the resolved config to <code>.licensewizardrc.json</code> (requires <code>--license</code>).</td>
 </tr>
 <tr>
 <td><code>--save-npm</code></td>
@@ -127,6 +131,74 @@
 <td>Preview the license (and, with <code>--headers</code>, a sample block and the files it would touch) and skip every write.</td>
 </tr>
 </tbody></table>
+<h3 id="how-flags-combine">How flags combine</h3>
+<p>Most flags fall into one of three roles, and a run is decided by which roles are present:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Flags</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Selection flags</strong></td>
+<td><code>--license</code>, <code>--set</code>, <code>--headers</code>, <code>--get-tokens</code>, <code>--save-rc</code>, <code>--save-npm</code>, <code>--save-composer</code></td>
+<td>Switch off the prompts and generate in one shot. Each describes what to do with a chosen license, so each requires <code>--license</code>.</td>
+</tr>
+<tr>
+<td><strong>Standalone modes</strong></td>
+<td><code>--verify</code>, <code>--apply-config</code>, <code>--remove-headers</code>, <code>--force-header</code></td>
+<td>Own the entire run and ignore the selection flags. Each supplies its own license (from saved config) or needs none.</td>
+</tr>
+<tr>
+<td><strong>Modifiers</strong></td>
+<td><code>--strict</code>, <code>--dry-run</code>, <code>--headers-comment</code>, <code>--headers-ignore</code></td>
+<td>Do nothing on their own — each only shapes another flag&#39;s run.</td>
+</tr>
+<tr>
+<td><strong>Meta</strong></td>
+<td><code>--help</code>, <code>--version</code></td>
+<td>Print and exit immediately; <code>--help</code> wins if both are given.</td>
+</tr>
+</tbody></table>
+<p><strong>Dependencies.</strong> A flag with a hard dependency errors when it&#39;s supplied without the flag it needs:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Requires</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--set</code>, <code>--headers</code>, <code>--get-tokens</code>, <code>--save-rc</code>, <code>--save-npm</code>, <code>--save-composer</code></td>
+<td><code>--license</code></td>
+</tr>
+<tr>
+<td><code>--headers-comment</code></td>
+<td><code>--headers</code></td>
+</tr>
+<tr>
+<td><code>--strict</code></td>
+<td><code>--verify</code></td>
+</tr>
+</tbody></table>
+<p>Two flags depend on context rather than on another flag, and are quietly skipped rather than erroring when it&#39;s absent: <code>--headers-ignore</code> does nothing unless something is writing headers (via <code>--headers</code>, <code>--remove-headers</code>, or a saved config that opted into them), and <code>--force-header</code> does nothing unless your saved config has headers enabled.</p>
+<p><strong>The <code>--license</code> rule.</strong> Generating anything — a <code>LICENSE</code>, headers, a saved config, or a token list — has to know which license, so <code>--set</code>, <code>--headers</code>, <code>--get-tokens</code>, and every <code>--save-*</code> flag require <code>--license</code>. The standalone modes are exempt: <code>--apply-config</code> reads the license from your saved config, and <code>--verify</code>, <code>--remove-headers</code>, and <code>--force-header</code> don&#39;t generate from a selection at all.</p>
+<p>These requirements are checked in the flows that actually read the flags — a one-shot generation, or an otherwise-interactive run. A standalone mode that ignores a selection flag simply disregards it: the flag isn&#39;t honored, and its unmet dependency isn&#39;t reported.</p>
+<h3 id="priority-when-flags-are-combined">Priority when flags are combined</h3>
+<p>When several flags that could each drive a run are given together, License Wizard resolves them in a fixed order and takes the first that applies:</p>
+<ol>
+<li><strong><code>--help</code>, then <code>--version</code></strong> — print and exit before anything else runs.</li>
+<li><strong><code>--remove-headers</code></strong> — strips wizard headers; wins over every other mode, including <code>--verify</code>.</li>
+<li><strong><code>--verify</code></strong> — checks the project against the saved config; <code>--strict</code> turns its drift into a hard failure.</li>
+<li><strong><code>--force-header</code></strong> — forces the configured header into one named file.</li>
+<li><strong><code>--apply-config</code></strong> — regenerates from the saved config; takes priority over the selection flags.</li>
+<li><strong>Selection-flag generation</strong> — <code>--license</code> with any of <code>--set</code>, <code>--headers</code>, <code>--save-*</code>, or <code>--get-tokens</code>.</li>
+<li><strong>Interactive wizard</strong> — the fallback when no selection flag or standalone mode is present.</li>
+</ol>
+<p><code>--dry-run</code> sits outside this order: it previews whichever flow is chosen — generation, <code>--apply-config</code>, <code>--remove-headers</code>, <code>--force-header</code>, or the interactive wizard — without writing anything.</p>
+<p>Because the interactive wizard runs on prompts alone, a modifier left on its own with no flow to shape — <code>--strict</code> without <code>--verify</code>, <code>--headers-comment</code> without <code>--headers</code>, a bare <code>--headers-ignore</code> — doesn&#39;t fall through to the prompts. It&#39;s rejected up front with a message saying what it needs, so a flag never silently does nothing. <code>--dry-run</code> is the only flag the wizard accepts on its own.</p>
 </article>
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/scripting-agents/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Scripting & agents</span></a><span></span></nav>
       </main>
