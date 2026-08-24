@@ -49,9 +49,18 @@ function sidebar(sections, activeId, base) {
  * narrow screens and unfolds into a sticky right-hand column on wide ones (see
  * the `.docs-toc` rules in style.css). Returns an empty string when the section
  * has no subsections, so single-topic pages keep the plain two-column layout.
+ *
+ * The list is headed by a link back to the section's own `##` heading. In a tall
+ * section the subsection links only ever move the reader further down; this one
+ * carries them back to the section start. It is labeled with the section title
+ * and targets the section heading's id, and it carries the same
+ * `.docs-toc-link` / `data-toc-target` contract as the subsection links, so the
+ * scroll-spy tracks it too and highlights it while the reader is in the
+ * section's intro, above the first subsection.
  */
-function toc(subsections) {
+function toc(subsections, section) {
   if (subsections.length === 0) return "";
+  const top = `<li><a href="#${section.id}" class="docs-toc-link docs-toc-top" data-toc-target="${section.id}">${section.title}</a></li>`;
   const items = subsections
     .map(
       (s) =>
@@ -60,7 +69,7 @@ function toc(subsections) {
     .join("");
   return `<details class="docs-toc" open>
     <summary class="docs-toc-summary">On this page</summary>
-    <ul class="docs-toc-list">${items}</ul>
+    <ul class="docs-toc-list">${top}${items}</ul>
   </details>`;
 }
 
@@ -110,7 +119,7 @@ export function renderPage({
   const content = marked.parse(section.markdown);
   const rawMdPath = `${base}documentation.md`;
   const subsections = getSubsections(section.markdown);
-  const tocHtml = toc(subsections);
+  const tocHtml = toc(subsections, section);
   // The third column only exists when there's a subsection nav to put in it;
   // otherwise the shell stays a plain two-column (sidebar + content) grid.
   const shellClass = subsections.length ? "docs-shell has-toc" : "docs-shell";
