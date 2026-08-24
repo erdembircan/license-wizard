@@ -189,7 +189,7 @@ Saving is opt-in. In the wizard, choose to remember your selection; in a script,
 
 ## Scripting & agents
 
-The same predictable flow that guides a human drives cleanly from scripts, CI, and AI agents. Any of `--license`, `--set`, or `--get-tokens` switches off the prompts and runs as a single command, and the standalone modes (`--verify`, `--apply-config`, `--remove-headers`) never prompt at all.
+The same predictable flow that guides a human drives cleanly from scripts, CI, and AI agents. Any selection flag — `--license`, `--set`, `--headers`, `--get-tokens`, or a `--save-*` flag — switches off the prompts and runs as a single command, and the standalone modes (`--verify`, `--apply-config`, `--remove-headers`, `--force-header`) never prompt at all. Which flags require which, which run on their own, and which win when several are combined is laid out in [How flags combine](/license-wizard/docs/flags-reference/#how-flags-combine).
 
 ### Exit codes are the contract
 
@@ -200,13 +200,15 @@ Every run signals its outcome through its exit code, so a script or agent always
 
 ### Standalone modes take priority
 
-`--apply-config` and `--remove-headers` are standalone: when combined with selection flags like `--license`, the standalone mode wins. This means an agent can replay a saved config without worrying that a stray `--license` will override it.
+The standalone modes — `--remove-headers`, `--verify`, `--apply-config`, and `--force-header` — own the whole run and ignore the selection flags. When one rides along with a stray `--license` or `--set`, the standalone mode still wins, so an agent can replay a saved config or run a verify without a leftover flag quietly changing the outcome. When several are combined they resolve in a fixed order — `--remove-headers` first, then `--verify`, then the single-file `--force-header`, then `--apply-config` — spelled out in full under [Priority when flags are combined](/license-wizard/docs/flags-reference/#priority-when-flags-are-combined).
 
 > Tell your agent to use License Wizard and it will: the flags are explicit, the failures are descriptive, and nothing is written until every required field is present.
 
 ## Flags reference
 
 The complete flag list. Run `npx license-wizard --help` to print the same reference from the CLI.
+
+Seven **selection flags** — `--license`, `--set`, `--headers`, `--get-tokens`, `--save-rc`, `--save-npm`, and `--save-composer` — each switch the wizard out of the prompts and into a one-shot run. The **standalone modes** (`--verify`, `--apply-config`, `--remove-headers`, `--force-header`) and the **modifiers** (`--strict`, `--dry-run`, `--headers-comment`, `--headers-ignore`) behave differently again — see [How flags combine](#how-flags-combine) below for what each one depends on, what runs on its own, and the order they resolve in when combined.
 
 | Flag | Description |
 | --- | --- |
@@ -216,8 +218,8 @@ The complete flag list. Run `npx license-wizard --help` to print the same refere
 | `--strict` | With `--verify`, fail on any drift instead of reconciling it — for CI. Requires `--verify`; on its own it errors. |
 | `--apply-config` | Regenerate the `LICENSE`, manifest fields, and configured headers from the saved config; errors if none exists. Standalone — takes priority over selection flags; honors `--dry-run`. |
 | `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively. |
-| `--set <field=value>` | Set a copyright field for the chosen license (repeatable, requires `--license`). Implies non-interactive mode. |
-| `--save-rc` | Save the resolved config to `.licensewizardrc.json` (requires `--license`). Implies non-interactive mode. |
+| `--set <field=value>` | Set a copyright field for the chosen license (repeatable, requires `--license`). |
+| `--save-rc` | Save the resolved config to `.licensewizardrc.json` (requires `--license`). |
 | `--save-npm` | Save the resolved config to the `license-wizard` field of `package.json` (must exist; requires `--license`). |
 | `--save-composer` | Save the resolved config to the `license-wizard` field of `composer.json` (must exist; requires `--license`). |
 | `--get-tokens` | List the copyright fields the selected license accepts (requires `--license`) and exit. |
@@ -227,3 +229,44 @@ The complete flag list. Run `npx license-wizard --help` to print the same refere
 | `--force-header <path>` | Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors `--dry-run`. |
 | `--remove-headers` | Strip License Wizard's headers and drop the saved headers preference. Standalone; takes priority over `--headers`; honors `--headers-ignore` and `--dry-run`. |
 | `--dry-run` | Preview the license (and, with `--headers`, a sample block and the files it would touch) and skip every write. |
+
+### How flags combine
+
+Most flags fall into one of three roles, and a run is decided by which roles are present:
+
+| Role | Flags | Behavior |
+| --- | --- | --- |
+| **Selection flags** | `--license`, `--set`, `--headers`, `--get-tokens`, `--save-rc`, `--save-npm`, `--save-composer` | Switch off the prompts and generate in one shot. Each describes what to do with a chosen license, so each requires `--license`. |
+| **Standalone modes** | `--verify`, `--apply-config`, `--remove-headers`, `--force-header` | Own the entire run and ignore the selection flags. Each supplies its own license (from saved config) or needs none. |
+| **Modifiers** | `--strict`, `--dry-run`, `--headers-comment`, `--headers-ignore` | Do nothing on their own — each only shapes another flag's run. |
+| **Meta** | `--help`, `--version` | Print and exit immediately; `--help` wins if both are given. |
+
+**Dependencies.** A flag with a hard dependency errors when it's supplied without the flag it needs:
+
+| Flag | Requires |
+| --- | --- |
+| `--set`, `--headers`, `--get-tokens`, `--save-rc`, `--save-npm`, `--save-composer` | `--license` |
+| `--headers-comment` | `--headers` |
+| `--strict` | `--verify` |
+
+Two flags depend on context rather than on another flag, and are quietly skipped rather than erroring when it's absent: `--headers-ignore` does nothing unless something is writing headers (via `--headers`, `--remove-headers`, or a saved config that opted into them), and `--force-header` does nothing unless your saved config has headers enabled.
+
+**The `--license` rule.** Generating anything — a `LICENSE`, headers, a saved config, or a token list — has to know which license, so `--set`, `--headers`, `--get-tokens`, and every `--save-*` flag require `--license`. The standalone modes are exempt: `--apply-config` reads the license from your saved config, and `--verify`, `--remove-headers`, and `--force-header` don't generate from a selection at all.
+
+These requirements are checked in the flows that actually read the flags — a one-shot generation, or an otherwise-interactive run. A standalone mode that ignores a selection flag simply disregards it: the flag isn't honored, and its unmet dependency isn't reported.
+
+### Priority when flags are combined
+
+When several flags that could each drive a run are given together, License Wizard resolves them in a fixed order and takes the first that applies:
+
+1. **`--help`, then `--version`** — print and exit before anything else runs.
+2. **`--remove-headers`** — strips wizard headers; wins over every other mode, including `--verify`.
+3. **`--verify`** — checks the project against the saved config; `--strict` turns its drift into a hard failure.
+4. **`--force-header`** — forces the configured header into one named file.
+5. **`--apply-config`** — regenerates from the saved config; takes priority over the selection flags.
+6. **Selection-flag generation** — `--license` with any of `--set`, `--headers`, `--save-*`, or `--get-tokens`.
+7. **Interactive wizard** — the fallback when no selection flag or standalone mode is present.
+
+`--dry-run` sits outside this order: it previews whichever flow is chosen — generation, `--apply-config`, `--remove-headers`, `--force-header`, or the interactive wizard — without writing anything.
+
+Because the interactive wizard runs on prompts alone, a modifier left on its own with no flow to shape — `--strict` without `--verify`, `--headers-comment` without `--headers`, a bare `--headers-ignore` — doesn't fall through to the prompts. It's rejected up front with a message saying what it needs, so a flag never silently does nothing. `--dry-run` is the only flag the wizard accepts on its own.
