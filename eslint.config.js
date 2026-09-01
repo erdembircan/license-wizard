@@ -35,5 +35,5 @@ export default tseslint.config(
       },
     },
   },
-  dotignore.configs.recommended,
+  dotignore.configs.strict,
 );

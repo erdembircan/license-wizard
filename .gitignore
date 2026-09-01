@@ -1,5 +1,8 @@
+# files
 **/.DS_Store
-node_modules/
+*.tgz
+
+# folders
 .claude/
 .pnpm-store/
-*.tgz
+node_modules/
