@@ -27,6 +27,9 @@ importers:
       eslint-config-prettier:
         specifier: ^10.1.8
         version: 10.1.8(eslint@10.4.0)
+      eslint-plugin-dotignore:
+        specifier: ^1.0.0
+        version: 1.0.0(eslint@10.4.0)
       eslint-plugin-prettier:
         specifier: ^5.5.5
         version: 5.5.5(eslint-config-prettier@10.1.8(eslint@10.4.0))(eslint@10.4.0)(prettier@3.8.3)
@@ -255,6 +258,10 @@ packages:
 
   '@eslint/plugin-kit@0.7.1':
     resolution: {integrity: sha512-rZAP3aVgB9ds9KOeUSL+zZ21hPmo8dh6fnIFwRQj5EAZl9gzR7wxYbYXYysAM8CTqGmUGyp2S4kUdV17MnGuWQ==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@eslint/plugin-kit@0.7.2':
+    resolution: {integrity: sha512-+CNAzxglkrpNf/kKywqQfk74QjtceuOE7Qm+AF8miRvPF/wmmK5+OJOgVh3AVTT3RP2mH3+FOaxlE5v72owk0A==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
   '@humanfs/core@0.19.2':
@@ -572,6 +579,12 @@ packages:
     hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
+
+  eslint-plugin-dotignore@1.0.0:
+    resolution: {integrity: sha512-tWTTFgoi1E7qCAzGagqMWm2iiF01Z4MBmXFgkU+2d78xQCFFd6Lu05WSx3eZ3SSUSPE8vpRwbfyugJRe1uhFuw==}
+    engines: {node: '>=22.18.0'}
+    peerDependencies:
+      eslint: '>=9.7.0'
 
   eslint-plugin-prettier@5.5.5:
     resolution: {integrity: sha512-hscXkbqUZ2sPithAuLm5MXL+Wph+U7wHngPBv9OMWwlP8iaflyxpjTYZkmdgB4/vPIhemRlBEoLrH7UC1n7aUw==}
@@ -1207,6 +1220,11 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
+  '@eslint/plugin-kit@0.7.2':
+    dependencies:
+      '@eslint/core': 1.2.1
+      levn: 0.4.1
+
   '@humanfs/core@0.19.2':
     dependencies:
       '@humanfs/types': 0.15.0
@@ -1517,6 +1535,11 @@ snapshots:
 
   eslint-config-prettier@10.1.8(eslint@10.4.0):
     dependencies:
+      eslint: 10.4.0
+
+  eslint-plugin-dotignore@1.0.0(eslint@10.4.0):
+    dependencies:
+      '@eslint/plugin-kit': 0.7.2
       eslint: 10.4.0
 
   eslint-plugin-prettier@5.5.5(eslint-config-prettier@10.1.8(eslint@10.4.0))(eslint@10.4.0)(prettier@3.8.3):
