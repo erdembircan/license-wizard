@@ -5,14 +5,20 @@
  */
 
 import eslint from "@eslint/js";
+import dotignore from "eslint-plugin-dotignore";
 import pluginPrettier from "eslint-plugin-prettier/recommended";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   { ignores: ["dist/**"] },
-  eslint.configs.recommended,
-  ...tseslint.configs.recommended,
-  pluginPrettier,
+  {
+    files: ["**/*.{js,ts}"],
+    extends: [
+      eslint.configs.recommended,
+      tseslint.configs.recommended,
+      pluginPrettier,
+    ],
+  },
   {
     files: ["**/*.ts"],
     languageOptions: {
@@ -29,4 +35,5 @@ export default tseslint.config(
       },
     },
   },
+  dotignore.configs.recommended,
 );
