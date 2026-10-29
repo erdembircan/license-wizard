@@ -20,7 +20,10 @@ import type {
 } from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
-import type { VerifyReport } from "@application/LicenseVerifier.js";
+import type {
+  UnknownTokensReport,
+  VerifyReport,
+} from "@application/LicenseVerifier.js";
 
 /**
  * Renders every CLI outcome into a semantic `OutputMessage` and emits it to a
@@ -141,6 +144,17 @@ export class MessageReporter implements IReporter {
     });
   }
 
+  verifyUnknownTokens(report: UnknownTokensReport): void {
+    this.#sink.emit({
+      kind: "verifyUnknownTokens",
+      channel: "err",
+      licenseId: report.licenseId,
+      tokens: report.tokens.unknown,
+      fields: report.tokens.fields,
+      configFile: report.configFile,
+    });
+  }
+
   headersNoFiles(licenseId: string): void {
     this.#sink.emit({ kind: "headersNoFiles", channel: "out", licenseId });
   }
@@ -239,37 +253,29 @@ export class MessageReporter implements IReporter {
   }
 
   /**
-   * Decides which note, if any, explains a drifted `LICENSE`. Saved tokens that
-   * are not copyright fields of the license come first, since they must be fixed
-   * before reconciling; otherwise a `LICENSE` built from SPDX's matching template
-   * gets the note that SPDX revises it between releases, offering to drop the
-   * tokens only when no full header needs them. Returns null when the `LICENSE`
-   * itself did not drift, so a passing run or a manifest-only drift is reported
-   * exactly as before.
+   * Decides whether a note explains a drifted `LICENSE`: one built from SPDX's
+   * matching template gets the note that SPDX revises that template between
+   * releases, offering to drop the tokens only when no full header needs them.
+   * Returns null when the `LICENSE` itself did not drift or was built from the
+   * plain text, so a passing run or a manifest-only drift carries no note.
+   * Saved tokens that are not copyright fields of the license never reach here:
+   * verification stops on them with its own error.
    *
    * @param report - The verification result.
    */
   #verifyNote(report: VerifyReport): VerifyNote | null {
-    if (report.license === "match") {
+    if (
+      report.license === "match" ||
+      report.builtFrom !== "standardLicenseTemplate"
+    ) {
       return null;
     }
-    if (report.tokens.unknown.length > 0) {
-      return {
-        kind: "unknownTokens",
-        tokens: report.tokens.unknown,
-        fields: report.tokens.fields,
-        configFile: report.configFile,
-      };
-    }
-    if (report.builtFrom === "standardLicenseTemplate") {
-      return {
-        kind: "templateBuilt",
-        tokens: report.tokens.saved,
-        configFile: report.configFile,
-        offerRemoval: !report.fullHeaders,
-      };
-    }
-    return null;
+    return {
+      kind: "templateBuilt",
+      tokens: report.tokens.saved,
+      configFile: report.configFile,
+      offerRemoval: !report.fullHeaders,
+    };
   }
 
   /**

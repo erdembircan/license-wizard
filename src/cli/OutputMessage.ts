@@ -48,19 +48,12 @@ export type HeaderDriftNote =
   | { file: string; kind: "declares"; licenseId: string; style: string }
   | { file: string; kind: "drifted" };
 
-export type VerifyNote =
-  | {
-      kind: "templateBuilt";
-      tokens: string[];
-      configFile: string | null;
-      offerRemoval: boolean;
-    }
-  | {
-      kind: "unknownTokens";
-      tokens: string[];
-      fields: string[];
-      configFile: string | null;
-    };
+export type VerifyNote = {
+  kind: "templateBuilt";
+  tokens: string[];
+  configFile: string | null;
+  offerRemoval: boolean;
+};
 
 /**
  * The view-model the reporter emits for every CLI outcome: a discriminated
@@ -125,6 +118,14 @@ export type OutputMessage =
       manifests: DriftedManifest[];
       difference: TextDifference | null;
       note: VerifyNote | null;
+    }
+  | {
+      kind: "verifyUnknownTokens";
+      channel: "err";
+      licenseId: string;
+      tokens: string[];
+      fields: string[];
+      configFile: string | null;
     }
   | { kind: "headersNoFiles"; channel: "out"; licenseId: string }
   | {

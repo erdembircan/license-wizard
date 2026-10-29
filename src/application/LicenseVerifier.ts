@@ -52,9 +52,16 @@ export type VerifyReport = {
   fullHeaders: boolean;
 };
 
+export type UnknownTokensReport = {
+  licenseId: string;
+  tokens: TokenCheck;
+  configFile: string | null;
+};
+
 export type VerifyOutcome =
   | { kind: "missing-license" }
   | { kind: "missing-config" }
+  | ({ kind: "unknown-tokens" } & UnknownTokensReport)
   | ({ kind: DriftStatus } & VerifyReport);
 
 /**
@@ -67,18 +74,20 @@ export type VerifyOutcome =
  * disk, the file by content hash and each manifest by its declared identifier.
  *
  * Both a `LICENSE` file and a saved configuration are required; either one
- * missing is reported as its own outcome rather than treated as a match. Where
- * anything has drifted the verifier either reconciles it to match (the default
- * — rewriting the file and updating the drifted manifests) or leaves everything
- * untouched and reports the drift (strict mode), so the same check can either
- * self-heal or gate a CI pipeline.
+ * missing is reported as its own outcome rather than treated as a match. So is
+ * a configuration whose saved tokens include ones that are not copyright fields
+ * of its license: verification stops there, in either mode, and changes
+ * nothing. Where anything has drifted the verifier either reconciles it to
+ * match (the default — rewriting the file and updating the drifted manifests)
+ * or leaves everything untouched and reports the drift (strict mode), so the
+ * same check can either self-heal or gate a CI pipeline.
  *
  * Alongside the outcome, the report carries what a caller needs to explain a
  * drifted `LICENSE`: where the file first departs from the expected text,
  * whether that text was built from SPDX's matching template or the license's
- * plain text, which saved tokens are not copyright fields of the license, the
- * file the configuration was read from, and whether the configuration writes
- * full headers (which also consume the tokens).
+ * plain text, the saved tokens, the file the configuration was read from, and
+ * whether the configuration writes full headers (which also consume the
+ * tokens).
  */
 export class LicenseVerifier {
   readonly #config: Config;
@@ -119,7 +128,10 @@ export class LicenseVerifier {
    *
    * Returns `missing-license` when no `LICENSE` file exists and `missing-config`
    * when no configuration is saved — both are required for verification to be
-   * meaningful. Otherwise returns a report whose `kind` aggregates the two
+   * meaningful. Returns `unknown-tokens`, without checking or changing anything,
+   * when some saved tokens are not copyright fields of the configured license:
+   * their values can't be placed, so reconciling would rewrite `LICENSE`
+   * without them. Otherwise returns a report whose `kind` aggregates the two
    * surfaces: `match` when everything was already in sync, `fixed` when drift
    * was found and reconciled (the default), or `mismatch` when drift was found
    * and left untouched because `fix` was disabled.
@@ -137,6 +149,17 @@ export class LicenseVerifier {
     }
 
     const tokens = config.tokens ?? {};
+    const tokenCheck = await this.#checkTokens(config.licenseId, tokens);
+    const configFile = await this.#config.source();
+    if (tokenCheck.unknown.length > 0) {
+      return {
+        kind: "unknown-tokens",
+        licenseId: config.licenseId,
+        tokens: tokenCheck,
+        configFile,
+      };
+    }
+
     const rendering = await this.#generator.renderDetailed(
       config.licenseId,
       tokens,
@@ -156,8 +179,8 @@ export class LicenseVerifier {
       manifests,
       builtFrom: rendering.builtFrom,
       licenseDifference: difference,
-      tokens: await this.#checkTokens(config.licenseId, tokens),
-      configFile: await this.#config.source(),
+      tokens: tokenCheck,
+      configFile,
       fullHeaders: config.headers?.style === "full",
     };
   }

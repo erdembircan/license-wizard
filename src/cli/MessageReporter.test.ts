@@ -244,14 +244,6 @@ describe("MessageReporter", () => {
         fields: ["<yyyy>", "<name of author>"],
       },
     };
-    const unknownTokens: Partial<VerifyReport> = {
-      builtFrom: "standardLicenseTemplate",
-      tokens: {
-        saved: ["[yyyy]", "<yyyy>"],
-        unknown: ["[yyyy]"],
-        fields: ["<yyyy>", "<name of author>"],
-      },
-    };
 
     it("passes the difference through and notes a template-built LICENSE, offering removal", () => {
       const { sink, reporter } = setup();
@@ -297,27 +289,6 @@ describe("MessageReporter", () => {
       });
     });
 
-    it("puts unrecognized tokens ahead of the template note", () => {
-      const { sink, reporter } = setup();
-      reporter.verifyMismatch(
-        verifyReport({
-          ...unknownTokens,
-          license: "mismatch",
-          licenseDifference: DIFFERENCE,
-        }),
-      );
-
-      expect(sink.messages[0]).toMatchObject({
-        difference: DIFFERENCE,
-        note: {
-          kind: "unknownTokens",
-          tokens: ["[yyyy]"],
-          fields: ["<yyyy>", "<name of author>"],
-          configFile: ".licensewizardrc.json",
-        },
-      });
-    });
-
     it("has no note when the LICENSE was built from the plain text with no unrecognized tokens", () => {
       const { sink, reporter } = setup();
       reporter.verifyMismatch(
@@ -334,7 +305,7 @@ describe("MessageReporter", () => {
       const { sink, reporter } = setup();
       reporter.verifyMismatch(
         verifyReport({
-          ...unknownTokens,
+          ...templateBuilt,
           license: "match",
           manifests: [
             {
@@ -375,7 +346,7 @@ describe("MessageReporter", () => {
       const { sink, reporter } = setup();
       reporter.verifyFixed(
         verifyReport({
-          ...unknownTokens,
+          ...templateBuilt,
           license: "match",
           manifests: [
             { name: "package.json", declared: "Apache-2.0", status: "fixed" },
@@ -388,17 +359,30 @@ describe("MessageReporter", () => {
         note: null,
       });
     });
+  });
 
-    it("adds the unrecognized-tokens note to a fix that regenerated the LICENSE", () => {
-      const { sink, reporter } = setup();
-      reporter.verifyFixed(
-        verifyReport({ ...unknownTokens, license: "fixed" }),
-      );
-
-      expect(sink.messages[0]).toMatchObject({
-        note: { kind: "unknownTokens", tokens: ["[yyyy]"] },
-      });
+  it("emits the unknown-tokens error with the unrecognized tokens, the license's fields and the config file", () => {
+    const { sink, reporter } = setup();
+    reporter.verifyUnknownTokens({
+      licenseId: "ISC",
+      tokens: {
+        saved: ["<copyright notice>", "<YEAR>"],
+        unknown: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+      },
+      configFile: ".licensewizardrc.json",
     });
+
+    expect(sink.messages).toEqual([
+      {
+        kind: "verifyUnknownTokens",
+        channel: "err",
+        licenseId: "ISC",
+        tokens: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+        configFile: ".licensewizardrc.json",
+      },
+    ]);
   });
 
   it("emits the no-eligible-files message", () => {

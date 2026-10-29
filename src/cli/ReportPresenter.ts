@@ -110,6 +110,8 @@ export class ReportPresenter {
           message.note,
           c,
         );
+      case "verifyUnknownTokens":
+        return this.#verifyUnknownTokens(message, c);
       case "headersNoFiles":
         return this.#headersNoFiles(message.licenseId, c);
       case "headersGenerated":
@@ -361,7 +363,7 @@ export class ReportPresenter {
     }
 
     const explanation =
-      note === null ? "" : `\n${this.#verifyNote(licenseId, note, true, c)}\n`;
+      note === null ? "" : `\n${this.#verifyNote(licenseId, note, c)}\n`;
     return `${mark}Realigned the project with your saved ${id} enchantment:\n${lines.join("\n")}\n${explanation}`;
   }
 
@@ -395,15 +397,53 @@ export class ReportPresenter {
 
     const fix = this.#paint(c, "dim", `${this.#programName} --verify`);
     const explanation =
-      note === null
-        ? ""
-        : `\n${this.#verifyNote(licenseId, note, false, c)}\n\n`;
-    const closing =
-      note?.kind === "unknownTokens"
-        ? `${this.#tokensAction(note, c)} first, then run ${fix} to reconcile.`
-        : `Run ${fix} to reconcile, or update the configuration to match.`;
+      note === null ? "" : `\n${this.#verifyNote(licenseId, note, c)}\n\n`;
 
-    return `${mark}${heading}\n${lines.join("\n")}\n${explanation}${closing}\n`;
+    return (
+      `${mark}${heading}\n${lines.join("\n")}\n${explanation}` +
+      `Run ${fix} to reconcile, or update the configuration to match.\n`
+    );
+  }
+
+  /**
+   * Renders the error shown when verification stops on saved tokens that are
+   * not copyright fields of the license: the tokens, the fields the license
+   * accepts, the likely causes, and the config edit that fixes it.
+   *
+   * @param message - The unrecognized tokens, the license's fields, and the config file.
+   * @param c - Whether ANSI styling is wanted.
+   */
+  #verifyUnknownTokens(
+    message: Extract<OutputMessage, { kind: "verifyUnknownTokens" }>,
+    c: boolean,
+  ): string {
+    const mark = this.#mark(c, FIZZLE, "red");
+    const one = message.tokens.length === 1;
+    const heading = this.#paint(
+      c,
+      ["bold", "red"],
+      one
+        ? `Cannot verify your saved ${message.licenseId} enchantment — this saved token is not a copyright field of ${message.licenseId}:`
+        : `Cannot verify your saved ${message.licenseId} enchantment — these saved tokens are not copyright fields of ${message.licenseId}:`,
+    );
+    const list = message.tokens
+      .map((token) => `  ${this.#paint(c, "yellow", token)}`)
+      .join("\n");
+    const accepts =
+      message.fields.length > 0
+        ? `${message.licenseId} accepts ${message.fields.map((field) => this.#paint(c, "cyan", field)).join(", ")}.`
+        : `${message.licenseId} has no copyright fields.`;
+    const cause = one
+      ? `It may be left over from an earlier license, or SPDX may have renamed the field. ${this.#programName} can't fill it in, so nothing was checked or changed.`
+      : `They may be left over from an earlier license, or SPDX may have renamed the fields. ${this.#programName} can't fill them in, so nothing was checked or changed.`;
+    const config = this.#configRef(message.configFile, c);
+    const fix = this.#paint(c, "dim", `${this.#programName} --verify`);
+    const action =
+      message.fields.length > 0
+        ? `Update "tokens" in ${config}, then run ${fix} again.`
+        : `Remove "tokens" from ${config}, then run ${fix} again.`;
+
+    return `${mark}${heading}\n${list}\n${accepts} ${cause}\n${action}\n`;
   }
 
   /**
@@ -519,69 +559,28 @@ export class ReportPresenter {
   }
 
   /**
-   * Renders the note that explains a drifted `LICENSE`: either that the saved
-   * tokens make it build from SPDX's matching template, which SPDX revises
-   * between releases, or that some saved tokens are not copyright fields of the
-   * license. `withAction` ends the unrecognized-tokens note with its next step; a
-   * strict-mode report leaves that off because its closing line carries it.
+   * Renders the note that explains a `LICENSE` built from SPDX's matching
+   * template: the saved tokens make it build from that template, which SPDX
+   * revises between releases, so it can drift with no change in the project.
+   * When the note offers it, it adds that removing the tokens switches to the
+   * plain text.
    *
    * @param licenseId - The configured license.
    * @param note - The note to render.
-   * @param withAction - Whether to end an unrecognized-tokens note with its next step.
    * @param c - Whether ANSI styling is wanted.
    */
-  #verifyNote(
-    licenseId: string,
-    note: VerifyNote,
-    withAction: boolean,
-    c: boolean,
-  ): string {
-    if (note.kind === "templateBuilt") {
-      const one = note.tokens.length === 1;
-      const tokens = note.tokens
-        .map((token) => this.#paint(c, "cyan", token))
-        .join(", ");
-      const removal = note.offerRemoval
-        ? ` If you don't need ${one ? "that field" : "those fields"} filled in, remove "tokens" from ${this.#configRef(note.configFile, c)} to build from the plain text instead.`
-        : "";
-      return (
-        `With your saved ${one ? "token" : "tokens"} (${tokens}), ${this.#programName} builds ${licenseId}'s LICENSE from SPDX's matching template rather than its plain text. ` +
-        `SPDX revises that template between releases, so LICENSE can drift even when nothing in your project changed.${removal}`
-      );
-    }
-
+  #verifyNote(licenseId: string, note: VerifyNote, c: boolean): string {
     const one = note.tokens.length === 1;
     const tokens = note.tokens
-      .map((token) => this.#paint(c, "yellow", token))
+      .map((token) => this.#paint(c, "cyan", token))
       .join(", ");
-    const accepts =
-      note.fields.length > 0
-        ? `${licenseId} accepts ${note.fields.map((field) => this.#paint(c, "cyan", field)).join(", ")}`
-        : `${licenseId} has no copyright fields`;
-    const fix = this.#paint(c, "dim", `${this.#programName} --verify`);
-    const action = withAction
-      ? ` ${this.#tokensAction(note, c)}, then run ${fix} again to regenerate LICENSE.`
+    const removal = note.offerRemoval
+      ? ` If you don't need ${one ? "that field" : "those fields"} filled in, remove "tokens" from ${this.#configRef(note.configFile, c)} to build from the plain text instead.`
       : "";
-    return one
-      ? `Your saved token ${tokens} is not a copyright field of ${licenseId}, so ${this.#programName} can't fill it in (${accepts}). It may be left over from an earlier license, or SPDX may have renamed the field.${action}`
-      : `Your saved tokens ${tokens} are not copyright fields of ${licenseId}, so ${this.#programName} can't fill them in (${accepts}). They may be left over from an earlier license, or SPDX may have renamed the fields.${action}`;
-  }
-
-  /**
-   * Names the config edit that clears unrecognized tokens: updating them when
-   * the license has fields to fill, removing them when it has none.
-   *
-   * @param note - The unrecognized-tokens note.
-   * @param c - Whether ANSI styling is wanted.
-   */
-  #tokensAction(
-    note: Extract<VerifyNote, { kind: "unknownTokens" }>,
-    c: boolean,
-  ): string {
-    const config = this.#configRef(note.configFile, c);
-    return note.fields.length > 0
-      ? `Update "tokens" in ${config}`
-      : `Remove "tokens" from ${config}`;
+    return (
+      `With your saved ${one ? "token" : "tokens"} (${tokens}), ${this.#programName} builds ${licenseId}'s LICENSE from SPDX's matching template rather than its plain text. ` +
+      `SPDX revises that template between releases, so LICENSE can drift even when nothing in your project changed.${removal}`
+    );
   }
 
   /**

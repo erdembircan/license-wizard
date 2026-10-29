@@ -113,11 +113,13 @@ flowchart TD
     HASL -->|No| ERRNL[Error: no LICENSE to verify] --> H
     HASL -->|Yes| HASC{Saved config exists?}
     HASC -->|No| ERRNC[Error: no saved config] --> H
-    HASC -->|Yes| R{LICENSE and every manifest's<br/>license in sync with config?<br/>file by hash, manifests by id}
+    HASC -->|Yes| TOK{Every saved token a<br/>copyright field of the license?}
+    TOK -->|No| ERRTOK[Error: name the unrecognized tokens<br/>and the fields the license accepts;<br/>check and change nothing] --> H
+    TOK -->|Yes| R{LICENSE and every manifest's<br/>license in sync with config?<br/>file by hash, manifests by id}
     R -->|Yes| PASS[Report LICENSE in sync]
     R -->|No| AG{--strict given?}
-    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests;<br/>explain a template-built LICENSE<br/>or unrecognized saved tokens]
-    AG -->|Yes| FAIL[Fail the LICENSE surface:<br/>exit non-zero, report every drift<br/>and LICENSE's first differing line;<br/>explain a template-built LICENSE<br/>or unrecognized saved tokens]
+    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests;<br/>explain a template-built LICENSE]
+    AG -->|Yes| FAIL[Fail the LICENSE surface:<br/>exit non-zero, report every drift<br/>and LICENSE's first differing line;<br/>explain a template-built LICENSE]
     PASS --> HV
     G2 --> HV
     FAIL --> HV

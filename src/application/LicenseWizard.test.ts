@@ -1136,6 +1136,12 @@ describe("LicenseWizard verify mode", () => {
   });
 
   it("rewrites the LICENSE by default when it differs from the saved config", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
     state.config = { licenseId: "MIT", tokens: { "<year>": "2026" } };
     state.licenseFile = "STALE LICENSE";
     state.renderedContent = "FRESH LICENSE";
@@ -1165,6 +1171,46 @@ describe("LicenseWizard verify mode", () => {
       expect.objectContaining({ kind: "verifyMismatch", licenseId: "MIT" }),
     );
     expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("stops without rewriting when a saved token is not a field of the license", async () => {
+    state.config = { licenseId: "MIT", tokens: { "[yyyy]": "2026" } };
+    state.licenseFile = "STALE LICENSE";
+    state.renderedContent = "FRESH LICENSE";
+
+    await lw(["--verify"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyUnknownTokens",
+        licenseId: "MIT",
+        tokens: ["[yyyy]"],
+        fields: [],
+      }),
+    );
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("fails under --strict on an unrecognized saved token even when LICENSE matches", async () => {
+    state.config = { licenseId: "MIT", tokens: { "[yyyy]": "2026" } };
+    state.licenseFile = "SAME LICENSE";
+    state.renderedContent = "SAME LICENSE";
+
+    await lw(["--verify", "--strict"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "verifyUnknownTokens",
+        licenseId: "MIT",
+        tokens: ["[yyyy]"],
+        fields: [],
+      }),
+    );
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "verifyMatch" }),
+    );
     expect(process.exitCode).toBe(1);
   });
 

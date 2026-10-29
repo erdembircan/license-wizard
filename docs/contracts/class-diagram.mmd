@@ -126,6 +126,12 @@ classDiagram
     +fields: string[]
   }
 
+  class UnknownTokensReport {
+    +licenseId: string
+    +tokens: TokenCheck
+    +configFile: string | null
+  }
+
   class TextDifference {
     +line: number
     +column: number
@@ -199,6 +205,7 @@ classDiagram
       +verifyMatch(report: VerifyReport) void
       +verifyFixed(report: VerifyReport) void
       +verifyMismatch(report: VerifyReport) void
+      +verifyUnknownTokens(report: UnknownTokensReport) void
       +headersNoFiles(licenseId: string) void
       +headersGenerated(report: HeaderGenerateReport) void
       +headersDryRun(report: HeaderDryRunReport) void
@@ -773,6 +780,7 @@ classDiagram
   CliReporter ..> ReportPresenter : wires
   MessageReporter ..> TemplateSlot : reads
   MessageReporter ..> VerifyReport : reads
+  MessageReporter ..> UnknownTokensReport : reads
   MessageReporter ..> DryRunReport : reads
   %% Composition root: LicenseWizard parses flags, builds the shared graph, and
   %% delegates each run to one of the three modes through IWizardMode.
@@ -846,9 +854,11 @@ classDiagram
   LicenseVerifier ..> VerifyOptions : configured by
   LicenseVerifier ..> VerifyOutcome : returns
   VerifyOutcome ..> VerifyReport : carries
+  VerifyOutcome ..> UnknownTokensReport : carries
   VerifyReport ..> ManifestCheck : aggregates
   VerifyReport ..> DriftStatus : statuses by
   VerifyReport ..> TokenCheck : checks saved tokens with
+  UnknownTokensReport ..> TokenCheck : names unrecognized tokens with
   VerifyReport ..> TextDifference : pinpoints LICENSE drift with
   VerifyReport ..> LicenseRenderBasis : records how LICENSE was built with
   firstDifference ..> TextDifference : produces

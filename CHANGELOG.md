@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`--verify` stops on saved tokens the license doesn't recognize** — when the saved
+  config's tokens include ones that aren't copyright fields of its license (left over
+  from an earlier license, or renamed by SPDX, as SPDX License List 3.29.0 did for ISC),
+  `--verify` now names them, lists the fields the license accepts, and exits with code 1
+  without checking or changing anything, source-file headers included. This is new in
+  both modes:
+  - `--verify` used to regenerate `LICENSE` with the license's own fields left unfilled
+    (for ISC, `Copyright <YEAR> <OWNER>`) and exit 0.
+  - `--verify --strict` used to pass whenever `LICENSE` and the manifests matched, so
+    leftover tokens never failed CI on their own.
+
+  Generation runs already rejected such fields passed with `--set`; this applies the same
+  rule to the tokens `--verify` reads from the saved config. Because these runs now fail
+  where they used to pass, the release that ships this is not a patch. (#179)
 - **`--verify` now explains a drifted `LICENSE`** — a `LICENSE` that no longer matches
   the saved configuration used to be reported only as `LICENSE does not match`. Now:
   - `--verify --strict` shows the first difference: the line and column, the line found
@@ -22,13 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     drifts, both `--verify` and `--verify --strict` now say so and, unless the config
     writes full headers, point out that removing the saved `tokens` builds `LICENSE` from
     the plain text instead.
-  - Saved tokens that aren't copyright fields of the configured license — left over from
-    an earlier license, or renamed by SPDX, as 3.29.0 did for ISC — are named alongside
-    the fields the license accepts. Strict runs then say to fix the tokens before
-    reconciling, since reconciling first would regenerate `LICENSE` with those fields
-    unfilled.
 
-  Exit codes, verification outcomes, and file writes are unchanged, and runs where
+  This part changes output only: exit codes and file writes are unchanged, and runs where
   `LICENSE` itself matched print exactly as before. (#179)
 
 ## [1.2.0] - 2026-08-18

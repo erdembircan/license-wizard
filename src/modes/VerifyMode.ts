@@ -18,8 +18,10 @@ import type { IWizardMode } from "./IWizardMode.js";
  * then — when the configuration opts into source-file headers — checks that
  * surface too. Drift is reconciled by default or, under `--strict`, reported as
  * a failure with a non-zero exit code so the same check can either self-heal or
- * gate a CI pipeline. Failures are written to stderr and set the exit code
- * without throwing.
+ * gate a CI pipeline. A configuration whose saved tokens are not all copyright
+ * fields of its license fails in both modes before anything is checked or
+ * changed, headers included. Failures are written to stderr and set the exit
+ * code without throwing.
  */
 export class VerifyMode implements IWizardMode {
   readonly #verifier: LicenseVerifier;
@@ -53,8 +55,9 @@ export class VerifyMode implements IWizardMode {
 
   /**
    * Runs the verification: checks the `LICENSE` and manifests, then the headers
-   * when the configuration opts into them. A missing `LICENSE` or configuration
-   * is reported as a failure. Returns an empty answer list — its output is
+   * when the configuration opts into them. A missing `LICENSE` or configuration,
+   * or saved tokens that are not copyright fields of the license, is reported as
+   * a failure and ends the run. Returns an empty answer list — its output is
    * surfaced through the reporter.
    */
   async run(): Promise<Answer[]> {
@@ -71,6 +74,10 @@ export class VerifyMode implements IWizardMode {
         this.#fail(
           "Cannot verify: no saved configuration found. Save one first with a --save-* flag.",
         );
+        return [];
+      case "unknown-tokens":
+        this.#reporter.verifyUnknownTokens(outcome);
+        this.#exitWithError();
         return [];
       case "match":
         this.#reporter.verifyMatch(outcome);

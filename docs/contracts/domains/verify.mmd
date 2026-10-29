@@ -35,6 +35,12 @@ classDiagram
     +fullHeaders: boolean
   }
 
+  class UnknownTokensReport {
+    +licenseId: string
+    +tokens: TokenCheck
+    +configFile: string | null
+  }
+
   class ManifestCheck {
     +name: string
     +declared: string | null
@@ -67,9 +73,11 @@ classDiagram
   LicenseVerifier ..> VerifyOutcome : returns
   LicenseVerifier ..> firstDifference : locates LICENSE drift with
   VerifyOutcome ..> VerifyReport : carries
+  VerifyOutcome ..> UnknownTokensReport : carries
   VerifyReport ..> ManifestCheck : aggregates
   VerifyReport ..> DriftStatus : statuses by
   VerifyReport ..> TokenCheck : checks saved tokens with
   VerifyReport ..> TextDifference : pinpoints LICENSE drift with
+  UnknownTokensReport ..> TokenCheck : names unrecognized tokens with
   ManifestCheck ..> DriftStatus : status by
   firstDifference ..> TextDifference : produces

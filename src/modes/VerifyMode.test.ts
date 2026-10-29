@@ -244,4 +244,43 @@ describe("VerifyMode", () => {
     expect(calls.map((c) => c.method)).toContain("headersVerifyMismatch");
     expect(process.exitCode).toBe(1);
   });
+
+  describe("saved tokens the license does not recognize", () => {
+    const unknownTokens: VerifyOutcome = {
+      kind: "unknown-tokens",
+      licenseId: "ISC",
+      tokens: {
+        saved: ["<copyright notice>"],
+        unknown: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+      },
+      configFile: ".licensewizardrc.json",
+    };
+
+    it.each([
+      ["default", false],
+      ["strict", true],
+    ])(
+      "reports the unknown tokens, skips header verification and fails in %s mode",
+      async (_label, strict) => {
+        const { reporter, calls } = makeReporter();
+        const headers = headerVerifier({ kind: "disabled" });
+        const mode = new VerifyMode(
+          licenseVerifier(unknownTokens),
+          headers.verifier,
+          configReturning({ licenseId: "ISC", headers: { style: "short" } }),
+          reporter,
+          strict,
+        );
+
+        await mode.run();
+
+        expect(calls).toEqual([
+          { method: "verifyUnknownTokens", arg: unknownTokens },
+        ]);
+        expect(headers.verifyCalls).toBe(0);
+        expect(process.exitCode).toBe(1);
+      },
+    );
+  });
 });

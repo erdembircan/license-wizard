@@ -725,34 +725,65 @@ describe("ReportPresenter verify explanations (plain text)", () => {
     );
   });
 
-  it("names an unrecognized token in strict mode and closes with fixing the tokens first", () => {
+  it("names one unrecognized token, the license's fields and the config edit", () => {
     expect(
-      strictMismatch(
-        "ISC",
-        {
-          line: 3,
-          column: 11,
-          found: "Copyright 2026 Jane Doe",
-          expected: "Copyright <YEAR> <OWNER>",
-        },
-        {
-          kind: "unknownTokens",
-          tokens: ["<copyright notice>"],
-          fields: ["<YEAR>", "<OWNER>"],
-          configFile: ".licensewizardrc.json",
-        },
-      ),
+      present({
+        kind: "verifyUnknownTokens",
+        channel: "err",
+        licenseId: "ISC",
+        tokens: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+        configFile: ".licensewizardrc.json",
+      }),
     ).toBe(
       [
-        "Project is out of sync with your saved ISC enchantment:",
-        "  LICENSE does not match — first difference at line 3, column 11:",
-        "    found:    Copyright 2026 Jane Doe",
-        "    expected: Copyright <YEAR> <OWNER>",
-        " ".repeat(24) + "^",
+        "Cannot verify your saved ISC enchantment — this saved token is not a copyright field of ISC:",
+        "  <copyright notice>",
+        "ISC accepts <YEAR>, <OWNER>. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was checked or changed.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --verify again.',
         "",
-        "Your saved token <copyright notice> is not a copyright field of ISC, so license-wizard can't fill it in (ISC accepts <YEAR>, <OWNER>). It may be left over from an earlier license, or SPDX may have renamed the field.",
+      ].join("\n"),
+    );
+  });
+
+  it("lists several unrecognized tokens in plural wording", () => {
+    expect(
+      present({
+        kind: "verifyUnknownTokens",
+        channel: "err",
+        licenseId: "GPL-2.0-or-later",
+        tokens: ["[yyyy]", "[name of copyright owner]"],
+        fields: ["<yyyy>", "<name of author>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        "Cannot verify your saved GPL-2.0-or-later enchantment — these saved tokens are not copyright fields of GPL-2.0-or-later:",
+        "  [yyyy]",
+        "  [name of copyright owner]",
+        "GPL-2.0-or-later accepts <yyyy>, <name of author>. They may be left over from an earlier license, or SPDX may have renamed the fields. license-wizard can't fill them in, so nothing was checked or changed.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --verify again.',
         "",
-        'Update "tokens" in your saved config (.licensewizardrc.json) first, then run license-wizard --verify to reconcile.',
+      ].join("\n"),
+    );
+  });
+
+  it("says to remove the tokens when the license has no copyright fields and the config file is unknown", () => {
+    expect(
+      present({
+        kind: "verifyUnknownTokens",
+        channel: "err",
+        licenseId: "MPL-2.0",
+        tokens: ["<year>"],
+        fields: [],
+        configFile: null,
+      }),
+    ).toBe(
+      [
+        "Cannot verify your saved MPL-2.0 enchantment — this saved token is not a copyright field of MPL-2.0:",
+        "  <year>",
+        "MPL-2.0 has no copyright fields. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was checked or changed.",
+        'Remove "tokens" from your saved config, then run license-wizard --verify again.',
         "",
       ].join("\n"),
     );
@@ -801,65 +832,6 @@ describe("ReportPresenter verify explanations (plain text)", () => {
 
     expect(text.split("\n")[3]).toMatch(
       / If you don't need that field filled in, remove "tokens" from your saved config to build from the plain text instead\.$/,
-    );
-  });
-
-  it("names unrecognized tokens after a fix and ends with the next step", () => {
-    expect(
-      present({
-        kind: "verifyFixed",
-        channel: "out",
-        licenseId: "GPL-2.0-or-later",
-        licenseRegenerated: true,
-        manifests: [],
-        note: {
-          kind: "unknownTokens",
-          tokens: ["[yyyy]", "[name of copyright owner]"],
-          fields: ["<yyyy>", "<name of author>"],
-          configFile: ".licensewizardrc.json",
-        },
-      }),
-    ).toBe(
-      [
-        "Realigned the project with your saved GPL-2.0-or-later enchantment:",
-        "  LICENSE regenerated",
-        "",
-        `Your saved tokens [yyyy], [name of copyright owner] are not copyright fields of GPL-2.0-or-later, so license-wizard can't fill them in (GPL-2.0-or-later accepts <yyyy>, <name of author>). They may be left over from an earlier license, or SPDX may have renamed the fields. Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --verify again to regenerate LICENSE.`,
-        "",
-      ].join("\n"),
-    );
-  });
-
-  it("says to remove the tokens when the license has no copyright fields and the config file is unknown", () => {
-    expect(
-      strictMismatch(
-        "MPL-2.0",
-        {
-          line: 1,
-          column: 1,
-          found: "MIT License",
-          expected: "Mozilla Public License Version 2.0",
-        },
-        {
-          kind: "unknownTokens",
-          tokens: ["<year>"],
-          fields: [],
-          configFile: null,
-        },
-      ),
-    ).toBe(
-      [
-        "Project is out of sync with your saved MPL-2.0 enchantment:",
-        "  LICENSE does not match — first difference at line 1, column 1:",
-        "    found:    MIT License",
-        "    expected: Mozilla Public License Version 2.0",
-        " ".repeat(14) + "^",
-        "",
-        "Your saved token <year> is not a copyright field of MPL-2.0, so license-wizard can't fill it in (MPL-2.0 has no copyright fields). It may be left over from an earlier license, or SPDX may have renamed the field.",
-        "",
-        'Remove "tokens" from your saved config first, then run license-wizard --verify to reconcile.',
-        "",
-      ].join("\n"),
     );
   });
 

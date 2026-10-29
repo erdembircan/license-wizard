@@ -300,30 +300,61 @@ describe("LicenseVerifier", () => {
       expect(outcome).toMatchObject({ licenseDifference: null });
     });
 
-    it("splits the saved tokens into the license's fields and the unknown ones", async () => {
-      repository.detail = {
-        licenseId: "MIT",
-        name: "MIT License",
-        licenseText: "Copyright (C) <yyyy> <name of author>",
-        standardLicenseTemplate:
-          'Copyright (C) <<var;name="copyright";original="<yyyy> <name of author>";match=".+">>',
-        standardLicenseHeaderTemplate:
-          '<<var;name="copyright";original="Copyright (C) <year>";match=".+">>',
-      };
-      config.config = {
-        licenseId: "MIT",
-        tokens: { "[yyyy]": "2026", "<yyyy>": "2026", "<year>": "2026" },
-      };
+    describe("with a header-aware license detail", () => {
+      beforeEach(() => {
+        repository.detail = {
+          licenseId: "MIT",
+          name: "MIT License",
+          licenseText: "Copyright (C) <yyyy> <name of author>",
+          standardLicenseTemplate:
+            'Copyright (C) <<var;name="copyright";original="<yyyy> <name of author>";match=".+">>',
+          standardLicenseHeaderTemplate:
+            '<<var;name="copyright";original="Copyright (C) <year>";match=".+">>',
+        };
+      });
 
-      const outcome = await verifier.verify({ fix: false });
+      it("stops on a saved token that is not a copyright field, rendering and changing nothing", async () => {
+        config.config = {
+          licenseId: "MIT",
+          tokens: { "[yyyy]": "2026", "<yyyy>": "2026", "<year>": "2026" },
+        };
+        reader.files.set(LICENSE, "STALE LICENSE");
+        generator.rendered = "FRESH LICENSE";
+        manifests.declared = [{ name: "package.json", licenseId: "ISC" }];
 
-      // A field only the header template has (<year>) is still a field.
-      expect(outcome).toMatchObject({
-        tokens: {
-          saved: ["[yyyy]", "<yyyy>", "<year>"],
-          unknown: ["[yyyy]"],
-          fields: ["<yyyy>", "<name of author>", "<year>"],
-        },
+        for (const fix of [false, true]) {
+          const outcome = await verifier.verify({ fix });
+
+          expect(outcome).toEqual({
+            kind: "unknown-tokens",
+            licenseId: "MIT",
+            tokens: {
+              saved: ["[yyyy]", "<yyyy>", "<year>"],
+              unknown: ["[yyyy]"],
+              fields: ["<yyyy>", "<name of author>", "<year>"],
+            },
+            configFile: ".licensewizardrc.json",
+          });
+        }
+        expect(generator.renderCalls).toEqual([]);
+        expect(generator.generateCalls).toEqual([]);
+        expect(manifests.writes).toEqual([]);
+      });
+
+      it("treats a header-only field as a recognized token and verifies normally", async () => {
+        config.config = {
+          licenseId: "MIT",
+          tokens: { "<yyyy>": "2026", "<year>": "2026" },
+        };
+        reader.files.set(LICENSE, "MIT LICENSE TEXT");
+        generator.rendered = "MIT LICENSE TEXT";
+
+        const outcome = await verifier.verify({ fix: false });
+
+        expect(outcome).toMatchObject({
+          kind: "match",
+          tokens: { unknown: [] },
+        });
       });
     });
 
