@@ -116,8 +116,8 @@ flowchart TD
     HASC -->|Yes| R{LICENSE and every manifest's<br/>license in sync with config?<br/>file by hash, manifests by id}
     R -->|Yes| PASS[Report LICENSE in sync]
     R -->|No| AG{--strict given?}
-    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests]
-    AG -->|Yes| FAIL[Fail the LICENSE surface:<br/>exit non-zero, report every drift]
+    AG -->|No, default| G2[Reconcile drift:<br/>rewrite LICENSE and/or<br/>update drifted manifests;<br/>explain a template-built LICENSE<br/>or unrecognized saved tokens]
+    AG -->|Yes| FAIL[Fail the LICENSE surface:<br/>exit non-zero, report every drift<br/>and LICENSE's first differing line;<br/>explain a template-built LICENSE<br/>or unrecognized saved tokens]
     PASS --> HV
     G2 --> HV
     FAIL --> HV

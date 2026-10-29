@@ -145,7 +145,10 @@ export interface IReporter {
   /**
    * Renders the notice shown when `--verify` found drift and reconciled it —
    * rewriting the `LICENSE` file and/or updating manifest license fields to
-   * match the saved configuration.
+   * match the saved configuration. When the `LICENSE` itself was rewritten, a
+   * note follows when one explains the drift: saved tokens that are not
+   * copyright fields of the license, or a `LICENSE` built from SPDX's matching
+   * template.
    *
    * @param report - The verification result; lists what was reconciled.
    */
@@ -154,7 +157,8 @@ export interface IReporter {
   /**
    * Renders the error shown when `--verify --strict` found the `LICENSE` file
    * or a manifest out of sync with the saved configuration and left it
-   * untouched.
+   * untouched. A drifted `LICENSE` is shown with its first differing line and,
+   * when one applies, the same explanatory note `verifyFixed` adds.
    *
    * @param report - The verification result; lists what drifted.
    */

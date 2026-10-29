@@ -5,12 +5,17 @@
  */
 
 import { createHash } from "node:crypto";
+import { firstDifference } from "@application/TextDifference.js";
+import type { TextDifference } from "@application/TextDifference.js";
 import type { Config } from "@configuration/Config.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { LICENSE_FILENAME } from "@licensing/LicenseFilename.js";
+import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
+import type { LicenseRenderBasis } from "@licensing/LicenseRendering.js";
+import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 
 export type VerifyOptions = {
   /**
@@ -30,10 +35,21 @@ export type ManifestCheck = {
   status: DriftStatus;
 };
 
+export type TokenCheck = {
+  saved: string[];
+  unknown: string[];
+  fields: string[];
+};
+
 export type VerifyReport = {
   licenseId: string;
   license: DriftStatus;
   manifests: ManifestCheck[];
+  builtFrom: LicenseRenderBasis;
+  licenseDifference: TextDifference | null;
+  tokens: TokenCheck;
+  configFile: string | null;
+  fullHeaders: boolean;
 };
 
 export type VerifyOutcome =
@@ -56,12 +72,20 @@ export type VerifyOutcome =
  * — rewriting the file and updating the drifted manifests) or leaves everything
  * untouched and reports the drift (strict mode), so the same check can either
  * self-heal or gate a CI pipeline.
+ *
+ * Alongside the outcome, the report carries what a caller needs to explain a
+ * drifted `LICENSE`: where the file first departs from the expected text,
+ * whether that text was built from SPDX's matching template or the license's
+ * plain text, which saved tokens are not copyright fields of the license, the
+ * file the configuration was read from, and whether the configuration writes
+ * full headers (which also consume the tokens).
  */
 export class LicenseVerifier {
   readonly #config: Config;
   readonly #manifests: ProjectManifestRepository;
   readonly #generator: LicenseGenerator;
   readonly #reader: IFileSystemReader;
+  readonly #repository: LicenseRepository;
 
   /**
    * Creates a new LicenseVerifier.
@@ -71,17 +95,21 @@ export class LicenseVerifier {
    *   updates the drifted ones.
    * @param generator - Re-renders (and, when fixing, rewrites) the license.
    * @param reader - Reads the existing `LICENSE` file from disk.
+   * @param repository - Reads the license's copyright fields, to check the saved
+   *   tokens against them.
    */
   constructor(
     config: Config,
     manifests: ProjectManifestRepository,
     generator: LicenseGenerator,
     reader: IFileSystemReader,
+    repository: LicenseRepository,
   ) {
     this.#config = config;
     this.#manifests = manifests;
     this.#generator = generator;
     this.#reader = reader;
+    this.#repository = repository;
   }
 
   /**
@@ -108,38 +136,78 @@ export class LicenseVerifier {
       return { kind: "missing-config" };
     }
 
-    const license = await this.#verifyLicenseFile(config, options.fix);
+    const tokens = config.tokens ?? {};
+    const rendering = await this.#generator.renderDetailed(
+      config.licenseId,
+      tokens,
+    );
+    const { status: license, difference } = await this.#verifyLicenseFile(
+      config,
+      rendering.content,
+      options.fix,
+    );
     const manifests = await this.#verifyManifests(config, options.fix);
     const kind = this.#aggregate(license, manifests);
 
-    return { kind, licenseId: config.licenseId, license, manifests };
+    return {
+      kind,
+      licenseId: config.licenseId,
+      license,
+      manifests,
+      builtFrom: rendering.builtFrom,
+      licenseDifference: difference,
+      tokens: await this.#checkTokens(config.licenseId, tokens),
+      configFile: await this.#config.source(),
+      fullHeaders: config.headers?.style === "full",
+    };
   }
 
   /**
-   * Compares the on-disk `LICENSE` against the license re-rendered from the
-   * configuration, returning `match` when they are identical, `fixed` after
+   * Compares the on-disk `LICENSE` against the expected text, returning the
+   * drift status together with the first point where the two diverge (null when
+   * they match). The status is `match` when they are identical, `fixed` after
    * rewriting the file when they differ and fixing is enabled, or `mismatch`
    * when they differ and the file is left untouched.
    */
   async #verifyLicenseFile(
     config: WizardConfig,
+    expected: string,
     fix: boolean,
-  ): Promise<DriftStatus> {
+  ): Promise<{ status: DriftStatus; difference: TextDifference | null }> {
     const existing = await this.#reader.read(LICENSE_FILENAME);
-    const expected = await this.#generator.render(
-      config.licenseId,
-      config.tokens ?? {},
-    );
 
     if (this.#digest(existing) === this.#digest(expected)) {
-      return "match";
+      return { status: "match", difference: null };
     }
+
+    const difference = firstDifference(existing, expected);
     if (!fix) {
-      return "mismatch";
+      return { status: "mismatch", difference };
     }
 
     await this.#generator.generate(config.licenseId, config.tokens ?? {});
-    return "fixed";
+    return { status: "fixed", difference };
+  }
+
+  /**
+   * Lists the saved tokens, the configured license's copyright fields (its body
+   * and header fields combined), and the saved tokens that match none of those
+   * fields.
+   */
+  async #checkTokens(
+    licenseId: string,
+    tokens: Record<string, string>,
+  ): Promise<TokenCheck> {
+    const detail = await this.#repository.getLicense(licenseId);
+    const fields = LicenseCopyright.fromDetail(detail)
+      .slots()
+      .map((slot) => slot.token);
+    const saved = Object.keys(tokens);
+    return {
+      saved,
+      unknown: saved.filter((token) => !fields.includes(token)),
+      fields,
+    };
   }
 
   /**

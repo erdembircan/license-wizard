@@ -203,6 +203,7 @@ export class LicenseWizard {
         this.#manifests,
         this.#generator,
         this.#reader,
+        this.#licenseRepository,
       );
       const headerVerifier = new HeaderVerifier(
         new SourceFileScanner(new NodeFileTreeWalker(), this.#reader),

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [Unreleased]
+
+### Changed
+
+- **`--verify` now explains a drifted `LICENSE`** — a `LICENSE` that no longer matches
+  the saved configuration used to be reported only as `LICENSE does not match`. Now:
+  - `--verify --strict` shows the first difference: the line and column, the line found
+    on disk, the expected line, and a caret under the first differing character, with
+    control characters and trailing spaces made visible.
+  - When the saved tokens can't be filled into the license's plain text
+    (GPL-2.0-or-later, LGPL-2.1-or-later, ISC and Zlib among others), License Wizard
+    builds `LICENSE` from SPDX's matching template, which SPDX revises between releases.
+    SPDX License List 3.29.0 changed it for GPL-2.0-or-later, LGPL-2.1-or-later and ISC,
+    failing strict verification in projects that had not changed. When such a `LICENSE`
+    drifts, both `--verify` and `--verify --strict` now say so and, unless the config
+    writes full headers, point out that removing the saved `tokens` builds `LICENSE` from
+    the plain text instead.
+  - Saved tokens that aren't copyright fields of the configured license — left over from
+    an earlier license, or renamed by SPDX, as 3.29.0 did for ISC — are named alongside
+    the fields the license accepts. Strict runs then say to fix the tokens before
+    reconciling, since reconciling first would regenerate `LICENSE` with those fields
+    unfilled.
+
+  Exit codes, verification outcomes, and file writes are unchanged, and runs where
+  `LICENSE` itself matched print exactly as before. (#NNN)
+
 ## [1.2.0] - 2026-08-18
 
 ### Changed

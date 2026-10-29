@@ -10,7 +10,9 @@ import type {
   HeaderDriftNote,
   OutputMessage,
   ReconciledManifest,
+  VerifyNote,
 } from "@cli/OutputMessage.js";
+import type { TextDifference } from "@application/TextDifference.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 
 type Style = Parameters<typeof styleText>[0];
@@ -25,6 +27,14 @@ const FORCE = { validateStream: false } as const;
 const SPARK = "✦";
 const GLIMMER = "✧";
 const FIZZLE = "✗";
+
+// A line of the first-difference pair longer than DIFF_WIDTH is shown through a
+// window that wide, opened DIFF_LEAD characters before the difference, so a long
+// unwrapped paragraph can't flood the report.
+const DIFF_WIDTH = 80;
+const DIFF_LEAD = 20;
+
+type DiffWindow = { clip: boolean; start: number; caret: number };
 
 /**
  * Turns the reporter's view-model messages into terminal text. This is the sole
@@ -88,6 +98,7 @@ export class ReportPresenter {
           message.licenseId,
           message.licenseRegenerated,
           message.manifests,
+          message.note,
           c,
         );
       case "verifyMismatch":
@@ -95,6 +106,8 @@ export class ReportPresenter {
           message.licenseId,
           message.licenseMismatch,
           message.manifests,
+          message.difference,
+          message.note,
           c,
         );
       case "headersNoFiles":
@@ -331,6 +344,7 @@ export class ReportPresenter {
     licenseId: string,
     licenseRegenerated: boolean,
     manifests: ReconciledManifest[],
+    note: VerifyNote | null,
     c: boolean,
   ): string {
     const mark = this.#mark(c, SPARK, "green");
@@ -346,13 +360,17 @@ export class ReportPresenter {
       lines.push(`  ${name} license updated to ${licenseId}${was}`);
     }
 
-    return `${mark}Realigned the project with your saved ${id} enchantment:\n${lines.join("\n")}\n`;
+    const explanation =
+      note === null ? "" : `\n${this.#verifyNote(licenseId, note, true, c)}\n`;
+    return `${mark}Realigned the project with your saved ${id} enchantment:\n${lines.join("\n")}\n${explanation}`;
   }
 
   #verifyMismatch(
     licenseId: string,
     licenseMismatch: boolean,
     manifests: DriftedManifest[],
+    difference: TextDifference | null,
+    note: VerifyNote | null,
     c: boolean,
   ): string {
     const mark = this.#mark(c, FIZZLE, "red");
@@ -364,7 +382,7 @@ export class ReportPresenter {
     const lines: string[] = [];
 
     if (licenseMismatch) {
-      lines.push(`  LICENSE ${this.#paint(c, "yellow", "does not match")}`);
+      lines.push(...this.#licenseMismatchLines(difference, c));
     }
     for (const manifest of manifests) {
       const name = this.#paint(c, "cyan", manifest.name);
@@ -376,10 +394,202 @@ export class ReportPresenter {
     }
 
     const fix = this.#paint(c, "dim", `${this.#programName} --verify`);
-    return (
-      `${mark}${heading}\n${lines.join("\n")}\n` +
-      `Run ${fix} to reconcile, or update the configuration to match.\n`
-    );
+    const explanation =
+      note === null
+        ? ""
+        : `\n${this.#verifyNote(licenseId, note, false, c)}\n\n`;
+    const closing =
+      note?.kind === "unknownTokens"
+        ? `${this.#tokensAction(note, c)} first, then run ${fix} to reconcile.`
+        : `Run ${fix} to reconcile, or update the configuration to match.`;
+
+    return `${mark}${heading}\n${lines.join("\n")}\n${explanation}${closing}\n`;
+  }
+
+  /**
+   * Renders the `LICENSE does not match` entry of a strict-mode report. With a
+   * known first difference it names the line and column, then shows the found
+   * and expected lines one above the other, with a caret under the first
+   * differing character when both lines have text; without one it is the bare
+   * entry.
+   *
+   * @param difference - Where the on-disk `LICENSE` first departs from the expected text.
+   * @param c - Whether ANSI styling is wanted.
+   */
+  #licenseMismatchLines(
+    difference: TextDifference | null,
+    c: boolean,
+  ): string[] {
+    const entry = `  LICENSE ${this.#paint(c, "yellow", "does not match")}`;
+    if (difference === null) {
+      return [entry];
+    }
+
+    const { line, column, found, expected } = difference;
+    const window = this.#diffWindow(difference);
+    const lines = [
+      `${entry} — first difference at line ${line}, column ${column}:`,
+      `    ${this.#paint(c, "dim", "found:")}    ${this.#diffLine(found, window, c)}`,
+      `    ${this.#paint(c, "dim", "expected:")} ${this.#diffLine(expected, window, c)}`,
+    ];
+    if (found && expected) {
+      lines.push(
+        `              ${" ".repeat(window.caret)}${this.#paint(c, "yellow", "^")}`,
+      );
+    }
+    return lines;
+  }
+
+  /**
+   * Picks the slice of the two differing lines to show. Both are shown whole
+   * when they fit within DIFF_WIDTH; otherwise both are shown through the same
+   * window, opened DIFF_LEAD characters before the difference, so the caret
+   * lands on the same character in each. Returns whether clipping applies, the
+   * window's start offset, and the caret's position within the displayed text,
+   * which counts the leading ellipsis when one is shown.
+   *
+   * @param difference - The first difference being displayed.
+   */
+  #diffWindow({ column, found, expected }: TextDifference): DiffWindow {
+    const longest = Math.max(found?.length ?? 0, expected?.length ?? 0);
+    if (longest <= DIFF_WIDTH) {
+      return { clip: false, start: 0, caret: column - 1 };
+    }
+    const start = Math.max(0, column - 1 - DIFF_LEAD);
+    return {
+      clip: true,
+      start,
+      caret: column - 1 - start + (start > 0 ? 1 : 0),
+    };
+  }
+
+  /**
+   * Renders one side of the first-difference pair: a placeholder when the line
+   * is missing or blank, otherwise the line with invisible characters made
+   * visible, clipped to the shared window with an ellipsis on each clipped end.
+   *
+   * @param text - The line to show, or null when that side has no such line.
+   * @param window - The window shared by both lines.
+   * @param c - Whether ANSI styling is wanted.
+   */
+  #diffLine(text: string | null, window: DiffWindow, c: boolean): string {
+    if (text === null) {
+      return this.#paint(c, "dim", "(end of file)");
+    }
+    if (text === "") {
+      return this.#paint(c, "dim", "(blank line)");
+    }
+
+    const visible = this.#visible(text);
+    if (!window.clip) {
+      return visible;
+    }
+    const head = window.start > 0 ? "…" : "";
+    const tail = visible.length > window.start + DIFF_WIDTH ? "…" : "";
+    return `${head}${visible.slice(window.start, window.start + DIFF_WIDTH)}${tail}`;
+  }
+
+  /**
+   * Makes the characters a terminal would hide visible, one for one so the
+   * caret stays aligned: each control character, such as a carriage return or a
+   * tab, becomes its Unicode control picture (`␍`, `␉`), and each trailing space
+   * becomes a middle dot (`·`).
+   *
+   * @param text - The line to make visible.
+   */
+  #visible(text: string): string {
+    const body = text.replace(/ +$/, "");
+    let visible = "";
+    for (let index = 0; index < body.length; index++) {
+      const code = body.charCodeAt(index);
+      if (code < 0x20) {
+        visible += String.fromCharCode(0x2400 + code);
+      } else if (code === 0x7f) {
+        visible += "␡";
+      } else {
+        visible += body[index];
+      }
+    }
+    return visible + "·".repeat(text.length - body.length);
+  }
+
+  /**
+   * Renders the note that explains a drifted `LICENSE`: either that the saved
+   * tokens make it build from SPDX's matching template, which SPDX revises
+   * between releases, or that some saved tokens are not copyright fields of the
+   * license. `withAction` ends the unrecognized-tokens note with its next step; a
+   * strict-mode report leaves that off because its closing line carries it.
+   *
+   * @param licenseId - The configured license.
+   * @param note - The note to render.
+   * @param withAction - Whether to end an unrecognized-tokens note with its next step.
+   * @param c - Whether ANSI styling is wanted.
+   */
+  #verifyNote(
+    licenseId: string,
+    note: VerifyNote,
+    withAction: boolean,
+    c: boolean,
+  ): string {
+    if (note.kind === "templateBuilt") {
+      const one = note.tokens.length === 1;
+      const tokens = note.tokens
+        .map((token) => this.#paint(c, "cyan", token))
+        .join(", ");
+      const removal = note.offerRemoval
+        ? ` If you don't need ${one ? "that field" : "those fields"} filled in, remove "tokens" from ${this.#configRef(note.configFile, c)} to build from the plain text instead.`
+        : "";
+      return (
+        `With your saved ${one ? "token" : "tokens"} (${tokens}), ${this.#programName} builds ${licenseId}'s LICENSE from SPDX's matching template rather than its plain text. ` +
+        `SPDX revises that template between releases, so LICENSE can drift even when nothing in your project changed.${removal}`
+      );
+    }
+
+    const one = note.tokens.length === 1;
+    const tokens = note.tokens
+      .map((token) => this.#paint(c, "yellow", token))
+      .join(", ");
+    const accepts =
+      note.fields.length > 0
+        ? `${licenseId} accepts ${note.fields.map((field) => this.#paint(c, "cyan", field)).join(", ")}`
+        : `${licenseId} has no copyright fields`;
+    const fix = this.#paint(c, "dim", `${this.#programName} --verify`);
+    const action = withAction
+      ? ` ${this.#tokensAction(note, c)}, then run ${fix} again to regenerate LICENSE.`
+      : "";
+    return one
+      ? `Your saved token ${tokens} is not a copyright field of ${licenseId}, so ${this.#programName} can't fill it in (${accepts}). It may be left over from an earlier license, or SPDX may have renamed the field.${action}`
+      : `Your saved tokens ${tokens} are not copyright fields of ${licenseId}, so ${this.#programName} can't fill them in (${accepts}). They may be left over from an earlier license, or SPDX may have renamed the fields.${action}`;
+  }
+
+  /**
+   * Names the config edit that clears unrecognized tokens: updating them when
+   * the license has fields to fill, removing them when it has none.
+   *
+   * @param note - The unrecognized-tokens note.
+   * @param c - Whether ANSI styling is wanted.
+   */
+  #tokensAction(
+    note: Extract<VerifyNote, { kind: "unknownTokens" }>,
+    c: boolean,
+  ): string {
+    const config = this.#configRef(note.configFile, c);
+    return note.fields.length > 0
+      ? `Update "tokens" in ${config}`
+      : `Remove "tokens" from ${config}`;
+  }
+
+  /**
+   * Refers to the saved configuration, naming the file it was read from when
+   * that is known.
+   *
+   * @param configFile - The file holding the saved configuration, or null.
+   * @param c - Whether ANSI styling is wanted.
+   */
+  #configRef(configFile: string | null, c: boolean): string {
+    return configFile === null
+      ? "your saved config"
+      : `your saved config (${this.#paint(c, "cyan", configFile)})`;
   }
 
   #headersNoFiles(licenseId: string, c: boolean): string {

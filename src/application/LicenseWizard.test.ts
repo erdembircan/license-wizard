@@ -204,11 +204,19 @@ vi.mock("@licensing/LicenseGenerator.js", () => ({
       licenseId: string,
       slotValues?: Record<string, string>,
     ) => Promise<string>;
+    renderDetailed: (
+      licenseId: string,
+      slotValues?: Record<string, string>,
+    ) => Promise<{ content: string; builtFrom: "licenseText" }>;
   }) {
     this.generate = async (licenseId, slotValues = {}) => {
       state.generateCalls.push({ licenseId, slotValues });
     };
     this.render = async () => state.renderedContent;
+    this.renderDetailed = async () => ({
+      content: state.renderedContent,
+      builtFrom: "licenseText",
+    });
   }),
 }));
 

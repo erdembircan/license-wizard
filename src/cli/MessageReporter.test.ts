@@ -7,12 +7,27 @@
 import { describe, it, expect } from "vitest";
 import { MessageReporter } from "@cli/MessageReporter.js";
 import { RecordingSink } from "@cli/RecordingSink.js";
+import type { VerifyReport } from "@application/LicenseVerifier.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 
 const SLOTS: TemplateSlot[] = [
   { token: "<year>", label: "year" },
   { token: "<copyright holders>", label: "copyright holders" },
 ];
+
+const verifyReport = (overrides: Partial<VerifyReport> = {}): VerifyReport => ({
+  licenseId: "MIT",
+  license: "match",
+  manifests: [],
+  builtFrom: "licenseText",
+  licenseDifference: null,
+  tokens: { saved: [], unknown: [], fields: [] },
+  configFile: ".licensewizardrc.json",
+  fullHeaders: false,
+  ...overrides,
+});
+
+const DIFFERENCE = { line: 2, column: 5, found: "abc", expected: "abd" };
 
 /**
  * These tests pin the reporter's *data surface* — the semantic OutputMessage it
@@ -144,12 +159,12 @@ describe("MessageReporter", () => {
 
   it("records whether manifests were checked on a verify match", () => {
     const { sink, reporter } = setup();
-    reporter.verifyMatch({ licenseId: "MIT", license: "match", manifests: [] });
-    reporter.verifyMatch({
-      licenseId: "MIT",
-      license: "match",
-      manifests: [{ name: "package.json", declared: "MIT", status: "match" }],
-    });
+    reporter.verifyMatch(verifyReport());
+    reporter.verifyMatch(
+      verifyReport({
+        manifests: [{ name: "package.json", declared: "MIT", status: "match" }],
+      }),
+    );
 
     expect(sink.messages).toEqual([
       {
@@ -169,14 +184,15 @@ describe("MessageReporter", () => {
 
   it("reduces a verify fix to the regenerated license and only the reconciled manifests", () => {
     const { sink, reporter } = setup();
-    reporter.verifyFixed({
-      licenseId: "MIT",
-      license: "fixed",
-      manifests: [
-        { name: "composer.json", declared: "Apache-2.0", status: "fixed" },
-        { name: "package.json", declared: "MIT", status: "match" },
-      ],
-    });
+    reporter.verifyFixed(
+      verifyReport({
+        license: "fixed",
+        manifests: [
+          { name: "composer.json", declared: "Apache-2.0", status: "fixed" },
+          { name: "package.json", declared: "MIT", status: "match" },
+        ],
+      }),
+    );
 
     // The already-matching manifest is dropped; only the fixed one survives.
     expect(sink.messages).toEqual([
@@ -186,20 +202,22 @@ describe("MessageReporter", () => {
         licenseId: "MIT",
         licenseRegenerated: true,
         manifests: [{ name: "composer.json", was: "Apache-2.0" }],
+        note: null,
       },
     ]);
   });
 
   it("reduces a verify mismatch to only the drifted surfaces, preserving a null declaration", () => {
     const { sink, reporter } = setup();
-    reporter.verifyMismatch({
-      licenseId: "MIT",
-      license: "mismatch",
-      manifests: [
-        { name: "composer.json", declared: "Apache-2.0", status: "mismatch" },
-        { name: "package.json", declared: null, status: "mismatch" },
-      ],
-    });
+    reporter.verifyMismatch(
+      verifyReport({
+        license: "mismatch",
+        manifests: [
+          { name: "composer.json", declared: "Apache-2.0", status: "mismatch" },
+          { name: "package.json", declared: null, status: "mismatch" },
+        ],
+      }),
+    );
 
     expect(sink.messages).toEqual([
       {
@@ -211,8 +229,176 @@ describe("MessageReporter", () => {
           { name: "composer.json", declared: "Apache-2.0" },
           { name: "package.json", declared: null },
         ],
+        difference: null,
+        note: null,
       },
     ]);
+  });
+
+  describe("verify notes", () => {
+    const templateBuilt: Partial<VerifyReport> = {
+      builtFrom: "standardLicenseTemplate",
+      tokens: {
+        saved: ["<yyyy>", "<name of author>"],
+        unknown: [],
+        fields: ["<yyyy>", "<name of author>"],
+      },
+    };
+    const unknownTokens: Partial<VerifyReport> = {
+      builtFrom: "standardLicenseTemplate",
+      tokens: {
+        saved: ["[yyyy]", "<yyyy>"],
+        unknown: ["[yyyy]"],
+        fields: ["<yyyy>", "<name of author>"],
+      },
+    };
+
+    it("passes the difference through and notes a template-built LICENSE, offering removal", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyMismatch(
+        verifyReport({
+          ...templateBuilt,
+          license: "mismatch",
+          licenseDifference: DIFFERENCE,
+        }),
+      );
+
+      expect(sink.messages).toEqual([
+        {
+          kind: "verifyMismatch",
+          channel: "err",
+          licenseId: "MIT",
+          licenseMismatch: true,
+          manifests: [],
+          difference: DIFFERENCE,
+          note: {
+            kind: "templateBuilt",
+            tokens: ["<yyyy>", "<name of author>"],
+            configFile: ".licensewizardrc.json",
+            offerRemoval: true,
+          },
+        },
+      ]);
+    });
+
+    it("withholds the removal offer when the config writes full headers", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyMismatch(
+        verifyReport({
+          ...templateBuilt,
+          license: "mismatch",
+          licenseDifference: DIFFERENCE,
+          fullHeaders: true,
+        }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        note: { kind: "templateBuilt", offerRemoval: false },
+      });
+    });
+
+    it("puts unrecognized tokens ahead of the template note", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyMismatch(
+        verifyReport({
+          ...unknownTokens,
+          license: "mismatch",
+          licenseDifference: DIFFERENCE,
+        }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        difference: DIFFERENCE,
+        note: {
+          kind: "unknownTokens",
+          tokens: ["[yyyy]"],
+          fields: ["<yyyy>", "<name of author>"],
+          configFile: ".licensewizardrc.json",
+        },
+      });
+    });
+
+    it("has no note when the LICENSE was built from the plain text with no unrecognized tokens", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyMismatch(
+        verifyReport({ license: "mismatch", licenseDifference: DIFFERENCE }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        difference: DIFFERENCE,
+        note: null,
+      });
+    });
+
+    it("explains nothing when only a manifest drifted", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyMismatch(
+        verifyReport({
+          ...unknownTokens,
+          license: "match",
+          manifests: [
+            {
+              name: "package.json",
+              declared: "Apache-2.0",
+              status: "mismatch",
+            },
+          ],
+        }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        licenseMismatch: false,
+        difference: null,
+        note: null,
+      });
+    });
+
+    it("adds the template note to a fix that regenerated the LICENSE", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyFixed(
+        verifyReport({ ...templateBuilt, license: "fixed" }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        kind: "verifyFixed",
+        licenseRegenerated: true,
+        note: {
+          kind: "templateBuilt",
+          tokens: ["<yyyy>", "<name of author>"],
+          configFile: ".licensewizardrc.json",
+          offerRemoval: true,
+        },
+      });
+    });
+
+    it("adds no note to a fix that only reconciled manifests", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyFixed(
+        verifyReport({
+          ...unknownTokens,
+          license: "match",
+          manifests: [
+            { name: "package.json", declared: "Apache-2.0", status: "fixed" },
+          ],
+        }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        licenseRegenerated: false,
+        note: null,
+      });
+    });
+
+    it("adds the unrecognized-tokens note to a fix that regenerated the LICENSE", () => {
+      const { sink, reporter } = setup();
+      reporter.verifyFixed(
+        verifyReport({ ...unknownTokens, license: "fixed" }),
+      );
+
+      expect(sink.messages[0]).toMatchObject({
+        note: { kind: "unknownTokens", tokens: ["[yyyy]"] },
+      });
+    });
   });
 
   it("emits the no-eligible-files message", () => {

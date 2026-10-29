@@ -365,4 +365,82 @@ describe("LicenseGenerator", () => {
     // ...but the numbered condition keeps its indentation.
     expect(content).toContain("   1. The origin");
   });
+
+  describe("renderDetailed", () => {
+    const makeGenerator = (detail: LicenseDetail) => {
+      const source = makeSource();
+      vi.mocked(source.fetchLicense).mockResolvedValue(detail);
+      return new LicenseGenerator(
+        new LicenseRepository(source),
+        new FakeWriter(),
+      );
+    };
+
+    it("builds from the plain text and matches render when no slot values are given", async () => {
+      const generator = makeGenerator({
+        licenseId: "MIT",
+        name: "MIT License",
+        licenseText: "Copyright (c) <year> <copyright holders>",
+        standardLicenseTemplate:
+          '<<var;name="copyright";original="Copyright (c) <year> <copyright holders>";match=".{0,5000}">>',
+      });
+
+      const rendering = await generator.renderDetailed("MIT");
+
+      expect(rendering.builtFrom).toBe("licenseText");
+      expect(rendering.content).toBe(await generator.render("MIT"));
+    });
+
+    it("builds from the plain text when every token appears in it", async () => {
+      const generator = makeGenerator({
+        licenseId: "MIT",
+        name: "MIT License",
+        licenseText: "Copyright (c) <year> <copyright holders>",
+        standardLicenseTemplate:
+          '<<var;name="copyright";original="Copyright (c) <year> <copyright holders>";match=".{0,5000}">>',
+      });
+      const slotValues = { "<year>": "2026", "<copyright holders>": "Acme" };
+
+      const rendering = await generator.renderDetailed("MIT", slotValues);
+
+      expect(rendering.builtFrom).toBe("licenseText");
+      expect(rendering.content).toBe("Copyright (c) 2026 Acme");
+      expect(rendering.content).toBe(await generator.render("MIT", slotValues));
+    });
+
+    it("builds from the matching template when a token is absent from the plain text", async () => {
+      const generator = makeGenerator({
+        licenseId: "ISC",
+        name: "ISC License",
+        licenseText: "Copyright (c) 1995 Example Author",
+        standardLicenseTemplate:
+          '<<var;name="copyright";original="<copyright notice>";match=".{0,5000}">>',
+      });
+      const slotValues = { "<copyright notice>": "Copyright (c) 2026 Acme" };
+
+      const rendering = await generator.renderDetailed("ISC", slotValues);
+
+      expect(rendering.builtFrom).toBe("standardLicenseTemplate");
+      expect(rendering.content).toBe("Copyright (c) 2026 Acme");
+      expect(rendering.content).toBe(await generator.render("ISC", slotValues));
+    });
+
+    it("keeps the plain text unchanged when a token is absent and there is no template", async () => {
+      const generator = makeGenerator({
+        licenseId: "Unlicense",
+        name: "The Unlicense",
+        licenseText: "This is free and unencumbered software <year>",
+        standardLicenseTemplate: "",
+      });
+
+      const rendering = await generator.renderDetailed("Unlicense", {
+        "<holder>": "Acme",
+      });
+
+      expect(rendering.builtFrom).toBe("licenseText");
+      expect(rendering.content).toBe(
+        "This is free and unencumbered software <year>",
+      );
+    });
+  });
 });

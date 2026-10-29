@@ -13,7 +13,7 @@ import type {
   HeaderRemoveReport,
   IReporter,
 } from "@cli/interfaces/IReporter.js";
-import type { HeaderDriftNote } from "@cli/OutputMessage.js";
+import type { HeaderDriftNote, VerifyNote } from "@cli/OutputMessage.js";
 import type {
   HeaderDrift,
   HeaderVerifyReport,
@@ -119,6 +119,7 @@ export class MessageReporter implements IReporter {
       manifests: report.manifests
         .filter((manifest) => manifest.status === "fixed")
         .map((manifest) => ({ name: manifest.name, was: manifest.declared })),
+      note: this.#verifyNote(report),
     });
   }
 
@@ -134,6 +135,9 @@ export class MessageReporter implements IReporter {
           name: manifest.name,
           declared: manifest.declared,
         })),
+      difference:
+        report.license === "mismatch" ? report.licenseDifference : null,
+      note: this.#verifyNote(report),
     });
   }
 
@@ -232,6 +236,40 @@ export class MessageReporter implements IReporter {
 
   error(message: string): void {
     this.#sink.emit({ kind: "error", channel: "err", message });
+  }
+
+  /**
+   * Decides which note, if any, explains a drifted `LICENSE`. Saved tokens that
+   * are not copyright fields of the license come first, since they must be fixed
+   * before reconciling; otherwise a `LICENSE` built from SPDX's matching template
+   * gets the note that SPDX revises it between releases, offering to drop the
+   * tokens only when no full header needs them. Returns null when the `LICENSE`
+   * itself did not drift, so a passing run or a manifest-only drift is reported
+   * exactly as before.
+   *
+   * @param report - The verification result.
+   */
+  #verifyNote(report: VerifyReport): VerifyNote | null {
+    if (report.license === "match") {
+      return null;
+    }
+    if (report.tokens.unknown.length > 0) {
+      return {
+        kind: "unknownTokens",
+        tokens: report.tokens.unknown,
+        fields: report.tokens.fields,
+        configFile: report.configFile,
+      };
+    }
+    if (report.builtFrom === "standardLicenseTemplate") {
+      return {
+        kind: "templateBuilt",
+        tokens: report.tokens.saved,
+        configFile: report.configFile,
+        offerRemoval: !report.fullHeaders,
+      };
+    }
+    return null;
   }
 
   /**

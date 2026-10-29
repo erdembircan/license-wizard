@@ -8,6 +8,10 @@ import type { IFileSystemWriter } from "@configuration/interfaces/IFileSystemWri
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import { LICENSE_FILENAME } from "@licensing/LicenseFilename.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
+import type {
+  LicenseRenderBasis,
+  LicenseRendering,
+} from "@licensing/LicenseRendering.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 import { wrapText } from "@licensing/TextWrapper.js";
 
@@ -75,9 +79,28 @@ export class LicenseGenerator {
     licenseId: string,
     slotValues: Record<string, string> = {},
   ): Promise<string> {
-    const detail = await this.#repository.getLicense(licenseId);
+    return (await this.renderDetailed(licenseId, slotValues)).content;
+  }
 
-    return wrapText(this.#fill(detail, slotValues));
+  /**
+   * Produces the exact `LICENSE` file content for the given selection, like
+   * {@link render}, together with what it was built from: `licenseText` when the
+   * license's canonical plain text was used (unchanged, or with every supplied
+   * token substituted in place), or `standardLicenseTemplate` when a supplied
+   * token does not appear in the plain text and the text was built from SPDX's
+   * matching template instead. Verification uses this to explain a drifted
+   * `LICENSE`, since SPDX revises its matching templates between releases.
+   *
+   * @param licenseId - The SPDX identifier of the license to render.
+   * @param slotValues - Copyright slot values keyed by token (e.g. `{ "<year>": "2026" }`).
+   */
+  async renderDetailed(
+    licenseId: string,
+    slotValues: Record<string, string> = {},
+  ): Promise<LicenseRendering> {
+    const detail = await this.#repository.getLicense(licenseId);
+    const { body, builtFrom } = this.#fill(detail, slotValues);
+    return { content: wrapText(body), builtFrom };
   }
 
   /**
@@ -94,30 +117,40 @@ export class LicenseGenerator {
    * instead of placeholders (ISC), or one whose canonical text has no copyright
    * line at all (Zlib). With no `--set` values, the canonical text is returned
    * unchanged.
+   * Returns the body together with the SPDX field it was built from.
    *
    * @param detail - The fetched license detail.
    * @param slotValues - Copyright slot values keyed by token (e.g. `{ "<year>": "2026" }`).
    */
-  #fill(detail: LicenseDetail, slotValues: Record<string, string>): string {
+  #fill(
+    detail: LicenseDetail,
+    slotValues: Record<string, string>,
+  ): { body: string; builtFrom: LicenseRenderBasis } {
     const tokens = Object.keys(slotValues);
     if (tokens.length === 0) {
-      return detail.licenseText;
+      return { body: detail.licenseText, builtFrom: "licenseText" };
     }
 
     if (tokens.every((token) => detail.licenseText.includes(token))) {
-      return tokens.reduce(
-        (text, token) => text.split(token).join(slotValues[token]),
-        detail.licenseText,
-      );
+      return {
+        body: tokens.reduce(
+          (text, token) => text.split(token).join(slotValues[token]),
+          detail.licenseText,
+        ),
+        builtFrom: "licenseText",
+      };
     }
 
     return detail.standardLicenseTemplate
-      ? this.#tidyTemplateOutput(
-          new LicenseTemplate(detail.standardLicenseTemplate).render(
-            slotValues,
+      ? {
+          body: this.#tidyTemplateOutput(
+            new LicenseTemplate(detail.standardLicenseTemplate).render(
+              slotValues,
+            ),
           ),
-        )
-      : detail.licenseText;
+          builtFrom: "standardLicenseTemplate",
+        }
+      : { body: detail.licenseText, builtFrom: "licenseText" };
   }
 
   /**
