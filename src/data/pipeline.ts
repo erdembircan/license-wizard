@@ -87,16 +87,25 @@ export const pipelineJobs: PipelineJob[] = [
       {
         name: "Run pnpm verify",
         runMs: 720,
-        // Verbatim from a real `license-wizard --verify --strict` run on a
-        // drifted LICENSE in CI (non-TTY): the reporter suppresses its glyph and
-        // all color off a TTY, so the program output is plain. Failure is shown
-        // the way GitHub does — the red ✗ on the job/step rows and the trailing
-        // runner annotation — not by recoloring the program's own lines.
+        // Verbatim from a real `license-wizard --verify --strict` run in CI
+        // (non-TTY) on a LICENSE whose copyright year was edited by hand: the
+        // reporter suppresses its glyph and all color off a TTY, so the program
+        // output is plain, and the caret line's indent is the CLI's own.
+        // Failure is shown the way GitHub does — the red ✗ on the job/step rows
+        // and the trailing runner annotation — not by recoloring the program's
+        // own lines.
         log: [
           [{ text: "$ license-wizard --verify --strict", tone: "dim" }],
           [{ text: "" }],
           [{ text: "Project is out of sync with your saved MIT enchantment:" }],
-          [{ text: "  LICENSE does not match" }],
+          [
+            {
+              text: "  LICENSE does not match — first difference at line 3, column 18:",
+            },
+          ],
+          [{ text: "    found:    Copyright (c) 2025 Acme Corporation" }],
+          [{ text: "    expected: Copyright (c) 2026 Acme Corporation" }],
+          [{ text: " ".repeat(31) + "^" }],
           [
             {
               text: "Run license-wizard --verify to reconcile, or update the configuration to match.",

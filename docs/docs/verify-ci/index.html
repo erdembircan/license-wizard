@@ -58,12 +58,12 @@
 </code></pre>
 <p>By default, verification <strong>self-heals</strong>: anything out of sync — an edited copyright line, a stale <code>LICENSE</code>, a hand-changed manifest field, a source file missing its header — is brought back in line with the license you chose. When nothing has drifted, it confirms and exits zero.</p>
 <h3 id="strict-mode-for-ci">Strict mode for CI</h3>
-<p>Add <code>--strict</code> to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted, and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step. <code>--strict</code> only modifies a <code>--verify</code> run; supplied on its own it errors with a clear message rather than being silently ignored.</p>
+<p>Add <code>--strict</code> to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted — showing, for the <code>LICENSE</code>, the first line that differs — and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step. <code>--strict</code> only modifies a <code>--verify</code> run; supplied on its own it errors with a clear message rather than being silently ignored.</p>
 <pre><code class="language-yaml">- name: Check the license is in sync
   run: npx license-wizard --verify --strict
 </code></pre>
 <blockquote>
-<p>Verification reads only your saved configuration — the <code>.licensewizardrc.json</code> file first, then the manifests. Both a <code>LICENSE</code> file and a saved configuration must exist, or it reports the problem and exits non-zero.</p>
+<p>Verification reads only your saved configuration — the <code>.licensewizardrc.json</code> file first, then the manifests. Both a <code>LICENSE</code> file and a saved configuration must exist, and every saved token must be one of the license&#39;s copyright fields (see <a href="/license-wizard/docs/configuration-files/#tokens-must-match-the-license">Tokens must match the license</a>). If any of that fails, it reports the problem and exits non-zero without changing anything — even without <code>--strict</code>.</p>
 </blockquote>
 </article>
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/source-file-headers/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Source-file headers</span></a><a href="/license-wizard/docs/apply-saved-config/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">Apply saved config</span></a></nav>

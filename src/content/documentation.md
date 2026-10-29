@@ -120,7 +120,7 @@ When you know a skipped file is safe to head, override the guard for that one pa
 npx license-wizard --force-header src/legacy.ts
 ```
 
-It writes the header configured in your saved config into the named file, even though a normal run would skip it. It's non-interactive and deliberately narrow: the target must be one of the source file types License Wizard heads, the path is resolved relative to the directory you run it in (absolute paths, and paths that resolve outside the project — including through a symlinked directory — are refused), and it only does anything when your saved config has headers enabled. The skipped-file reports print a ready-to-run example using one of the paths they list.
+It writes the header configured in your saved config into the named file, even though a normal run would skip it. It's non-interactive and deliberately narrow: the target must be one of the source file types License Wizard heads, the path is resolved relative to the directory you run it in (absolute paths, and paths that resolve outside the project — including through a symlinked directory — are refused), and it only does anything when your saved config has headers enabled. With headers enabled, it also refuses — writing nothing — when the saved tokens [don't match the license](/license-wizard/docs/configuration-files/#tokens-must-match-the-license). The skipped-file reports print a ready-to-run example using one of the paths they list.
 
 ### Removing headers
 
@@ -142,14 +142,14 @@ By default, verification **self-heals**: anything out of sync — an edited copy
 
 ### Strict mode for CI
 
-Add `--strict` to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted, and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step. `--strict` only modifies a `--verify` run; supplied on its own it errors with a clear message rather than being silently ignored.
+Add `--strict` to make any mismatch an error instead: License Wizard leaves everything untouched, lists each surface that drifted — showing, for the `LICENSE`, the first line that differs — and exits non-zero so the pipeline stops. A passing run exits zero, making it a drop-in check step. `--strict` only modifies a `--verify` run; supplied on its own it errors with a clear message rather than being silently ignored.
 
 ```yaml
 - name: Check the license is in sync
   run: npx license-wizard --verify --strict
 ```
 
-> Verification reads only your saved configuration — the `.licensewizardrc.json` file first, then the manifests. Both a `LICENSE` file and a saved configuration must exist, or it reports the problem and exits non-zero.
+> Verification reads only your saved configuration — the `.licensewizardrc.json` file first, then the manifests. Both a `LICENSE` file and a saved configuration must exist, and every saved token must be one of the license's copyright fields (see [Tokens must match the license](/license-wizard/docs/configuration-files/#tokens-must-match-the-license)). If any of that fails, it reports the problem and exits non-zero without changing anything — even without `--strict`.
 
 ## Apply saved config
 
@@ -159,7 +159,7 @@ When a configuration is already saved, `--apply-config` regenerates the project 
 npx license-wizard --apply-config
 ```
 
-This is the complement of saving: one run records your choice, the other replays it — handy for restoring a project's license state in CI or after a fresh checkout. If no configuration is found, it reports the problem and exits non-zero rather than generating something you didn't ask for. Add `--dry-run` to preview the regeneration without writing.
+This is the complement of saving: one run records your choice, the other replays it — handy for restoring a project's license state in CI or after a fresh checkout. If no configuration is found, or its saved tokens [don't match the license](/license-wizard/docs/configuration-files/#tokens-must-match-the-license), it reports the problem and exits non-zero rather than generating something you didn't ask for. Add `--dry-run` to preview the regeneration without writing.
 
 ```bash
 npx license-wizard --apply-config --dry-run
@@ -187,6 +187,14 @@ The saved config holds the license id, any copyright field values, and — when 
 
 Saving is opt-in. In the wizard, choose to remember your selection; in a script, pass exactly one `--save-*` flag — `--save-rc`, `--save-npm`, or `--save-composer`. Saving writes to one location and clears the configuration from the others, so there's only ever one source of truth.
 
+### Tokens must match the license
+
+The keys under `tokens` are the license's own copyright fields, written as bracket tokens: `[yyyy]` for Apache-2.0, `<yyyy>` for GPL-2.0-or-later, `<year>` for MIT. `--get-tokens` lists the same fields by label — `yyyy` and `name of author` for GPL-2.0-or-later — but labels are only for `--set`; the saved config always uses the bracket form. A field that only a `full` header uses is still a valid key.
+
+Those fields belong to one license, and SPDX can rename them between releases: SPDX License List 3.29.0 replaced ISC's `<copyright notice>` with `<YEAR>` and `<OWNER>`. A saved token that isn't one of the license's fields can't be filled in anywhere, so License Wizard treats it as a configuration error rather than writing placeholders like `<YEAR>` into your files. `--verify` (with or without `--strict`), `--apply-config` (even under `--dry-run`), and `--force-header` (when headers are enabled) name the unrecognized tokens, list the fields the license accepts, and exit non-zero without checking or writing anything.
+
+The usual cause is changing `licenseId` by hand and keeping the old tokens. To fix it, edit `tokens` to use the fields the error lists, or run the wizard again and save your choice.
+
 ## Scripting & agents
 
 The same predictable flow that guides a human drives cleanly from scripts, CI, and AI agents. Any selection flag — `--license`, `--set`, `--headers`, `--get-tokens`, or a `--save-*` flag — switches off the prompts and runs as a single command, and the standalone modes (`--verify`, `--apply-config`, `--remove-headers`, `--force-header`) never prompt at all. Which flags require which, which run on their own, and which win when several are combined is laid out in [How flags combine](/license-wizard/docs/flags-reference/#how-flags-combine).
@@ -197,6 +205,7 @@ Every run signals its outcome through its exit code, so a script or agent always
 
 - A successful generation, a clean `--verify`, or a healed run exits `0`.
 - A missing required field, an unrecognized identifier, a `--verify --strict` run that found drift, or a standalone mode with nothing to act on exits non-zero — and prints exactly what's wrong.
+- Saved tokens that [don't match the license](/license-wizard/docs/configuration-files/#tokens-must-match-the-license) also exit non-zero, in `--verify` (with or without `--strict`), `--apply-config`, and `--force-header`, before anything is checked or written.
 
 ### Standalone modes take priority
 
