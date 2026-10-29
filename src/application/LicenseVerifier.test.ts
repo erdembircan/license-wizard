@@ -13,9 +13,23 @@ import type {
   ProjectManifestRepository,
 } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
+import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
+import type { LicenseRenderBasis } from "@licensing/LicenseRendering.js";
+import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 
 const LICENSE = "LICENSE";
+
+// What a report carries beyond the outcome when nothing about the LICENSE is
+// worth explaining: built from the plain text, no difference, no saved tokens,
+// and no source-file headers.
+const REPORT_DEFAULTS = {
+  builtFrom: "licenseText",
+  licenseDifference: null,
+  savedTokens: [],
+  configFile: ".licensewizardrc.json",
+  writesHeaders: false,
+};
 
 type RenderCall = { licenseId: string; slotValues: Record<string, string> };
 type WriteToCall = { name: string; licenseId: string };
@@ -25,9 +39,14 @@ type WriteToCall = { name: string; licenseId: string };
  */
 class FakeConfig {
   config: WizardConfig | null = null;
+  file: string | null = ".licensewizardrc.json";
 
   async read(): Promise<WizardConfig | null> {
     return this.config;
+  }
+
+  async source(): Promise<string | null> {
+    return this.file;
   }
 }
 
@@ -51,21 +70,22 @@ class FakeReader implements IFileSystemReader {
 }
 
 /**
- * Fake generator that renders a controllable string and records both render and
- * generate calls so tests can assert what the verifier asked for and whether it
- * rewrote the file.
+ * Fake generator that renders a controllable string, reports a controllable
+ * basis for it, and records both renderDetailed and generate calls so tests can
+ * assert what the verifier asked for and whether it rewrote the file.
  */
 class FakeGenerator {
   rendered = "";
+  builtFrom: LicenseRenderBasis = "licenseText";
   readonly renderCalls: RenderCall[] = [];
   readonly generateCalls: RenderCall[] = [];
 
-  async render(
+  async renderDetailed(
     licenseId: string,
     slotValues: Record<string, string> = {},
-  ): Promise<string> {
+  ): Promise<{ content: string; builtFrom: LicenseRenderBasis }> {
     this.renderCalls.push({ licenseId, slotValues });
-    return this.rendered;
+    return { content: this.rendered, builtFrom: this.builtFrom };
   }
 
   async generate(
@@ -94,11 +114,29 @@ class FakeManifests {
   }
 }
 
+/**
+ * Fake license repository that serves a controllable license detail.
+ */
+class FakeRepository {
+  detail: LicenseDetail = {
+    licenseId: "MIT",
+    name: "MIT License",
+    licenseText: "Copyright (c) <year>",
+    standardLicenseTemplate:
+      '<<var;name="copyright";original="Copyright (c) <year>";match=".+">>',
+  };
+
+  async getLicense(): Promise<LicenseDetail> {
+    return this.detail;
+  }
+}
+
 describe("LicenseVerifier", () => {
   let config: FakeConfig;
   let reader: FakeReader;
   let generator: FakeGenerator;
   let manifests: FakeManifests;
+  let repository: FakeRepository;
   let verifier: LicenseVerifier;
 
   beforeEach(() => {
@@ -106,11 +144,13 @@ describe("LicenseVerifier", () => {
     reader = new FakeReader();
     generator = new FakeGenerator();
     manifests = new FakeManifests();
+    repository = new FakeRepository();
     verifier = new LicenseVerifier(
       config as unknown as Config,
       manifests as unknown as ProjectManifestRepository,
       generator as unknown as LicenseGenerator,
       reader,
+      repository as unknown as LicenseRepository,
     );
   });
 
@@ -152,6 +192,7 @@ describe("LicenseVerifier", () => {
       expect(outcome).toEqual({
         kind: "match",
         licenseId: "MIT",
+        ...REPORT_DEFAULTS,
         license: "match",
         manifests: [],
       });
@@ -168,6 +209,14 @@ describe("LicenseVerifier", () => {
       expect(outcome).toEqual({
         kind: "fixed",
         licenseId: "MIT",
+        ...REPORT_DEFAULTS,
+        savedTokens: ["<year>"],
+        licenseDifference: {
+          line: 1,
+          column: 1,
+          found: "STALE TEXT",
+          expected: "FRESH TEXT",
+        },
         license: "fixed",
         manifests: [],
       });
@@ -186,6 +235,13 @@ describe("LicenseVerifier", () => {
       expect(outcome).toEqual({
         kind: "mismatch",
         licenseId: "MIT",
+        ...REPORT_DEFAULTS,
+        licenseDifference: {
+          line: 1,
+          column: 1,
+          found: "STALE TEXT",
+          expected: "FRESH TEXT",
+        },
         license: "mismatch",
         manifests: [],
       });
@@ -202,6 +258,152 @@ describe("LicenseVerifier", () => {
       expect(generator.renderCalls).toEqual([
         { licenseId: "Apache-2.0", slotValues: {} },
       ]);
+    });
+  });
+
+  describe("drift explanation", () => {
+    beforeEach(() => {
+      config.config = { licenseId: "MIT" };
+      reader.files.set(LICENSE, "MIT TEXT");
+      generator.rendered = "MIT TEXT";
+    });
+
+    it("locates the first differing line of a strict mismatch without rewriting", async () => {
+      reader.files.set(LICENSE, "a\nb\n");
+      generator.rendered = "a\nc\n";
+
+      const outcome = await verifier.verify({ fix: false });
+
+      expect(outcome).toMatchObject({
+        kind: "mismatch",
+        licenseDifference: { line: 2, column: 1, found: "b", expected: "c" },
+      });
+      expect(generator.generateCalls).toEqual([]);
+    });
+
+    it("locates the same difference when fixing, and rewrites once", async () => {
+      reader.files.set(LICENSE, "a\nb\n");
+      generator.rendered = "a\nc\n";
+
+      const outcome = await verifier.verify({ fix: true });
+
+      expect(outcome).toMatchObject({
+        kind: "fixed",
+        licenseDifference: { line: 2, column: 1, found: "b", expected: "c" },
+      });
+      expect(generator.generateCalls).toHaveLength(1);
+    });
+
+    it("has no difference when the LICENSE matches", async () => {
+      const outcome = await verifier.verify({ fix: false });
+
+      expect(outcome).toMatchObject({ licenseDifference: null });
+    });
+
+    describe("with a header-aware license detail", () => {
+      beforeEach(() => {
+        repository.detail = {
+          licenseId: "MIT",
+          name: "MIT License",
+          licenseText: "Copyright (C) <yyyy> <name of author>",
+          standardLicenseTemplate:
+            'Copyright (C) <<var;name="copyright";original="<yyyy> <name of author>";match=".+">>',
+          standardLicenseHeaderTemplate:
+            '<<var;name="copyright";original="Copyright (C) <year>";match=".+">>',
+        };
+      });
+
+      it("stops on a saved token that is not a copyright field, rendering and changing nothing", async () => {
+        config.config = {
+          licenseId: "MIT",
+          tokens: { "[yyyy]": "2026", "<yyyy>": "2026", "<year>": "2026" },
+        };
+        reader.files.set(LICENSE, "STALE LICENSE");
+        generator.rendered = "FRESH LICENSE";
+        manifests.declared = [{ name: "package.json", licenseId: "ISC" }];
+
+        for (const fix of [false, true]) {
+          const outcome = await verifier.verify({ fix });
+
+          expect(outcome).toEqual({
+            kind: "unknown-tokens",
+            licenseId: "MIT",
+            tokens: {
+              saved: ["[yyyy]", "<yyyy>", "<year>"],
+              unknown: ["[yyyy]"],
+              fields: ["<yyyy>", "<name of author>", "<year>"],
+            },
+            configFile: ".licensewizardrc.json",
+          });
+        }
+        expect(generator.renderCalls).toEqual([]);
+        expect(generator.generateCalls).toEqual([]);
+        expect(manifests.writes).toEqual([]);
+      });
+
+      it("treats a header-only field as a recognized token and verifies normally", async () => {
+        config.config = {
+          licenseId: "MIT",
+          tokens: { "<yyyy>": "2026", "<year>": "2026" },
+        };
+        reader.files.set(LICENSE, "MIT LICENSE TEXT");
+        generator.rendered = "MIT LICENSE TEXT";
+
+        const outcome = await verifier.verify({ fix: false });
+
+        expect(outcome).toMatchObject({
+          kind: "match",
+          savedTokens: ["<yyyy>", "<year>"],
+        });
+      });
+    });
+
+    it("reports no saved tokens and renders with none when the config has none", async () => {
+      const outcome = await verifier.verify({ fix: false });
+
+      expect(outcome).toMatchObject({
+        savedTokens: [],
+      });
+      expect(generator.renderCalls).toEqual([
+        { licenseId: "MIT", slotValues: {} },
+      ]);
+    });
+
+    it("reports that the config writes headers for either style", async () => {
+      config.config = { licenseId: "MIT", headers: { style: "full" } };
+      expect(await verifier.verify({ fix: false })).toMatchObject({
+        writesHeaders: true,
+      });
+
+      config.config = { licenseId: "MIT", headers: { style: "short" } };
+      expect(await verifier.verify({ fix: false })).toMatchObject({
+        writesHeaders: true,
+      });
+
+      config.config = { licenseId: "MIT" };
+      expect(await verifier.verify({ fix: false })).toMatchObject({
+        writesHeaders: false,
+      });
+    });
+
+    it("passes the config file name through, including when it is unknown", async () => {
+      config.file = "package.json";
+      expect(await verifier.verify({ fix: false })).toMatchObject({
+        configFile: "package.json",
+      });
+
+      config.file = null;
+      expect(await verifier.verify({ fix: false })).toMatchObject({
+        configFile: null,
+      });
+    });
+
+    it("passes through what the generator built the license from", async () => {
+      generator.builtFrom = "standardLicenseTemplate";
+
+      const outcome = await verifier.verify({ fix: false });
+
+      expect(outcome).toMatchObject({ builtFrom: "standardLicenseTemplate" });
     });
   });
 
@@ -224,6 +426,7 @@ describe("LicenseVerifier", () => {
       expect(outcome).toEqual({
         kind: "match",
         licenseId: "MIT",
+        ...REPORT_DEFAULTS,
         license: "match",
         manifests: [
           { name: "composer.json", declared: "MIT", status: "match" },
@@ -244,6 +447,7 @@ describe("LicenseVerifier", () => {
       expect(outcome).toEqual({
         kind: "fixed",
         licenseId: "MIT",
+        ...REPORT_DEFAULTS,
         license: "match",
         manifests: [
           { name: "composer.json", declared: "Apache-2.0", status: "fixed" },
@@ -278,6 +482,7 @@ describe("LicenseVerifier", () => {
       expect(outcome).toEqual({
         kind: "mismatch",
         licenseId: "MIT",
+        ...REPORT_DEFAULTS,
         license: "match",
         manifests: [
           { name: "package.json", declared: "Apache-2.0", status: "mismatch" },

@@ -14,3 +14,9 @@ export type SlotResolution = {
   missing: TemplateSlot[];
   unknown: string[];
 };
+
+export type TokenCheck = {
+  saved: string[];
+  unknown: string[];
+  fields: string[];
+};

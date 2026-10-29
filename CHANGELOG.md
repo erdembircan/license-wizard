@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0/).
 
+## [Unreleased]
+
+### Changed
+
+- **Saved tokens the license doesn't recognize now stop `--verify`, `--apply-config` and
+  `--force-header`** — when the saved config's tokens include ones that aren't copyright
+  fields of its license (left over from an earlier license, or renamed by SPDX, as SPDX
+  License List 3.29.0 did for ISC), these commands now name them, list the fields the
+  license accepts, and exit with code 1 without writing anything. This is new for all
+  three:
+  - `--verify` used to regenerate `LICENSE` with the license's own fields left unfilled
+    (for ISC, `Copyright <YEAR> <OWNER>`) and exit 0, and `--verify --strict` used to pass
+    whenever `LICENSE` and the manifests matched, so leftover tokens never failed CI on
+    their own. Both now stop before checking anything, source-file headers included.
+  - `--apply-config` used to regenerate `LICENSE`, and a full header, the same way, with
+    the license's own fields left unfilled. It now stops before generating, including
+    under `--dry-run`.
+  - `--force-header` used to write the header from those tokens. It now stops before
+    writing.
+
+  Generation runs already rejected such fields passed with `--set`; this applies the same
+  rule to the tokens saved in the config. Because these runs now fail where they used to
+  pass, the release that ships this is not a patch. (#179)
+
+- **`--verify` now explains a drifted `LICENSE`** — a `LICENSE` that no longer matches
+  the saved configuration used to be reported only as `LICENSE does not match`. Now:
+  - `--verify --strict` shows the first difference: the line and column, the line found
+    on disk, the expected line, and a caret under the first differing character, with
+    control characters and trailing spaces made visible.
+  - When the saved tokens can't be filled into the license's plain text
+    (GPL-2.0-or-later, LGPL-2.1-or-later, ISC and Zlib among others), License Wizard
+    builds `LICENSE` from SPDX's matching template, which SPDX revises between releases.
+    SPDX License List 3.29.0 changed it for GPL-2.0-or-later, LGPL-2.1-or-later and ISC,
+    failing strict verification in projects that had not changed. When such a `LICENSE`
+    drifts, both `--verify` and `--verify --strict` now say so and, unless the config
+    writes source-file headers (which use the tokens too), point out that removing the
+    saved `tokens` builds `LICENSE` from the plain text instead.
+
+  This part changes output only: exit codes and file writes are unchanged, and runs where
+  `LICENSE` itself matched print exactly as before. (#179)
+
 ## [1.2.0] - 2026-08-18
 
 ### Changed

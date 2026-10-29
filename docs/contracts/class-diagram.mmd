@@ -76,7 +76,7 @@ classDiagram
   }
 
   class LicenseVerifier {
-    +LicenseVerifier(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator, reader: IFileSystemReader)
+    +LicenseVerifier(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator, reader: IFileSystemReader, repository: LicenseRepository)
     +verify(options: VerifyOptions) Promise~VerifyOutcome~
   }
 
@@ -103,6 +103,11 @@ classDiagram
     +licenseId: string
     +license: DriftStatus
     +manifests: ManifestCheck[]
+    +builtFrom: LicenseRenderBasis
+    +licenseDifference: TextDifference | null
+    +savedTokens: string[]
+    +configFile: string | null
+    +writesHeaders: boolean
   }
 
   class ManifestCheck {
@@ -113,6 +118,24 @@ classDiagram
 
   class DriftStatus {
     <<union>>
+  }
+
+  class UnknownTokensReport {
+    +licenseId: string
+    +tokens: TokenCheck
+    +configFile: string | null
+  }
+
+  class TextDifference {
+    +line: number
+    +column: number
+    +found: string | null
+    +expected: string | null
+  }
+
+  class firstDifference {
+    <<function>>
+    +firstDifference(found: string, expected: string) TextDifference | null
   }
 
   namespace CLI {
@@ -176,6 +199,7 @@ classDiagram
       +verifyMatch(report: VerifyReport) void
       +verifyFixed(report: VerifyReport) void
       +verifyMismatch(report: VerifyReport) void
+      +unknownSavedTokens(report: UnknownTokensReport, command: SavedTokensCommand) void
       +headersNoFiles(licenseId: string) void
       +headersGenerated(report: HeaderGenerateReport) void
       +headersDryRun(report: HeaderDryRunReport) void
@@ -255,6 +279,10 @@ classDiagram
     }
 
     class OutputMessage {
+      <<union>>
+    }
+
+    class SavedTokensCommand {
       <<union>>
     }
 
@@ -398,6 +426,7 @@ classDiagram
       +slots() TemplateSlot[]
       +requiredSlots(fullHeader: boolean) TemplateSlot[]
       +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
+      +checkTokens(tokens: Record~string, string~) TokenCheck
     }
 
     class resolveSlotEntries {
@@ -416,10 +445,26 @@ classDiagram
       +unknown: string[]
     }
 
+    class TokenCheck {
+      +saved: string[]
+      +unknown: string[]
+      +fields: string[]
+    }
+
     class LicenseGenerator {
       +LicenseGenerator(repository: LicenseRepository, writer: IFileSystemWriter)
       +generate(licenseId: string, slotValues?: Record~string, string~) Promise~void~
       +render(licenseId: string, slotValues?: Record~string, string~) Promise~string~
+      +renderDetailed(licenseId: string, slotValues?: Record~string, string~) Promise~LicenseRendering~
+    }
+
+    class LicenseRendering {
+      +content: string
+      +builtFrom: LicenseRenderBasis
+    }
+
+    class LicenseRenderBasis {
+      <<union>>
     }
   }
 
@@ -740,6 +785,8 @@ classDiagram
   CliReporter ..> ReportPresenter : wires
   MessageReporter ..> TemplateSlot : reads
   MessageReporter ..> VerifyReport : reads
+  MessageReporter ..> UnknownTokensReport : reads
+  MessageReporter ..> SavedTokensCommand : reads
   MessageReporter ..> DryRunReport : reads
   %% Composition root: LicenseWizard parses flags, builds the shared graph, and
   %% delegates each run to one of the three modes through IWizardMode.
@@ -792,6 +839,8 @@ classDiagram
   NonInteractiveMode ..> LicenseSelection : builds
   NonInteractiveMode ..> DryRunReport : builds
   NonInteractiveMode ..> LicenseNotFoundError : handles
+  NonInteractiveMode ..> LicenseCopyright : checks saved tokens against
+  NonInteractiveMode ..> UnknownTokensReport : builds
 
   %% Verify mode: LICENSE/manifest and source-header verification.
   VerifyMode ..> LicenseVerifier : verifies through
@@ -807,11 +856,19 @@ classDiagram
   LicenseVerifier ..> ProjectManifestRepository : checks and reconciles manifests through
   LicenseVerifier ..> LicenseGenerator : re-renders and rewrites with
   LicenseVerifier ..> IFileSystemReader : reads LICENSE through
+  LicenseVerifier ..> LicenseRepository : reads copyright fields through
+  LicenseVerifier ..> LicenseCopyright : checks saved tokens against
+  LicenseVerifier ..> firstDifference : locates LICENSE drift with
   LicenseVerifier ..> VerifyOptions : configured by
   LicenseVerifier ..> VerifyOutcome : returns
   VerifyOutcome ..> VerifyReport : carries
+  VerifyOutcome ..> UnknownTokensReport : carries
   VerifyReport ..> ManifestCheck : aggregates
   VerifyReport ..> DriftStatus : statuses by
+  UnknownTokensReport ..> TokenCheck : names unrecognized tokens with
+  VerifyReport ..> TextDifference : pinpoints LICENSE drift with
+  VerifyReport ..> LicenseRenderBasis : records how LICENSE was built with
+  firstDifference ..> TextDifference : produces
   ManifestCheck ..> DriftStatus : status by
   ProjectManifestRepository ..> ManifestLicense : produces
   LicenseSelection ..> ConfigSave : has
@@ -833,9 +890,12 @@ classDiagram
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> IFileSystemWriter : uses
   LicenseGenerator ..> LicenseTemplate : uses
+  LicenseGenerator ..> LicenseRendering : produces
+  LicenseRendering ..> LicenseRenderBasis : built from
   LicenseTemplate --|> SpdxTemplate : extends
   LicenseCopyright ..> LicenseTemplate : parses body and header with
   LicenseCopyright ..> resolveSlotEntries : resolves with
+  LicenseCopyright ..> TokenCheck : produces
   SpdxTemplate ..> resolveSlotEntries : resolves with
   HeaderTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces

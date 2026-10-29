@@ -314,6 +314,7 @@ describe("ReportPresenter wording (plain text)", () => {
         licenseId: "MIT",
         licenseRegenerated: true,
         manifests: [{ name: "composer.json", was: "Apache-2.0" }],
+        note: null,
       }),
     ).toMatchInlineSnapshot(`
       "Realigned the project with your saved MIT enchantment:
@@ -334,6 +335,8 @@ describe("ReportPresenter wording (plain text)", () => {
           { name: "composer.json", declared: "Apache-2.0" },
           { name: "package.json", declared: null },
         ],
+        difference: null,
+        note: null,
       }),
     ).toMatchInlineSnapshot(`
       "Project is out of sync with your saved MIT enchantment:
@@ -657,6 +660,407 @@ describe("ReportPresenter wording (plain text)", () => {
       "boom
       "
     `);
+  });
+});
+
+const ISSUE_TY_COON =
+  "<signature of Ty Coon>, 1 April 1989 Ty Coon, President of Vice";
+const ISSUE_TY_COON_SPACED =
+  "<signature of Ty Coon>, 1 April 1989 Ty Coon , President of Vice";
+const RECONCILE_LINE =
+  "Run license-wizard --verify to reconcile, or update the configuration to match.";
+
+// These cases pin exact strings rather than inline snapshots: the caret's column
+// and the made-visible whitespace are the behaviour under test, and spelling
+// them out with `.repeat(n)` keeps that legible.
+describe("ReportPresenter verify explanations (plain text)", () => {
+  const strictMismatch = (
+    licenseId: string,
+    difference: Extract<
+      OutputMessage,
+      { kind: "verifyMismatch" }
+    >["difference"],
+    note: Extract<OutputMessage, { kind: "verifyMismatch" }>["note"],
+  ): string =>
+    present({
+      kind: "verifyMismatch",
+      channel: "err",
+      licenseId,
+      licenseMismatch: true,
+      manifests: [],
+      difference,
+      note,
+    });
+
+  it("explains a template-built LICENSE in strict mode, offering to remove the tokens", () => {
+    expect(
+      strictMismatch(
+        "GPL-2.0-or-later",
+        {
+          line: 290,
+          column: 45,
+          found: ISSUE_TY_COON,
+          expected: ISSUE_TY_COON_SPACED,
+        },
+        {
+          kind: "templateBuilt",
+          tokens: ["<yyyy>", "<name of author>"],
+          configFile: ".licensewizardrc.json",
+          offerRemoval: true,
+        },
+      ),
+    ).toBe(
+      [
+        "Project is out of sync with your saved GPL-2.0-or-later enchantment:",
+        "  LICENSE does not match — first difference at line 290, column 45:",
+        `    found:    ${ISSUE_TY_COON}`,
+        `    expected: ${ISSUE_TY_COON_SPACED}`,
+        " ".repeat(58) + "^",
+        "",
+        `With your saved tokens (<yyyy>, <name of author>), license-wizard builds GPL-2.0-or-later's LICENSE from SPDX's matching template rather than its plain text. SPDX revises that template between releases, so LICENSE can drift even when nothing in your project changed. If you don't need those fields filled in, remove "tokens" from your saved config (.licensewizardrc.json) to build from the plain text instead.`,
+        "",
+        RECONCILE_LINE,
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("names one unrecognized token, the license's fields and the config edit", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        command: { kind: "verify" },
+        licenseId: "ISC",
+        tokens: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        "Cannot verify your saved ISC enchantment — this saved token is not a copyright field of ISC:",
+        "  <copyright notice>",
+        "ISC accepts <YEAR>, <OWNER>. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was checked or changed.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --verify again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("lists several unrecognized tokens in plural wording", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        command: { kind: "verify" },
+        licenseId: "GPL-2.0-or-later",
+        tokens: ["[yyyy]", "[name of copyright owner]"],
+        fields: ["<yyyy>", "<name of author>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        "Cannot verify your saved GPL-2.0-or-later enchantment — these saved tokens are not copyright fields of GPL-2.0-or-later:",
+        "  [yyyy]",
+        "  [name of copyright owner]",
+        "GPL-2.0-or-later accepts <yyyy>, <name of author>. They may be left over from an earlier license, or SPDX may have renamed the fields. license-wizard can't fill them in, so nothing was checked or changed.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --verify again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("says to remove the tokens when the license has no copyright fields and the config file is unknown", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        command: { kind: "verify" },
+        licenseId: "MPL-2.0",
+        tokens: ["<year>"],
+        fields: [],
+        configFile: null,
+      }),
+    ).toBe(
+      [
+        "Cannot verify your saved MPL-2.0 enchantment — this saved token is not a copyright field of MPL-2.0:",
+        "  <year>",
+        "MPL-2.0 has no copyright fields. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was checked or changed.",
+        'Remove "tokens" from your saved config, then run license-wizard --verify again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("words the unrecognized-token error for --apply-config", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        licenseId: "ISC",
+        command: { kind: "apply-config" },
+        tokens: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        "Cannot apply your saved ISC enchantment — this saved token is not a copyright field of ISC:",
+        "  <copyright notice>",
+        "ISC accepts <YEAR>, <OWNER>. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was written.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --apply-config again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("words the unrecognized-token error for --force-header, naming the file", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        licenseId: "GPL-2.0-or-later",
+        command: { kind: "force-header", file: "src/page.php" },
+        tokens: ["[yyyy]", "[name of copyright owner]"],
+        fields: ["<yyyy>", "<name of author>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        'Cannot force a header into "src/page.php" — these saved tokens are not copyright fields of GPL-2.0-or-later:',
+        "  [yyyy]",
+        "  [name of copyright owner]",
+        "GPL-2.0-or-later accepts <yyyy>, <name of author>. They may be left over from an earlier license, or SPDX may have renamed the fields. license-wizard can't fill them in, so nothing was written.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --force-header "src/page.php" again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("explains a template-built LICENSE after a fix, without offering removal when headers use the token", () => {
+    expect(
+      present({
+        kind: "verifyFixed",
+        channel: "out",
+        licenseId: "GPL-2.0-or-later",
+        licenseRegenerated: true,
+        manifests: [],
+        note: {
+          kind: "templateBuilt",
+          tokens: ["<yyyy>"],
+          configFile: "package.json",
+          offerRemoval: false,
+        },
+      }),
+    ).toBe(
+      [
+        "Realigned the project with your saved GPL-2.0-or-later enchantment:",
+        "  LICENSE regenerated",
+        "",
+        "With your saved token (<yyyy>), license-wizard builds GPL-2.0-or-later's LICENSE from SPDX's matching template rather than its plain text. SPDX revises that template between releases, so LICENSE can drift even when nothing in your project changed.",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("offers removal in singular wording, without a file name when the config file is unknown", () => {
+    const text = present({
+      kind: "verifyFixed",
+      channel: "out",
+      licenseId: "GPL-2.0-or-later",
+      licenseRegenerated: true,
+      manifests: [],
+      note: {
+        kind: "templateBuilt",
+        tokens: ["<yyyy>"],
+        configFile: null,
+        offerRemoval: true,
+      },
+    });
+
+    expect(text.split("\n")[3]).toMatch(
+      / If you don't need that field filled in, remove "tokens" from your saved config to build from the plain text instead\.$/,
+    );
+  });
+
+  describe("first difference display", () => {
+    const plain = (...lines: string[]): string =>
+      [
+        "Project is out of sync with your saved MIT enchantment:",
+        ...lines,
+        RECONCILE_LINE,
+        "",
+      ].join("\n");
+
+    it("shows a missing line as the end of the file, without a caret", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          { line: 4, column: 1, found: null, expected: "Copyright" },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 4, column 1:",
+          "    found:    (end of file)",
+          "    expected: Copyright",
+        ),
+      );
+    });
+
+    it("shows an empty line as a blank line, without a caret", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          { line: 2, column: 1, found: "", expected: "x" },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 2, column 1:",
+          "    found:    (blank line)",
+          "    expected: x",
+        ),
+      );
+    });
+
+    it("makes a carriage return visible", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 1,
+            column: 12,
+            found: "MIT License\r",
+            expected: "MIT License",
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 1, column 12:",
+          "    found:    MIT License␍",
+          "    expected: MIT License",
+          " ".repeat(25) + "^",
+        ),
+      );
+    });
+
+    it("makes trailing spaces visible", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 1,
+            column: 12,
+            found: "MIT License  ",
+            expected: "MIT License",
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 1, column 12:",
+          "    found:    MIT License··",
+          "    expected: MIT License",
+          " ".repeat(25) + "^",
+        ),
+      );
+    });
+
+    it("makes trailing spaces visible before a carriage return", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 1,
+            column: 12,
+            found: "MIT License  \r",
+            expected: "MIT License",
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 1, column 12:",
+          "    found:    MIT License··␍",
+          "    expected: MIT License",
+          " ".repeat(25) + "^",
+        ),
+      );
+    });
+
+    it("makes a tab visible", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 1,
+            column: 4,
+            found: "MIT\tLicense",
+            expected: "MIT License",
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 1, column 4:",
+          "    found:    MIT␉License",
+          "    expected: MIT License",
+          " ".repeat(17) + "^",
+        ),
+      );
+    });
+
+    it("clips long lines at both ends through one shared window", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 7,
+            column: 101,
+            found: "x".repeat(100) + "A" + "y".repeat(100),
+            expected: "x".repeat(100) + "B" + "y".repeat(100),
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 7, column 101:",
+          "    found:    " + "…" + "x".repeat(20) + "A" + "y".repeat(59) + "…",
+          "    expected: " + "…" + "x".repeat(20) + "B" + "y".repeat(59) + "…",
+          " ".repeat(35) + "^",
+        ),
+      );
+    });
+
+    it("clips only the end when the difference is near the start", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 1,
+            column: 1,
+            found: "A" + "y".repeat(100),
+            expected: "B" + "y".repeat(100),
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 1, column 1:",
+          "    found:    " + "A" + "y".repeat(79) + "…",
+          "    expected: " + "B" + "y".repeat(79) + "…",
+          " ".repeat(14) + "^",
+        ),
+      );
+    });
+
+    it("renders the bare entry when no difference is known", () => {
+      expect(strictMismatch("MIT", null, null)).toBe(
+        plain("  LICENSE does not match"),
+      );
+    });
   });
 });
 

@@ -204,11 +204,19 @@ vi.mock("@licensing/LicenseGenerator.js", () => ({
       licenseId: string,
       slotValues?: Record<string, string>,
     ) => Promise<string>;
+    renderDetailed: (
+      licenseId: string,
+      slotValues?: Record<string, string>,
+    ) => Promise<{ content: string; builtFrom: "licenseText" }>;
   }) {
     this.generate = async (licenseId, slotValues = {}) => {
       state.generateCalls.push({ licenseId, slotValues });
     };
     this.render = async () => state.renderedContent;
+    this.renderDetailed = async () => ({
+      content: state.renderedContent,
+      builtFrom: "licenseText",
+    });
   }),
 }));
 
@@ -1128,6 +1136,12 @@ describe("LicenseWizard verify mode", () => {
   });
 
   it("rewrites the LICENSE by default when it differs from the saved config", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
     state.config = { licenseId: "MIT", tokens: { "<year>": "2026" } };
     state.licenseFile = "STALE LICENSE";
     state.renderedContent = "FRESH LICENSE";
@@ -1157,6 +1171,48 @@ describe("LicenseWizard verify mode", () => {
       expect.objectContaining({ kind: "verifyMismatch", licenseId: "MIT" }),
     );
     expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("stops without rewriting when a saved token is not a field of the license", async () => {
+    state.config = { licenseId: "MIT", tokens: { "[yyyy]": "2026" } };
+    state.licenseFile = "STALE LICENSE";
+    state.renderedContent = "FRESH LICENSE";
+
+    await lw(["--verify"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "unknownSavedTokens",
+        licenseId: "MIT",
+        command: { kind: "verify" },
+        tokens: ["[yyyy]"],
+        fields: [],
+      }),
+    );
+    expect(state.generateCalls).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("fails under --strict on an unrecognized saved token even when LICENSE matches", async () => {
+    state.config = { licenseId: "MIT", tokens: { "[yyyy]": "2026" } };
+    state.licenseFile = "SAME LICENSE";
+    state.renderedContent = "SAME LICENSE";
+
+    await lw(["--verify", "--strict"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "unknownSavedTokens",
+        licenseId: "MIT",
+        command: { kind: "verify" },
+        tokens: ["[yyyy]"],
+        fields: [],
+      }),
+    );
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "verifyMatch" }),
+    );
     expect(process.exitCode).toBe(1);
   });
 
@@ -1514,6 +1570,27 @@ describe("LicenseWizard force-header mode", () => {
     );
   });
 
+  it("stops when a saved token is not a field of the license", async () => {
+    state.config = {
+      licenseId: "MIT",
+      headers: { style: "short" },
+      tokens: { "[yyyy]": "2026" },
+    };
+    state.sourceFiles = { "foreign.ts": FOREIGN };
+
+    await lw(["--force-header", "foreign.ts"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "unknownSavedTokens",
+        command: { kind: "force-header", file: "foreign.ts" },
+        tokens: ["[yyyy]"],
+      }),
+    );
+    expect(state.headerWrites).toEqual([]);
+    expect(process.exitCode).toBe(1);
+  });
+
   it("silently disregards the request when headers are not enabled in config", async () => {
     state.config = { licenseId: "MIT" };
     state.sourceFiles = { "foreign.ts": FOREIGN };
@@ -1576,6 +1653,12 @@ describe("LicenseWizard apply-config mode", () => {
   });
 
   it("generates from the saved config without rendering any prompt", async () => {
+    state.detail = {
+      licenseId: "MIT",
+      name: "MIT License",
+      licenseText: "PLAIN LICENSE TEXT",
+      standardLicenseTemplate: COPYRIGHT_TEMPLATE,
+    };
     state.config = { licenseId: "MIT", tokens: { "<year>": "2026" } };
 
     await lw(["--apply-config"]).run();
@@ -1588,6 +1671,27 @@ describe("LicenseWizard apply-config mode", () => {
     expect(sink.messages).toContainEqual(
       expect.objectContaining({ kind: "generated", licenseId: "MIT" }),
     );
+  });
+
+  it("stops when a saved token is not a field of the license", async () => {
+    state.config = { licenseId: "MIT", tokens: { "[yyyy]": "2026" } };
+
+    await lw(["--apply-config"]).run();
+
+    expect(sink.messages).toContainEqual(
+      expect.objectContaining({
+        kind: "unknownSavedTokens",
+        licenseId: "MIT",
+        command: { kind: "apply-config" },
+        tokens: ["[yyyy]"],
+        fields: [],
+      }),
+    );
+    expect(state.generateCalls).toEqual([]);
+    expect(sink.messages).not.toContainEqual(
+      expect.objectContaining({ kind: "generated" }),
+    );
+    expect(process.exitCode).toBe(1);
   });
 
   it("leaves the saved config in place, persisting nowhere new", async () => {

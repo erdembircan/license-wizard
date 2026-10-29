@@ -12,7 +12,7 @@ classDiagram
   %% are intentionally omitted — see ../class-diagram.mmd for the full picture.
 
   class LicenseVerifier {
-    +LicenseVerifier(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator, reader: IFileSystemReader)
+    +LicenseVerifier(config: Config, manifests: ProjectManifestRepository, generator: LicenseGenerator, reader: IFileSystemReader, repository: LicenseRepository)
     +verify(options: VerifyOptions) Promise~VerifyOutcome~
   }
 
@@ -28,6 +28,17 @@ classDiagram
     +licenseId: string
     +license: DriftStatus
     +manifests: ManifestCheck[]
+    +builtFrom: LicenseRenderBasis
+    +licenseDifference: TextDifference | null
+    +savedTokens: string[]
+    +configFile: string | null
+    +writesHeaders: boolean
+  }
+
+  class UnknownTokensReport {
+    +licenseId: string
+    +tokens: TokenCheck
+    +configFile: string | null
   }
 
   class ManifestCheck {
@@ -40,9 +51,25 @@ classDiagram
     <<union>>
   }
 
+  class TextDifference {
+    +line: number
+    +column: number
+    +found: string | null
+    +expected: string | null
+  }
+
+  class firstDifference {
+    <<function>>
+    +firstDifference(found: string, expected: string) TextDifference | null
+  }
+
   LicenseVerifier ..> VerifyOptions : configured by
   LicenseVerifier ..> VerifyOutcome : returns
+  LicenseVerifier ..> firstDifference : locates LICENSE drift with
   VerifyOutcome ..> VerifyReport : carries
+  VerifyOutcome ..> UnknownTokensReport : carries
   VerifyReport ..> ManifestCheck : aggregates
   VerifyReport ..> DriftStatus : statuses by
+  VerifyReport ..> TextDifference : pinpoints LICENSE drift with
   ManifestCheck ..> DriftStatus : status by
+  firstDifference ..> TextDifference : produces

@@ -12,15 +12,19 @@ import type {
   HeaderGenerateReport,
   HeaderRemoveReport,
   IReporter,
+  SavedTokensCommand,
 } from "@cli/interfaces/IReporter.js";
-import type { HeaderDriftNote } from "@cli/OutputMessage.js";
+import type { HeaderDriftNote, VerifyNote } from "@cli/OutputMessage.js";
 import type {
   HeaderDrift,
   HeaderVerifyReport,
 } from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
-import type { VerifyReport } from "@application/LicenseVerifier.js";
+import type {
+  UnknownTokensReport,
+  VerifyReport,
+} from "@application/LicenseVerifier.js";
 
 /**
  * Renders every CLI outcome into a semantic `OutputMessage` and emits it to a
@@ -119,6 +123,7 @@ export class MessageReporter implements IReporter {
       manifests: report.manifests
         .filter((manifest) => manifest.status === "fixed")
         .map((manifest) => ({ name: manifest.name, was: manifest.declared })),
+      note: this.#verifyNote(report),
     });
   }
 
@@ -134,6 +139,24 @@ export class MessageReporter implements IReporter {
           name: manifest.name,
           declared: manifest.declared,
         })),
+      difference:
+        report.license === "mismatch" ? report.licenseDifference : null,
+      note: this.#verifyNote(report),
+    });
+  }
+
+  unknownSavedTokens(
+    report: UnknownTokensReport,
+    command: SavedTokensCommand,
+  ): void {
+    this.#sink.emit({
+      kind: "unknownSavedTokens",
+      channel: "err",
+      licenseId: report.licenseId,
+      command,
+      tokens: report.tokens.unknown,
+      fields: report.tokens.fields,
+      configFile: report.configFile,
     });
   }
 
@@ -232,6 +255,32 @@ export class MessageReporter implements IReporter {
 
   error(message: string): void {
     this.#sink.emit({ kind: "error", channel: "err", message });
+  }
+
+  /**
+   * Decides whether a note explains a drifted `LICENSE`: one built from SPDX's
+   * matching template gets the note that SPDX revises that template between
+   * releases, offering to drop the tokens only when no source-file header uses
+   * them. Returns null when the `LICENSE` itself did not drift or was built from
+   * the plain text, so a passing run or a manifest-only drift carries no note.
+   * Saved tokens that are not copyright fields of the license never reach here:
+   * verification stops on them with its own error.
+   *
+   * @param report - The verification result.
+   */
+  #verifyNote(report: VerifyReport): VerifyNote | null {
+    if (
+      report.license === "match" ||
+      report.builtFrom !== "standardLicenseTemplate"
+    ) {
+      return null;
+    }
+    return {
+      kind: "templateBuilt",
+      tokens: report.savedTokens,
+      configFile: report.configFile,
+      offerRemoval: !report.writesHeaders,
+    };
   }
 
   /**

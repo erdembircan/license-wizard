@@ -4,10 +4,12 @@
  * license-wizard managed-header v1 Apache-2.0 short 74d1a0534fa2
  */
 
+import type { TextDifference } from "@application/TextDifference.js";
 import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ConfigSave } from "@application/LicenseInstaller.js";
+import type { SavedTokensCommand } from "@cli/interfaces/IReporter.js";
 
 /**
  * The stream a message is destined for: `out` for informational output, `err`
@@ -46,6 +48,13 @@ export type HeaderDriftNote =
   | { file: string; kind: "edited" }
   | { file: string; kind: "declares"; licenseId: string; style: string }
   | { file: string; kind: "drifted" };
+
+export type VerifyNote = {
+  kind: "templateBuilt";
+  tokens: string[];
+  configFile: string | null;
+  offerRemoval: boolean;
+};
 
 /**
  * The view-model the reporter emits for every CLI outcome: a discriminated
@@ -100,6 +109,7 @@ export type OutputMessage =
       licenseId: string;
       licenseRegenerated: boolean;
       manifests: ReconciledManifest[];
+      note: VerifyNote | null;
     }
   | {
       kind: "verifyMismatch";
@@ -107,6 +117,17 @@ export type OutputMessage =
       licenseId: string;
       licenseMismatch: boolean;
       manifests: DriftedManifest[];
+      difference: TextDifference | null;
+      note: VerifyNote | null;
+    }
+  | {
+      kind: "unknownSavedTokens";
+      channel: "err";
+      licenseId: string;
+      command: SavedTokensCommand;
+      tokens: string[];
+      fields: string[];
+      configFile: string | null;
     }
   | { kind: "headersNoFiles"; channel: "out"; licenseId: string }
   | {

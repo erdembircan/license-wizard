@@ -9,7 +9,10 @@ import type { HeaderVerifyReport } from "@headers/HeaderVerifier.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ConfigSave } from "@application/LicenseInstaller.js";
-import type { VerifyReport } from "@application/LicenseVerifier.js";
+import type {
+  UnknownTokensReport,
+  VerifyReport,
+} from "@application/LicenseVerifier.js";
 
 export type DryRunReport = {
   licenseId: string;
@@ -53,6 +56,11 @@ export type HeaderRemoveReport = {
   /** The total number of source files examined. */
   total: number;
 };
+
+export type SavedTokensCommand =
+  | { kind: "verify" }
+  | { kind: "apply-config" }
+  | { kind: "force-header"; file: string };
 
 /**
  * Contract for rendering non-interactive CLI output to the terminal — the usage
@@ -145,7 +153,9 @@ export interface IReporter {
   /**
    * Renders the notice shown when `--verify` found drift and reconciled it —
    * rewriting the `LICENSE` file and/or updating manifest license fields to
-   * match the saved configuration.
+   * match the saved configuration. When the `LICENSE` itself was rewritten and
+   * was built from SPDX's matching template, a note follows explaining that
+   * SPDX revises that template between releases.
    *
    * @param report - The verification result; lists what was reconciled.
    */
@@ -154,11 +164,31 @@ export interface IReporter {
   /**
    * Renders the error shown when `--verify --strict` found the `LICENSE` file
    * or a manifest out of sync with the saved configuration and left it
-   * untouched.
+   * untouched. A drifted `LICENSE` is shown with its first differing line and,
+   * when it was built from SPDX's matching template, the same note
+   * `verifyFixed` adds.
    *
    * @param report - The verification result; lists what drifted.
    */
   verifyMismatch(report: VerifyReport): void;
+
+  /**
+   * Renders the error shown when a command that reads the saved configuration
+   * (`--verify` in either mode, `--apply-config`, or `--force-header`) stops
+   * because some saved tokens are not copyright fields of the configured
+   * license: it names them, lists the fields the license accepts, and says how
+   * to fix the saved configuration before running the command again. Nothing
+   * was checked or written.
+   *
+   * @param report - The unrecognized tokens, the license's fields, and the
+   *   config file they were read from.
+   * @param command - The command that stopped, which words the message and the
+   *   command to run again.
+   */
+  unknownSavedTokens(
+    report: UnknownTokensReport,
+    command: SavedTokensCommand,
+  ): void;
 
   /**
    * Renders the notice shown when header writing was requested but the scan

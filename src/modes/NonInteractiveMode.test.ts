@@ -17,14 +17,18 @@ import type { WizardFlags } from "./WizardFlags.js";
 import { NonInteractiveMode } from "./NonInteractiveMode.js";
 
 function makeReporter() {
-  const calls: { method: string; arg: unknown }[] = [];
+  const calls: { method: string; arg: unknown; extra?: unknown }[] = [];
   const reporter = new Proxy(
     {},
     {
       get:
         (_t, prop: string) =>
-        (arg?: unknown): void => {
-          calls.push({ method: prop, arg });
+        (...args: unknown[]): void => {
+          calls.push(
+            args.length > 1
+              ? { method: prop, arg: args[0], extra: args[1] }
+              : { method: prop, arg: args[0] },
+          );
         },
     },
   ) as unknown as IReporter;
@@ -82,6 +86,7 @@ type Deps = {
     read: ReturnType<typeof vi.fn>;
     targets: ReturnType<typeof vi.fn>;
     clearHeaders: ReturnType<typeof vi.fn>;
+    source: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -91,6 +96,7 @@ function makeDeps(over: { savedConfig?: unknown } = {}): Deps {
     read: vi.fn(async () => over.savedConfig ?? null),
     targets: vi.fn(async () => [{ id: "rc", label: "rc" }]),
     clearHeaders: vi.fn(async () => {}),
+    source: vi.fn(async () => ".licensewizardrc.json"),
   };
   const headers = {
     apply: vi.fn(async () => ({
@@ -263,6 +269,74 @@ describe("NonInteractiveMode routing", () => {
 
     expect(d.installer.install).not.toHaveBeenCalled();
     expect(callsOf(d)).toContain("error");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects --apply-config when a saved token is not a copyright field", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", tokens: { "[yyyy]": "2026" } },
+    });
+    await build(d, flags({ "apply-config": true })).run();
+
+    expect(reporters.get(d)?.calls).toEqual([
+      {
+        method: "unknownSavedTokens",
+        arg: {
+          licenseId: "MIT",
+          tokens: { saved: ["[yyyy]"], unknown: ["[yyyy]"], fields: [] },
+          configFile: ".licensewizardrc.json",
+        },
+        extra: { kind: "apply-config" },
+      },
+    ]);
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(d.headers.apply).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects --apply-config --dry-run when a saved token is not a copyright field", async () => {
+    const d = makeDeps({
+      savedConfig: { licenseId: "MIT", tokens: { "[yyyy]": "2026" } },
+    });
+    await build(d, flags({ "apply-config": true, "dry-run": true })).run();
+
+    expect(reporters.get(d)?.calls).toEqual([
+      {
+        method: "unknownSavedTokens",
+        arg: {
+          licenseId: "MIT",
+          tokens: { saved: ["[yyyy]"], unknown: ["[yyyy]"], fields: [] },
+          configFile: ".licensewizardrc.json",
+        },
+        extra: { kind: "apply-config" },
+      },
+    ]);
+    expect(d.installer.install).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects --force-header when a saved token is not a copyright field", async () => {
+    const d = makeDeps({
+      savedConfig: {
+        licenseId: "MIT",
+        headers: { style: "short" },
+        tokens: { "[yyyy]": "2026" },
+      },
+    });
+    await build(d, flags({ "force-header": "page.php" })).run();
+
+    expect(reporters.get(d)?.calls).toEqual([
+      {
+        method: "unknownSavedTokens",
+        arg: {
+          licenseId: "MIT",
+          tokens: { saved: ["[yyyy]"], unknown: ["[yyyy]"], fields: [] },
+          configFile: ".licensewizardrc.json",
+        },
+        extra: { kind: "force-header", file: "page.php" },
+      },
+    ]);
+    expect(d.headers.forceApply).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
   });
 

@@ -73,6 +73,7 @@ classDiagram
     +slots() TemplateSlot[]
     +requiredSlots(fullHeader: boolean) TemplateSlot[]
     +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
+    +checkTokens(tokens: Record~string, string~) TokenCheck
   }
 
   class resolveSlotEntries {
@@ -91,10 +92,26 @@ classDiagram
     +unknown: string[]
   }
 
+  class TokenCheck {
+    +saved: string[]
+    +unknown: string[]
+    +fields: string[]
+  }
+
   class LicenseGenerator {
     +LicenseGenerator(repository: LicenseRepository, writer: IFileSystemWriter)
     +generate(licenseId: string, slotValues?: Record~string, string~) Promise~void~
     +render(licenseId: string, slotValues?: Record~string, string~) Promise~string~
+    +renderDetailed(licenseId: string, slotValues?: Record~string, string~) Promise~LicenseRendering~
+  }
+
+  class LicenseRendering {
+    +content: string
+    +builtFrom: LicenseRenderBasis
+  }
+
+  class LicenseRenderBasis {
+    <<union>>
   }
 
   SpdxLicenseSource ..|> ILicenseSource : implements
@@ -106,6 +123,8 @@ classDiagram
   SpdxLicenseSource ..> LicenseNotFoundError : throws
   LicenseGenerator ..> LicenseRepository : uses
   LicenseGenerator ..> LicenseTemplate : uses
+  LicenseGenerator ..> LicenseRendering : produces
+  LicenseRendering ..> LicenseRenderBasis : built from
   LicenseTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces
   SpdxTemplate ..> SlotResolution : produces
@@ -115,4 +134,5 @@ classDiagram
   LicenseCopyright ..> resolveSlotEntries : resolves with
   LicenseCopyright ..> TemplateSlot : produces
   LicenseCopyright ..> SlotResolution : produces
+  LicenseCopyright ..> TokenCheck : produces
   resolveSlotEntries ..> SlotResolution : produces

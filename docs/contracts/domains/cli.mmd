@@ -74,6 +74,7 @@ classDiagram
     +verifyMatch(report: VerifyReport) void
     +verifyFixed(report: VerifyReport) void
     +verifyMismatch(report: VerifyReport) void
+    +unknownSavedTokens(report: UnknownTokensReport, command: SavedTokensCommand) void
     +headersNoFiles(licenseId: string) void
     +headersGenerated(report: HeaderGenerateReport) void
     +headersDryRun(report: HeaderDryRunReport) void
@@ -153,6 +154,10 @@ classDiagram
   }
 
   class OutputMessage {
+    <<union>>
+  }
+
+  class SavedTokensCommand {
     <<union>>
   }
 
@@ -262,6 +267,7 @@ classDiagram
   MessageReporter ..> HeaderDryRunReport : reads
   MessageReporter ..> HeaderForceApplyReport : reads
   MessageReporter ..> HeaderRemoveReport : reads
+  MessageReporter ..> SavedTokensCommand : reads
   StreamSink ..|> IOutputSink : implements
   RecordingSink ..|> IOutputSink : implements
   StreamSink ..> ReportPresenter : renders with

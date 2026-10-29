@@ -5,12 +5,18 @@
  */
 
 import { createHash } from "node:crypto";
+import { firstDifference } from "@application/TextDifference.js";
+import type { TextDifference } from "@application/TextDifference.js";
 import type { Config } from "@configuration/Config.js";
 import type { IFileSystemReader } from "@configuration/interfaces/IFileSystemReader.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
 import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { LICENSE_FILENAME } from "@licensing/LicenseFilename.js";
+import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
+import type { LicenseRenderBasis } from "@licensing/LicenseRendering.js";
+import type { LicenseRepository } from "@licensing/LicenseRepository.js";
+import type { TokenCheck } from "@licensing/TemplateSlot.js";
 
 export type VerifyOptions = {
   /**
@@ -34,11 +40,23 @@ export type VerifyReport = {
   licenseId: string;
   license: DriftStatus;
   manifests: ManifestCheck[];
+  builtFrom: LicenseRenderBasis;
+  licenseDifference: TextDifference | null;
+  savedTokens: string[];
+  configFile: string | null;
+  writesHeaders: boolean;
+};
+
+export type UnknownTokensReport = {
+  licenseId: string;
+  tokens: TokenCheck;
+  configFile: string | null;
 };
 
 export type VerifyOutcome =
   | { kind: "missing-license" }
   | { kind: "missing-config" }
+  | ({ kind: "unknown-tokens" } & UnknownTokensReport)
   | ({ kind: DriftStatus } & VerifyReport);
 
 /**
@@ -51,17 +69,28 @@ export type VerifyOutcome =
  * disk, the file by content hash and each manifest by its declared identifier.
  *
  * Both a `LICENSE` file and a saved configuration are required; either one
- * missing is reported as its own outcome rather than treated as a match. Where
- * anything has drifted the verifier either reconciles it to match (the default
- * — rewriting the file and updating the drifted manifests) or leaves everything
- * untouched and reports the drift (strict mode), so the same check can either
- * self-heal or gate a CI pipeline.
+ * missing is reported as its own outcome rather than treated as a match. So is
+ * a configuration whose saved tokens include ones that are not copyright fields
+ * of its license: verification stops there, in either mode, and changes
+ * nothing. Where anything has drifted the verifier either reconciles it to
+ * match (the default — rewriting the file and updating the drifted manifests)
+ * or leaves everything untouched and reports the drift (strict mode), so the
+ * same check can either self-heal or gate a CI pipeline.
+ *
+ * Alongside the outcome, the report carries what a caller needs to explain a
+ * drifted `LICENSE`: where the file first departs from the expected text,
+ * whether that text was built from SPDX's matching template or the license's
+ * plain text, the saved tokens, the file the configuration was read from, and
+ * whether the configuration writes source-file headers, which also use the
+ * tokens (a full header fills its template with them; a short one puts their
+ * values in its `SPDX-FileCopyrightText` line).
  */
 export class LicenseVerifier {
   readonly #config: Config;
   readonly #manifests: ProjectManifestRepository;
   readonly #generator: LicenseGenerator;
   readonly #reader: IFileSystemReader;
+  readonly #repository: LicenseRepository;
 
   /**
    * Creates a new LicenseVerifier.
@@ -71,17 +100,21 @@ export class LicenseVerifier {
    *   updates the drifted ones.
    * @param generator - Re-renders (and, when fixing, rewrites) the license.
    * @param reader - Reads the existing `LICENSE` file from disk.
+   * @param repository - Reads the license's copyright fields, to check the saved
+   *   tokens against them.
    */
   constructor(
     config: Config,
     manifests: ProjectManifestRepository,
     generator: LicenseGenerator,
     reader: IFileSystemReader,
+    repository: LicenseRepository,
   ) {
     this.#config = config;
     this.#manifests = manifests;
     this.#generator = generator;
     this.#reader = reader;
+    this.#repository = repository;
   }
 
   /**
@@ -91,7 +124,10 @@ export class LicenseVerifier {
    *
    * Returns `missing-license` when no `LICENSE` file exists and `missing-config`
    * when no configuration is saved — both are required for verification to be
-   * meaningful. Otherwise returns a report whose `kind` aggregates the two
+   * meaningful. Returns `unknown-tokens`, without checking or changing anything,
+   * when some saved tokens are not copyright fields of the configured license:
+   * their values can't be placed, so reconciling would rewrite `LICENSE`
+   * without them. Otherwise returns a report whose `kind` aggregates the two
    * surfaces: `match` when everything was already in sync, `fixed` when drift
    * was found and reconciled (the default), or `mismatch` when drift was found
    * and left untouched because `fix` was disabled.
@@ -108,38 +144,81 @@ export class LicenseVerifier {
       return { kind: "missing-config" };
     }
 
-    const license = await this.#verifyLicenseFile(config, options.fix);
+    const tokens = config.tokens ?? {};
+    const tokenCheck = await this.#checkTokens(config.licenseId, tokens);
+    const configFile = await this.#config.source();
+    if (tokenCheck.unknown.length > 0) {
+      return {
+        kind: "unknown-tokens",
+        licenseId: config.licenseId,
+        tokens: tokenCheck,
+        configFile,
+      };
+    }
+
+    const rendering = await this.#generator.renderDetailed(
+      config.licenseId,
+      tokens,
+    );
+    const { status: license, difference } = await this.#verifyLicenseFile(
+      config,
+      rendering.content,
+      options.fix,
+    );
     const manifests = await this.#verifyManifests(config, options.fix);
     const kind = this.#aggregate(license, manifests);
 
-    return { kind, licenseId: config.licenseId, license, manifests };
+    return {
+      kind,
+      licenseId: config.licenseId,
+      license,
+      manifests,
+      builtFrom: rendering.builtFrom,
+      licenseDifference: difference,
+      savedTokens: tokenCheck.saved,
+      configFile,
+      writesHeaders: config.headers !== undefined,
+    };
   }
 
   /**
-   * Compares the on-disk `LICENSE` against the license re-rendered from the
-   * configuration, returning `match` when they are identical, `fixed` after
+   * Compares the on-disk `LICENSE` against the expected text, returning the
+   * drift status together with the first point where the two diverge (null when
+   * they match). The status is `match` when they are identical, `fixed` after
    * rewriting the file when they differ and fixing is enabled, or `mismatch`
    * when they differ and the file is left untouched.
    */
   async #verifyLicenseFile(
     config: WizardConfig,
+    expected: string,
     fix: boolean,
-  ): Promise<DriftStatus> {
+  ): Promise<{ status: DriftStatus; difference: TextDifference | null }> {
     const existing = await this.#reader.read(LICENSE_FILENAME);
-    const expected = await this.#generator.render(
-      config.licenseId,
-      config.tokens ?? {},
-    );
 
     if (this.#digest(existing) === this.#digest(expected)) {
-      return "match";
+      return { status: "match", difference: null };
     }
+
+    const difference = firstDifference(existing, expected);
     if (!fix) {
-      return "mismatch";
+      return { status: "mismatch", difference };
     }
 
     await this.#generator.generate(config.licenseId, config.tokens ?? {});
-    return "fixed";
+    return { status: "fixed", difference };
+  }
+
+  /**
+   * Checks the saved tokens against the configured license's copyright fields
+   * (see {@link LicenseCopyright.checkTokens}).
+   */
+  async #checkTokens(
+    licenseId: string,
+    tokens: Record<string, string>,
+  ): Promise<TokenCheck> {
+    return LicenseCopyright.fromDetail(
+      await this.#repository.getLicense(licenseId),
+    ).checkTokens(tokens);
   }
 
   /**
