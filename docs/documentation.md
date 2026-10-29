@@ -225,7 +225,7 @@ Seven **selection flags** — `--license`, `--set`, `--headers`, `--get-tokens`,
 | `--version` | Print the version number and exit. |
 | `--verify` | Check the `LICENSE` file, every manifest's `license` field, and (when configured) the source-file headers against your saved configuration, reconciling any drift. Standalone mode. |
 | `--strict` | With `--verify`, fail on any drift instead of reconciling it — for CI. Requires `--verify`; on its own it errors. |
-| `--apply-config` | Regenerate the `LICENSE`, manifest fields, and configured headers from the saved config; errors if none exists. Standalone — takes priority over selection flags; honors `--dry-run`. |
+| `--apply-config` | Regenerate the `LICENSE`, manifest fields, and configured headers from the saved config; errors if none exists or its tokens don't match the license. Standalone — takes priority over selection flags; honors `--dry-run`. |
 | `--license <spdx-id>` | Select a license by its SPDX identifier and run non-interactively. |
 | `--set <field=value>` | Set a copyright field for the chosen license (repeatable, requires `--license`). |
 | `--save-rc` | Save the resolved config to `.licensewizardrc.json` (requires `--license`). |
@@ -235,7 +235,7 @@ Seven **selection flags** — `--license`, `--set`, `--headers`, `--get-tokens`,
 | `--headers <short\|full>` | Also write SPDX license headers into source files — `short` (tag lines) or `full` (the standard notice). Requires `--license`. |
 | `--headers-comment <block\|docblock>` | Comment style for written headers — `block` (`/* */`, default) or `docblock` (`/** */`, for PHPDoc/WPCS). Requires `--headers`. |
 | `--headers-ignore <glob>` | Extra gitignore-style pattern to skip when writing headers, on top of the defaults and `.gitignore` (repeatable). |
-| `--force-header <path>` | Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors `--dry-run`. |
+| `--force-header <path>` | Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths and saved tokens that don't match the license; honors `--dry-run`. |
 | `--remove-headers` | Strip License Wizard's headers and drop the saved headers preference. Standalone; takes priority over `--headers`; honors `--headers-ignore` and `--dry-run`. |
 | `--dry-run` | Preview the license (and, with `--headers`, a sample block and the files it would touch) and skip every write. |
 
