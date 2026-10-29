@@ -80,7 +80,7 @@
 </tr>
 <tr>
 <td><code>--apply-config</code></td>
-<td>Regenerate the <code>LICENSE</code>, manifest fields, and configured headers from the saved config; errors if none exists. Standalone — takes priority over selection flags; honors <code>--dry-run</code>.</td>
+<td>Regenerate the <code>LICENSE</code>, manifest fields, and configured headers from the saved config; errors if none exists or its tokens don&#39;t match the license. Standalone — takes priority over selection flags; honors <code>--dry-run</code>.</td>
 </tr>
 <tr>
 <td><code>--license &lt;spdx-id&gt;</code></td>
@@ -120,7 +120,7 @@
 </tr>
 <tr>
 <td><code>--force-header &lt;path&gt;</code></td>
-<td>Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths; honors <code>--dry-run</code>.</td>
+<td>Force the configured header into a single file the safety guard skipped, by path (relative to the working directory). Non-interactive; ignored unless headers are enabled in config; refuses absolute or out-of-project paths and saved tokens that don&#39;t match the license; honors <code>--dry-run</code>.</td>
 </tr>
 <tr>
 <td><code>--remove-headers</code></td>

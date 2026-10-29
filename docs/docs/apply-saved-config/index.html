@@ -53,7 +53,7 @@
 <p>When a configuration is already saved, <code>--apply-config</code> regenerates the project from it in one shot — no prompts, no selection flags. It rewrites the <code>LICENSE</code> from the saved license and copyright fields, records the identifier in every manifest present, and, when the config opted into them, re-stamps the source-file headers in the saved style.</p>
 <pre><code class="language-bash">npx license-wizard --apply-config
 </code></pre>
-<p>This is the complement of saving: one run records your choice, the other replays it — handy for restoring a project&#39;s license state in CI or after a fresh checkout. If no configuration is found, it reports the problem and exits non-zero rather than generating something you didn&#39;t ask for. Add <code>--dry-run</code> to preview the regeneration without writing.</p>
+<p>This is the complement of saving: one run records your choice, the other replays it — handy for restoring a project&#39;s license state in CI or after a fresh checkout. If no configuration is found, or its saved tokens <a href="/license-wizard/docs/configuration-files/#tokens-must-match-the-license">don&#39;t match the license</a>, it reports the problem and exits non-zero rather than generating something you didn&#39;t ask for. Add <code>--dry-run</code> to preview the regeneration without writing.</p>
 <pre><code class="language-bash">npx license-wizard --apply-config --dry-run
 </code></pre>
 </article>

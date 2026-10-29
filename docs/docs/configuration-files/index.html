@@ -42,12 +42,15 @@
         </div>
       </div>
     </header>
-    <div class="docs-shell">
+    <div class="docs-shell has-toc">
       <nav class="docs-side" aria-label="Documentation sections">
     <p class="docs-side-title">Documentation</p>
     <ul class="docs-side-list"><li><a href="/license-wizard/docs/getting-started/" class="docs-side-link">Getting started</a></li><li><a href="/license-wizard/docs/interactive-wizard/" class="docs-side-link">Interactive wizard</a></li><li><a href="/license-wizard/docs/one-shot-generation/" class="docs-side-link">One-shot generation</a></li><li><a href="/license-wizard/docs/source-file-headers/" class="docs-side-link">Source-file headers</a></li><li><a href="/license-wizard/docs/verify-ci/" class="docs-side-link">Verify & CI</a></li><li><a href="/license-wizard/docs/apply-saved-config/" class="docs-side-link">Apply saved config</a></li><li><a href="/license-wizard/docs/configuration-files/" class="docs-side-link is-active" aria-current="page">Configuration files</a></li><li><a href="/license-wizard/docs/scripting-agents/" class="docs-side-link">Scripting & agents</a></li><li><a href="/license-wizard/docs/flags-reference/" class="docs-side-link">Flags reference</a></li></ul>
   </nav>
-      
+      <details class="docs-toc" open>
+    <summary class="docs-toc-summary">On this page</summary>
+    <ul class="docs-toc-list"><li><a href="#configuration-files" class="docs-toc-link docs-toc-top" data-toc-target="configuration-files">Configuration files</a></li><li><a href="#tokens-must-match-the-license" class="docs-toc-link" data-toc-target="tokens-must-match-the-license">Tokens must match the license</a></li></ul>
+  </details>
       <main class="docs-main">
         <article class="doc-prose"><h2 id="configuration-files">Configuration files</h2>
 <p>License Wizard can remember your license choice so later runs start from a known default and verification has something to check against. Configuration is read from one of two places, in order of precedence:</p>
@@ -66,6 +69,10 @@
 }
 </code></pre>
 <p>Saving is opt-in. In the wizard, choose to remember your selection; in a script, pass exactly one <code>--save-*</code> flag — <code>--save-rc</code>, <code>--save-npm</code>, or <code>--save-composer</code>. Saving writes to one location and clears the configuration from the others, so there&#39;s only ever one source of truth.</p>
+<h3 id="tokens-must-match-the-license">Tokens must match the license</h3>
+<p>The keys under <code>tokens</code> are the license&#39;s own copyright fields, written as bracket tokens: <code>[yyyy]</code> for Apache-2.0, <code>&lt;yyyy&gt;</code> for GPL-2.0-or-later, <code>&lt;year&gt;</code> for MIT. <code>--get-tokens</code> lists the same fields by label — <code>yyyy</code> and <code>name of author</code> for GPL-2.0-or-later — but labels are only for <code>--set</code>; the saved config always uses the bracket form. A field that only a <code>full</code> header uses is still a valid key.</p>
+<p>Those fields belong to one license, and SPDX can rename them between releases: SPDX License List 3.29.0 replaced ISC&#39;s <code>&lt;copyright notice&gt;</code> with <code>&lt;YEAR&gt;</code> and <code>&lt;OWNER&gt;</code>. A saved token that isn&#39;t one of the license&#39;s fields can&#39;t be filled in anywhere, so License Wizard treats it as a configuration error rather than writing placeholders like <code>&lt;YEAR&gt;</code> into your files. <code>--verify</code> (with or without <code>--strict</code>), <code>--apply-config</code> (even under <code>--dry-run</code>), and <code>--force-header</code> (when headers are enabled) name the unrecognized tokens, list the fields the license accepts, and exit non-zero without checking or writing anything.</p>
+<p>The usual cause is changing <code>licenseId</code> by hand and keeping the old tokens. To fix it, edit <code>tokens</code> to use the fields the error lists, or run the wizard again and save your choice.</p>
 </article>
         <nav class="docs-pager" aria-label="Section pagination"><a href="/license-wizard/docs/apply-saved-config/" class="docs-pager-link"><span class="docs-pager-dir">← Previous</span><span class="docs-pager-title">Apply saved config</span></a><a href="/license-wizard/docs/scripting-agents/" class="docs-pager-link docs-pager-next"><span class="docs-pager-dir">Next →</span><span class="docs-pager-title">Scripting & agents</span></a></nav>
       </main>

@@ -59,6 +59,7 @@
 <ul>
 <li>A successful generation, a clean <code>--verify</code>, or a healed run exits <code>0</code>.</li>
 <li>A missing required field, an unrecognized identifier, a <code>--verify --strict</code> run that found drift, or a standalone mode with nothing to act on exits non-zero — and prints exactly what&#39;s wrong.</li>
+<li>Saved tokens that <a href="/license-wizard/docs/configuration-files/#tokens-must-match-the-license">don&#39;t match the license</a> also exit non-zero, in <code>--verify</code> (with or without <code>--strict</code>), <code>--apply-config</code>, and <code>--force-header</code>, before anything is checked or written.</li>
 </ul>
 <h3 id="standalone-modes-take-priority">Standalone modes take priority</h3>
 <p>The standalone modes — <code>--remove-headers</code>, <code>--verify</code>, <code>--apply-config</code>, and <code>--force-header</code> — own the whole run and ignore the selection flags. When one rides along with a stray <code>--license</code> or <code>--set</code>, the standalone mode still wins, so an agent can replay a saved config or run a verify without a leftover flag quietly changing the outcome. When several are combined they resolve in a fixed order — <code>--remove-headers</code> first, then <code>--verify</code>, then the single-file <code>--force-header</code>, then <code>--apply-config</code> — spelled out in full under <a href="/license-wizard/docs/flags-reference/#priority-when-flags-are-combined">Priority when flags are combined</a>.</p>
