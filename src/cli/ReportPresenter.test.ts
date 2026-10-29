@@ -948,6 +948,28 @@ describe("ReportPresenter verify explanations (plain text)", () => {
       );
     });
 
+    it("makes trailing spaces visible before a carriage return", () => {
+      expect(
+        strictMismatch(
+          "MIT",
+          {
+            line: 1,
+            column: 12,
+            found: "MIT License  \r",
+            expected: "MIT License",
+          },
+          null,
+        ),
+      ).toBe(
+        plain(
+          "  LICENSE does not match — first difference at line 1, column 12:",
+          "    found:    MIT License··␍",
+          "    expected: MIT License",
+          " ".repeat(25) + "^",
+        ),
+      );
+    });
+
     it("makes a tab visible", () => {
       expect(
         strictMismatch(

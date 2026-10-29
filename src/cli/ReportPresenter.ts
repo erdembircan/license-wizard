@@ -493,24 +493,29 @@ export class ReportPresenter {
    * Makes the characters a terminal would hide visible, one for one so the
    * caret stays aligned: each control character, such as a carriage return or a
    * tab, becomes its Unicode control picture (`␍`, `␉`), and each trailing space
-   * becomes a middle dot (`·`).
+   * becomes a middle dot (`·`). Spaces just before a final carriage return count
+   * as trailing, so a CRLF line's trailing spaces show as well.
    *
    * @param text - The line to make visible.
    */
   #visible(text: string): string {
-    const body = text.replace(/ +$/, "");
+    const trailing = / +(?=\r?$)/.exec(text);
+    const dotsFrom = trailing === null ? text.length : trailing.index;
+    const dotsTo = dotsFrom + (trailing === null ? 0 : trailing[0].length);
     let visible = "";
-    for (let index = 0; index < body.length; index++) {
-      const code = body.charCodeAt(index);
-      if (code < 0x20) {
+    for (let index = 0; index < text.length; index++) {
+      const code = text.charCodeAt(index);
+      if (index >= dotsFrom && index < dotsTo) {
+        visible += "·";
+      } else if (code < 0x20) {
         visible += String.fromCharCode(0x2400 + code);
       } else if (code === 0x7f) {
         visible += "␡";
       } else {
-        visible += body[index];
+        visible += text[index];
       }
     }
-    return visible + "·".repeat(text.length - body.length);
+    return visible;
   }
 
   /**
