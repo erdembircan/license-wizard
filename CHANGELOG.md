@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     unfilled.
 
   Exit codes, verification outcomes, and file writes are unchanged, and runs where
-  `LICENSE` itself matched print exactly as before. (#NNN)
+  `LICENSE` itself matched print exactly as before. (#179)
 
 ## [1.2.0] - 2026-08-18
 
