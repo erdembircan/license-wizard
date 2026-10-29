@@ -16,6 +16,7 @@ import { LicenseCopyright } from "@licensing/LicenseCopyright.js";
 import type { LicenseGenerator } from "@licensing/LicenseGenerator.js";
 import type { LicenseRenderBasis } from "@licensing/LicenseRendering.js";
 import type { LicenseRepository } from "@licensing/LicenseRepository.js";
+import type { TokenCheck } from "@licensing/TemplateSlot.js";
 
 export type VerifyOptions = {
   /**
@@ -33,12 +34,6 @@ export type ManifestCheck = {
   name: string;
   declared: string | null;
   status: DriftStatus;
-};
-
-export type TokenCheck = {
-  saved: string[];
-  unknown: string[];
-  fields: string[];
 };
 
 export type VerifyReport = {
@@ -213,24 +208,16 @@ export class LicenseVerifier {
   }
 
   /**
-   * Lists the saved tokens, the configured license's copyright fields (its body
-   * and header fields combined), and the saved tokens that match none of those
-   * fields.
+   * Checks the saved tokens against the configured license's copyright fields
+   * (see {@link LicenseCopyright.checkTokens}).
    */
   async #checkTokens(
     licenseId: string,
     tokens: Record<string, string>,
   ): Promise<TokenCheck> {
-    const detail = await this.#repository.getLicense(licenseId);
-    const fields = LicenseCopyright.fromDetail(detail)
-      .slots()
-      .map((slot) => slot.token);
-    const saved = Object.keys(tokens);
-    return {
-      saved,
-      unknown: saved.filter((token) => !fields.includes(token)),
-      fields,
-    };
+    return LicenseCopyright.fromDetail(
+      await this.#repository.getLicense(licenseId),
+    ).checkTokens(tokens);
   }
 
   /**

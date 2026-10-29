@@ -73,6 +73,7 @@ classDiagram
     +slots() TemplateSlot[]
     +requiredSlots(fullHeader: boolean) TemplateSlot[]
     +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
+    +checkTokens(tokens: Record~string, string~) TokenCheck
   }
 
   class resolveSlotEntries {
@@ -89,6 +90,12 @@ classDiagram
     +values: Record~string, string~
     +missing: TemplateSlot[]
     +unknown: string[]
+  }
+
+  class TokenCheck {
+    +saved: string[]
+    +unknown: string[]
+    +fields: string[]
   }
 
   class LicenseGenerator {
@@ -127,4 +134,5 @@ classDiagram
   LicenseCopyright ..> resolveSlotEntries : resolves with
   LicenseCopyright ..> TemplateSlot : produces
   LicenseCopyright ..> SlotResolution : produces
+  LicenseCopyright ..> TokenCheck : produces
   resolveSlotEntries ..> SlotResolution : produces

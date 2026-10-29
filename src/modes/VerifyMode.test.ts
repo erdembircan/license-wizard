@@ -23,11 +23,15 @@ import { VerifyMode } from "./VerifyMode.js";
  * the mode rendered, without depending on the real terminal reporter.
  */
 function makeReporter() {
-  const calls: { method: string; arg: unknown }[] = [];
+  const calls: { method: string; arg: unknown; extra?: unknown }[] = [];
   const record =
     (method: string) =>
-    (arg?: unknown): void => {
-      calls.push({ method, arg });
+    (...args: unknown[]): void => {
+      calls.push(
+        args.length > 1
+          ? { method, arg: args[0], extra: args[1] }
+          : { method, arg: args[0] },
+      );
     };
   const reporter = new Proxy(
     {},
@@ -276,7 +280,11 @@ describe("VerifyMode", () => {
         await mode.run();
 
         expect(calls).toEqual([
-          { method: "verifyUnknownTokens", arg: unknownTokens },
+          {
+            method: "unknownSavedTokens",
+            arg: unknownTokens,
+            extra: { kind: "verify" },
+          },
         ]);
         expect(headers.verifyCalls).toBe(0);
         expect(process.exitCode).toBe(1);

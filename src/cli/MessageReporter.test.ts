@@ -357,23 +357,55 @@ describe("MessageReporter", () => {
     });
   });
 
-  it("emits the unknown-tokens error with the unrecognized tokens, the license's fields and the config file", () => {
+  it("emits the unknown-tokens error for --verify with the unrecognized tokens, the license's fields and the config file", () => {
     const { sink, reporter } = setup();
-    reporter.verifyUnknownTokens({
-      licenseId: "ISC",
-      tokens: {
-        saved: ["<copyright notice>", "<YEAR>"],
-        unknown: ["<copyright notice>"],
-        fields: ["<YEAR>", "<OWNER>"],
+    reporter.unknownSavedTokens(
+      {
+        licenseId: "ISC",
+        tokens: {
+          saved: ["<copyright notice>", "<YEAR>"],
+          unknown: ["<copyright notice>"],
+          fields: ["<YEAR>", "<OWNER>"],
+        },
+        configFile: ".licensewizardrc.json",
       },
-      configFile: ".licensewizardrc.json",
-    });
+      { kind: "verify" },
+    );
 
     expect(sink.messages).toEqual([
       {
-        kind: "verifyUnknownTokens",
+        kind: "unknownSavedTokens",
         channel: "err",
         licenseId: "ISC",
+        command: { kind: "verify" },
+        tokens: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+        configFile: ".licensewizardrc.json",
+      },
+    ]);
+  });
+
+  it("emits the unknown-tokens error carrying the forced file for --force-header", () => {
+    const { sink, reporter } = setup();
+    reporter.unknownSavedTokens(
+      {
+        licenseId: "ISC",
+        tokens: {
+          saved: ["<copyright notice>", "<YEAR>"],
+          unknown: ["<copyright notice>"],
+          fields: ["<YEAR>", "<OWNER>"],
+        },
+        configFile: ".licensewizardrc.json",
+      },
+      { kind: "force-header", file: "src/page.php" },
+    );
+
+    expect(sink.messages).toEqual([
+      {
+        kind: "unknownSavedTokens",
+        channel: "err",
+        licenseId: "ISC",
+        command: { kind: "force-header", file: "src/page.php" },
         tokens: ["<copyright notice>"],
         fields: ["<YEAR>", "<OWNER>"],
         configFile: ".licensewizardrc.json",

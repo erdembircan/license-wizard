@@ -110,8 +110,8 @@ export class ReportPresenter {
           message.note,
           c,
         );
-      case "verifyUnknownTokens":
-        return this.#verifyUnknownTokens(message, c);
+      case "unknownSavedTokens":
+        return this.#unknownSavedTokens(message, c);
       case "headersNoFiles":
         return this.#headersNoFiles(message.licenseId, c);
       case "headersGenerated":
@@ -406,38 +406,57 @@ export class ReportPresenter {
   }
 
   /**
-   * Renders the error shown when verification stops on saved tokens that are
-   * not copyright fields of the license: the tokens, the fields the license
-   * accepts, the likely causes, and the config edit that fixes it.
+   * Renders the error shown when a command stops on saved tokens that are not
+   * copyright fields of the license: the tokens, the fields the license accepts,
+   * the likely causes, and the config edit to make before running the command
+   * again. The command words the opening, what was left untouched, and the
+   * command to re-run.
    *
-   * @param message - The unrecognized tokens, the license's fields, and the config file.
+   * @param message - The tokens, the license's fields, the config file, and the command.
    * @param c - Whether ANSI styling is wanted.
    */
-  #verifyUnknownTokens(
-    message: Extract<OutputMessage, { kind: "verifyUnknownTokens" }>,
+  #unknownSavedTokens(
+    message: Extract<OutputMessage, { kind: "unknownSavedTokens" }>,
     c: boolean,
   ): string {
+    const { licenseId, command } = message;
     const mark = this.#mark(c, FIZZLE, "red");
     const one = message.tokens.length === 1;
+    const blocked =
+      command.kind === "verify"
+        ? `Cannot verify your saved ${licenseId} enchantment`
+        : command.kind === "apply-config"
+          ? `Cannot apply your saved ${licenseId} enchantment`
+          : `Cannot force a header into "${command.file}"`;
     const heading = this.#paint(
       c,
       ["bold", "red"],
       one
-        ? `Cannot verify your saved ${message.licenseId} enchantment — this saved token is not a copyright field of ${message.licenseId}:`
-        : `Cannot verify your saved ${message.licenseId} enchantment — these saved tokens are not copyright fields of ${message.licenseId}:`,
+        ? `${blocked} — this saved token is not a copyright field of ${licenseId}:`
+        : `${blocked} — these saved tokens are not copyright fields of ${licenseId}:`,
     );
     const list = message.tokens
       .map((token) => `  ${this.#paint(c, "yellow", token)}`)
       .join("\n");
     const accepts =
       message.fields.length > 0
-        ? `${message.licenseId} accepts ${message.fields.map((field) => this.#paint(c, "cyan", field)).join(", ")}.`
-        : `${message.licenseId} has no copyright fields.`;
+        ? `${licenseId} accepts ${message.fields.map((field) => this.#paint(c, "cyan", field)).join(", ")}.`
+        : `${licenseId} has no copyright fields.`;
+    const untouched =
+      command.kind === "verify"
+        ? "nothing was checked or changed"
+        : "nothing was written";
     const cause = one
-      ? `It may be left over from an earlier license, or SPDX may have renamed the field. ${this.#programName} can't fill it in, so nothing was checked or changed.`
-      : `They may be left over from an earlier license, or SPDX may have renamed the fields. ${this.#programName} can't fill them in, so nothing was checked or changed.`;
+      ? `It may be left over from an earlier license, or SPDX may have renamed the field. ${this.#programName} can't fill it in, so ${untouched}.`
+      : `They may be left over from an earlier license, or SPDX may have renamed the fields. ${this.#programName} can't fill them in, so ${untouched}.`;
+    const rerun =
+      command.kind === "verify"
+        ? `${this.#programName} --verify`
+        : command.kind === "apply-config"
+          ? `${this.#programName} --apply-config`
+          : `${this.#programName} --force-header "${command.file}"`;
     const config = this.#configRef(message.configFile, c);
-    const fix = this.#paint(c, "dim", `${this.#programName} --verify`);
+    const fix = this.#paint(c, "dim", rerun);
     const action =
       message.fields.length > 0
         ? `Update "tokens" in ${config}, then run ${fix} again.`

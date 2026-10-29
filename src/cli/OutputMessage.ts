@@ -9,6 +9,7 @@ import type { HeaderStyle } from "@headers/HeaderPlan.js";
 import type { LicenseIndexEntry } from "@licensing/LicenseIndexEntry.js";
 import type { TemplateSlot } from "@licensing/TemplateSlot.js";
 import type { ConfigSave } from "@application/LicenseInstaller.js";
+import type { SavedTokensCommand } from "@cli/interfaces/IReporter.js";
 
 /**
  * The stream a message is destined for: `out` for informational output, `err`
@@ -120,9 +121,10 @@ export type OutputMessage =
       note: VerifyNote | null;
     }
   | {
-      kind: "verifyUnknownTokens";
+      kind: "unknownSavedTokens";
       channel: "err";
       licenseId: string;
+      command: SavedTokensCommand;
       tokens: string[];
       fields: string[];
       configFile: string | null;

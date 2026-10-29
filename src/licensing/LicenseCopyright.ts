@@ -7,7 +7,11 @@
 import type { LicenseDetail } from "@licensing/LicenseDetail.js";
 import { LicenseTemplate } from "@licensing/LicenseTemplate.js";
 import { resolveSlotEntries } from "@licensing/SpdxTemplate.js";
-import type { SlotResolution, TemplateSlot } from "@licensing/TemplateSlot.js";
+import type {
+  SlotResolution,
+  TemplateSlot,
+  TokenCheck,
+} from "@licensing/TemplateSlot.js";
 
 /**
  * The customizable copyright of a license across both surfaces that can carry
@@ -91,6 +95,24 @@ export class LicenseCopyright {
     fullHeader: boolean,
   ): SlotResolution {
     return resolveSlotEntries(this.requiredSlots(fullHeader), entries);
+  }
+
+  /**
+   * Checks saved copyright values against this license's fields, body and header
+   * combined: returns the saved token keys, the license's field tokens, and the
+   * saved keys that match none of those fields — values saved for a different
+   * license, or for a field SPDX has since renamed.
+   *
+   * @param tokens - The saved copyright values, keyed by token.
+   */
+  checkTokens(tokens: Record<string, string>): TokenCheck {
+    const fields = this.slots().map((slot) => slot.token);
+    const saved = Object.keys(tokens);
+    return {
+      saved,
+      unknown: saved.filter((token) => !fields.includes(token)),
+      fields,
+    };
   }
 }
 

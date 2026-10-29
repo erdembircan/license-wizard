@@ -728,8 +728,9 @@ describe("ReportPresenter verify explanations (plain text)", () => {
   it("names one unrecognized token, the license's fields and the config edit", () => {
     expect(
       present({
-        kind: "verifyUnknownTokens",
+        kind: "unknownSavedTokens",
         channel: "err",
+        command: { kind: "verify" },
         licenseId: "ISC",
         tokens: ["<copyright notice>"],
         fields: ["<YEAR>", "<OWNER>"],
@@ -749,8 +750,9 @@ describe("ReportPresenter verify explanations (plain text)", () => {
   it("lists several unrecognized tokens in plural wording", () => {
     expect(
       present({
-        kind: "verifyUnknownTokens",
+        kind: "unknownSavedTokens",
         channel: "err",
+        command: { kind: "verify" },
         licenseId: "GPL-2.0-or-later",
         tokens: ["[yyyy]", "[name of copyright owner]"],
         fields: ["<yyyy>", "<name of author>"],
@@ -771,8 +773,9 @@ describe("ReportPresenter verify explanations (plain text)", () => {
   it("says to remove the tokens when the license has no copyright fields and the config file is unknown", () => {
     expect(
       present({
-        kind: "verifyUnknownTokens",
+        kind: "unknownSavedTokens",
         channel: "err",
+        command: { kind: "verify" },
         licenseId: "MPL-2.0",
         tokens: ["<year>"],
         fields: [],
@@ -784,6 +787,51 @@ describe("ReportPresenter verify explanations (plain text)", () => {
         "  <year>",
         "MPL-2.0 has no copyright fields. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was checked or changed.",
         'Remove "tokens" from your saved config, then run license-wizard --verify again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("words the unrecognized-token error for --apply-config", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        licenseId: "ISC",
+        command: { kind: "apply-config" },
+        tokens: ["<copyright notice>"],
+        fields: ["<YEAR>", "<OWNER>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        "Cannot apply your saved ISC enchantment — this saved token is not a copyright field of ISC:",
+        "  <copyright notice>",
+        "ISC accepts <YEAR>, <OWNER>. It may be left over from an earlier license, or SPDX may have renamed the field. license-wizard can't fill it in, so nothing was written.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --apply-config again.',
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("words the unrecognized-token error for --force-header, naming the file", () => {
+    expect(
+      present({
+        kind: "unknownSavedTokens",
+        channel: "err",
+        licenseId: "GPL-2.0-or-later",
+        command: { kind: "force-header", file: "src/page.php" },
+        tokens: ["[yyyy]", "[name of copyright owner]"],
+        fields: ["<yyyy>", "<name of author>"],
+        configFile: ".licensewizardrc.json",
+      }),
+    ).toBe(
+      [
+        'Cannot force a header into "src/page.php" — these saved tokens are not copyright fields of GPL-2.0-or-later:',
+        "  [yyyy]",
+        "  [name of copyright owner]",
+        "GPL-2.0-or-later accepts <yyyy>, <name of author>. They may be left over from an earlier license, or SPDX may have renamed the fields. license-wizard can't fill them in, so nothing was written.",
+        'Update "tokens" in your saved config (.licensewizardrc.json), then run license-wizard --force-header "src/page.php" again.',
         "",
       ].join("\n"),
     );

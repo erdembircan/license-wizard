@@ -12,6 +12,7 @@ import type {
   HeaderGenerateReport,
   HeaderRemoveReport,
   IReporter,
+  SavedTokensCommand,
 } from "@cli/interfaces/IReporter.js";
 import type { HeaderDriftNote, VerifyNote } from "@cli/OutputMessage.js";
 import type {
@@ -144,11 +145,15 @@ export class MessageReporter implements IReporter {
     });
   }
 
-  verifyUnknownTokens(report: UnknownTokensReport): void {
+  unknownSavedTokens(
+    report: UnknownTokensReport,
+    command: SavedTokensCommand,
+  ): void {
     this.#sink.emit({
-      kind: "verifyUnknownTokens",
+      kind: "unknownSavedTokens",
       channel: "err",
       licenseId: report.licenseId,
+      command,
       tokens: report.tokens.unknown,
       fields: report.tokens.fields,
       configFile: report.configFile,

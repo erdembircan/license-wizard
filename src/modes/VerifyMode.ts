@@ -76,7 +76,7 @@ export class VerifyMode implements IWizardMode {
         );
         return [];
       case "unknown-tokens":
-        this.#reporter.verifyUnknownTokens(outcome);
+        this.#reporter.unknownSavedTokens(outcome, { kind: "verify" });
         this.#exitWithError();
         return [];
       case "match":

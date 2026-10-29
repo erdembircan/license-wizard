@@ -120,12 +120,6 @@ classDiagram
     <<union>>
   }
 
-  class TokenCheck {
-    +saved: string[]
-    +unknown: string[]
-    +fields: string[]
-  }
-
   class UnknownTokensReport {
     +licenseId: string
     +tokens: TokenCheck
@@ -205,7 +199,7 @@ classDiagram
       +verifyMatch(report: VerifyReport) void
       +verifyFixed(report: VerifyReport) void
       +verifyMismatch(report: VerifyReport) void
-      +verifyUnknownTokens(report: UnknownTokensReport) void
+      +unknownSavedTokens(report: UnknownTokensReport, command: SavedTokensCommand) void
       +headersNoFiles(licenseId: string) void
       +headersGenerated(report: HeaderGenerateReport) void
       +headersDryRun(report: HeaderDryRunReport) void
@@ -285,6 +279,10 @@ classDiagram
     }
 
     class OutputMessage {
+      <<union>>
+    }
+
+    class SavedTokensCommand {
       <<union>>
     }
 
@@ -428,6 +426,7 @@ classDiagram
       +slots() TemplateSlot[]
       +requiredSlots(fullHeader: boolean) TemplateSlot[]
       +resolveFor(entries: Map~string, string~, fullHeader: boolean) SlotResolution
+      +checkTokens(tokens: Record~string, string~) TokenCheck
     }
 
     class resolveSlotEntries {
@@ -444,6 +443,12 @@ classDiagram
       +values: Record~string, string~
       +missing: TemplateSlot[]
       +unknown: string[]
+    }
+
+    class TokenCheck {
+      +saved: string[]
+      +unknown: string[]
+      +fields: string[]
     }
 
     class LicenseGenerator {
@@ -781,6 +786,7 @@ classDiagram
   MessageReporter ..> TemplateSlot : reads
   MessageReporter ..> VerifyReport : reads
   MessageReporter ..> UnknownTokensReport : reads
+  MessageReporter ..> SavedTokensCommand : reads
   MessageReporter ..> DryRunReport : reads
   %% Composition root: LicenseWizard parses flags, builds the shared graph, and
   %% delegates each run to one of the three modes through IWizardMode.
@@ -833,6 +839,8 @@ classDiagram
   NonInteractiveMode ..> LicenseSelection : builds
   NonInteractiveMode ..> DryRunReport : builds
   NonInteractiveMode ..> LicenseNotFoundError : handles
+  NonInteractiveMode ..> LicenseCopyright : checks saved tokens against
+  NonInteractiveMode ..> UnknownTokensReport : builds
 
   %% Verify mode: LICENSE/manifest and source-header verification.
   VerifyMode ..> LicenseVerifier : verifies through
@@ -887,6 +895,7 @@ classDiagram
   LicenseTemplate --|> SpdxTemplate : extends
   LicenseCopyright ..> LicenseTemplate : parses body and header with
   LicenseCopyright ..> resolveSlotEntries : resolves with
+  LicenseCopyright ..> TokenCheck : produces
   SpdxTemplate ..> resolveSlotEntries : resolves with
   HeaderTemplate --|> SpdxTemplate : extends
   SpdxTemplate ..> TemplateSlot : produces

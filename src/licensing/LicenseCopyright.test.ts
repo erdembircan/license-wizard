@@ -134,4 +134,47 @@ describe("LicenseCopyright", () => {
       expect(result.missing).toEqual([]);
     });
   });
+
+  describe("checkTokens", () => {
+    const BODY =
+      'Copyright (C) <<var;name="copyright";original="<yyyy> <name of author>";match=".+">>';
+    const HEADER =
+      '<<var;name="copyright";original="Copyright (C) <year>";match=".+">>';
+
+    it("returns the saved keys, the combined fields, and the keys matching none of them", () => {
+      const result = new LicenseCopyright(BODY, HEADER).checkTokens({
+        "[yyyy]": "2026",
+        "<yyyy>": "2026",
+        "<year>": "2026",
+      });
+
+      expect(result).toEqual({
+        saved: ["[yyyy]", "<yyyy>", "<year>"],
+        unknown: ["[yyyy]"],
+        fields: ["<yyyy>", "<name of author>", "<year>"],
+      });
+    });
+
+    it("reports no unknown tokens when nothing is saved", () => {
+      const result = new LicenseCopyright(BODY, HEADER).checkTokens({});
+
+      expect(result).toEqual({
+        saved: [],
+        unknown: [],
+        fields: ["<yyyy>", "<name of author>", "<year>"],
+      });
+    });
+
+    it("treats every saved token as unknown when the license has no fields", () => {
+      const result = new LicenseCopyright("", "").checkTokens({
+        "<year>": "2026",
+      });
+
+      expect(result).toEqual({
+        saved: ["<year>"],
+        unknown: ["<year>"],
+        fields: [],
+      });
+    });
+  });
 });

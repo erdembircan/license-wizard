@@ -9,20 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`--verify` stops on saved tokens the license doesn't recognize** — when the saved
-  config's tokens include ones that aren't copyright fields of its license (left over
-  from an earlier license, or renamed by SPDX, as SPDX License List 3.29.0 did for ISC),
-  `--verify` now names them, lists the fields the license accepts, and exits with code 1
-  without checking or changing anything, source-file headers included. This is new in
-  both modes:
+- **Saved tokens the license doesn't recognize now stop `--verify`, `--apply-config` and
+  `--force-header`** — when the saved config's tokens include ones that aren't copyright
+  fields of its license (left over from an earlier license, or renamed by SPDX, as SPDX
+  License List 3.29.0 did for ISC), these commands now name them, list the fields the
+  license accepts, and exit with code 1 without writing anything. This is new for all
+  three:
   - `--verify` used to regenerate `LICENSE` with the license's own fields left unfilled
-    (for ISC, `Copyright <YEAR> <OWNER>`) and exit 0.
-  - `--verify --strict` used to pass whenever `LICENSE` and the manifests matched, so
-    leftover tokens never failed CI on their own.
+    (for ISC, `Copyright <YEAR> <OWNER>`) and exit 0, and `--verify --strict` used to pass
+    whenever `LICENSE` and the manifests matched, so leftover tokens never failed CI on
+    their own. Both now stop before checking anything, source-file headers included.
+  - `--apply-config` used to regenerate `LICENSE`, and a full header, the same way, with
+    the license's own fields left unfilled. It now stops before generating, including
+    under `--dry-run`.
+  - `--force-header` used to write the header from those tokens. It now stops before
+    writing.
 
   Generation runs already rejected such fields passed with `--set`; this applies the same
-  rule to the tokens `--verify` reads from the saved config. Because these runs now fail
-  where they used to pass, the release that ships this is not a patch. (#179)
+  rule to the tokens saved in the config. Because these runs now fail where they used to
+  pass, the release that ships this is not a patch. (#179)
 - **`--verify` now explains a drifted `LICENSE`** — a `LICENSE` that no longer matches
   the saved configuration used to be reported only as `LICENSE does not match`. Now:
   - `--verify --strict` shows the first difference: the line and column, the line found

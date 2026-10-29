@@ -6,9 +6,13 @@
 
 import path from "node:path";
 import type { Answer } from "@cli/Answer.js";
-import type { IReporter } from "@cli/interfaces/IReporter.js";
+import type {
+  IReporter,
+  SavedTokensCommand,
+} from "@cli/interfaces/IReporter.js";
 import type { Config } from "@configuration/Config.js";
 import type { ProjectManifestRepository } from "@configuration/ProjectManifestRepository.js";
+import type { WizardConfig } from "@configuration/WizardConfig.js";
 import { HeaderRenderer } from "@headers/HeaderRenderer.js";
 import {
   HEADER_COMMENT_BLOCK,
@@ -294,7 +298,9 @@ export class NonInteractiveMode implements IWizardMode {
    * selection flags: it reads the highest-priority config store and regenerates
    * the `LICENSE`, manifest fields, and — when the config opted into headers —
    * the source-file headers from it, leaving the config where it lives. A missing
-   * configuration is reported as a failure. Honors `--dry-run`.
+   * configuration is reported as a failure, and so are saved tokens that are not
+   * copyright fields of the license, in which case nothing is generated, even as
+   * a dry run. Honors `--dry-run`.
    */
   async #applyConfig(): Promise<void> {
     const config = await this.#config.read();
@@ -308,6 +314,12 @@ export class NonInteractiveMode implements IWizardMode {
 
     const detail = await this.#resolveLicenseDetail(config.licenseId);
     if (detail === null) {
+      return;
+    }
+
+    if (
+      await this.#rejectUnknownTokens(config, detail, { kind: "apply-config" })
+    ) {
       return;
     }
 
@@ -352,7 +364,9 @@ export class NonInteractiveMode implements IWizardMode {
    * opted into headers: when headers are not enabled it is silently disregarded
    * rather than failed. The path is validated as relative-and-inside-the-project
    * first (a security boundary), then the header derived from the saved config is
-   * forced into it, even though a normal run would skip it. Honors `--dry-run`.
+   * forced into it, even though a normal run would skip it — unless some saved
+   * tokens are not copyright fields of the license, which is reported as a
+   * failure before anything is written. Honors `--dry-run`.
    */
   async #forceApply(): Promise<void> {
     const config = await this.#config.read();
@@ -367,6 +381,15 @@ export class NonInteractiveMode implements IWizardMode {
 
     const detail = await this.#resolveLicenseDetail(config.licenseId);
     if (detail === null) {
+      return;
+    }
+
+    if (
+      await this.#rejectUnknownTokens(config, detail, {
+        kind: "force-header",
+        file: target,
+      })
+    ) {
       return;
     }
 
@@ -434,6 +457,40 @@ export class NonInteractiveMode implements IWizardMode {
     }
 
     return requested;
+  }
+
+  /**
+   * Stops a run that applies the saved configuration when its tokens include
+   * ones that are not copyright fields of the license: reports them, naming the
+   * config file and the command to run again, sets the exit code, and returns
+   * true. Returns false when every saved token is a field, so the run goes on.
+   *
+   * @param config - The saved configuration being applied.
+   * @param detail - The configured license's detail.
+   * @param command - The command that read the configuration.
+   */
+  async #rejectUnknownTokens(
+    config: WizardConfig,
+    detail: LicenseDetail,
+    command: SavedTokensCommand,
+  ): Promise<boolean> {
+    const tokens = LicenseCopyright.fromDetail(detail).checkTokens(
+      config.tokens ?? {},
+    );
+    if (tokens.unknown.length === 0) {
+      return false;
+    }
+
+    this.#reporter.unknownSavedTokens(
+      {
+        licenseId: config.licenseId,
+        tokens,
+        configFile: await this.#config.source(),
+      },
+      command,
+    );
+    this.#exitWithError();
+    return true;
   }
 
   /**

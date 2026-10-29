@@ -57,6 +57,11 @@ export type HeaderRemoveReport = {
   total: number;
 };
 
+export type SavedTokensCommand =
+  | { kind: "verify" }
+  | { kind: "apply-config" }
+  | { kind: "force-header"; file: string };
+
 /**
  * Contract for rendering non-interactive CLI output to the terminal — the usage
  * screen, generation results, field listings, and error messages.
@@ -168,15 +173,22 @@ export interface IReporter {
   verifyMismatch(report: VerifyReport): void;
 
   /**
-   * Renders the error shown when `--verify`, in either mode, stops because some
-   * saved tokens are not copyright fields of the configured license: it names
-   * them, lists the fields the license accepts, and says how to fix the saved
-   * configuration. Nothing was checked or changed.
+   * Renders the error shown when a command that reads the saved configuration
+   * (`--verify` in either mode, `--apply-config`, or `--force-header`) stops
+   * because some saved tokens are not copyright fields of the configured
+   * license: it names them, lists the fields the license accepts, and says how
+   * to fix the saved configuration before running the command again. Nothing
+   * was checked or written.
    *
    * @param report - The unrecognized tokens, the license's fields, and the
    *   config file they were read from.
+   * @param command - The command that stopped, which words the message and the
+   *   command to run again.
    */
-  verifyUnknownTokens(report: UnknownTokensReport): void;
+  unknownSavedTokens(
+    report: UnknownTokensReport,
+    command: SavedTokensCommand,
+  ): void;
 
   /**
    * Renders the notice shown when header writing was requested but the scan

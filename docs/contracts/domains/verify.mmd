@@ -51,12 +51,6 @@ classDiagram
     <<union>>
   }
 
-  class TokenCheck {
-    +saved: string[]
-    +unknown: string[]
-    +fields: string[]
-  }
-
   class TextDifference {
     +line: number
     +column: number
@@ -77,6 +71,5 @@ classDiagram
   VerifyReport ..> ManifestCheck : aggregates
   VerifyReport ..> DriftStatus : statuses by
   VerifyReport ..> TextDifference : pinpoints LICENSE drift with
-  UnknownTokensReport ..> TokenCheck : names unrecognized tokens with
   ManifestCheck ..> DriftStatus : status by
   firstDifference ..> TextDifference : produces
