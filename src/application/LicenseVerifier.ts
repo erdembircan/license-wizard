@@ -44,7 +44,7 @@ export type VerifyReport = {
   licenseDifference: TextDifference | null;
   savedTokens: string[];
   configFile: string | null;
-  fullHeaders: boolean;
+  writesHeaders: boolean;
 };
 
 export type UnknownTokensReport = {
@@ -81,8 +81,9 @@ export type VerifyOutcome =
  * drifted `LICENSE`: where the file first departs from the expected text,
  * whether that text was built from SPDX's matching template or the license's
  * plain text, the saved tokens, the file the configuration was read from, and
- * whether the configuration writes full headers (which also consume the
- * tokens).
+ * whether the configuration writes source-file headers, which also use the
+ * tokens (a full header fills its template with them; a short one puts their
+ * values in its `SPDX-FileCopyrightText` line).
  */
 export class LicenseVerifier {
   readonly #config: Config;
@@ -176,7 +177,7 @@ export class LicenseVerifier {
       licenseDifference: difference,
       savedTokens: tokenCheck.saved,
       configFile,
-      fullHeaders: config.headers?.style === "full",
+      writesHeaders: config.headers !== undefined,
     };
   }
 

@@ -260,9 +260,9 @@ export class MessageReporter implements IReporter {
   /**
    * Decides whether a note explains a drifted `LICENSE`: one built from SPDX's
    * matching template gets the note that SPDX revises that template between
-   * releases, offering to drop the tokens only when no full header needs them.
-   * Returns null when the `LICENSE` itself did not drift or was built from the
-   * plain text, so a passing run or a manifest-only drift carries no note.
+   * releases, offering to drop the tokens only when no source-file header uses
+   * them. Returns null when the `LICENSE` itself did not drift or was built from
+   * the plain text, so a passing run or a manifest-only drift carries no note.
    * Saved tokens that are not copyright fields of the license never reach here:
    * verification stops on them with its own error.
    *
@@ -279,7 +279,7 @@ export class MessageReporter implements IReporter {
       kind: "templateBuilt",
       tokens: report.savedTokens,
       configFile: report.configFile,
-      offerRemoval: !report.fullHeaders,
+      offerRemoval: !report.writesHeaders,
     };
   }
 

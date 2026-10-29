@@ -22,13 +22,13 @@ const LICENSE = "LICENSE";
 
 // What a report carries beyond the outcome when nothing about the LICENSE is
 // worth explaining: built from the plain text, no difference, no saved tokens,
-// and no full headers.
+// and no source-file headers.
 const REPORT_DEFAULTS = {
   builtFrom: "licenseText",
   licenseDifference: null,
   savedTokens: [],
   configFile: ".licensewizardrc.json",
-  fullHeaders: false,
+  writesHeaders: false,
 };
 
 type RenderCall = { licenseId: string; slotValues: Record<string, string> };
@@ -369,20 +369,20 @@ describe("LicenseVerifier", () => {
       ]);
     });
 
-    it("reports full headers only when the config writes the full style", async () => {
+    it("reports that the config writes headers for either style", async () => {
       config.config = { licenseId: "MIT", headers: { style: "full" } };
       expect(await verifier.verify({ fix: false })).toMatchObject({
-        fullHeaders: true,
+        writesHeaders: true,
       });
 
       config.config = { licenseId: "MIT", headers: { style: "short" } };
       expect(await verifier.verify({ fix: false })).toMatchObject({
-        fullHeaders: false,
+        writesHeaders: true,
       });
 
       config.config = { licenseId: "MIT" };
       expect(await verifier.verify({ fix: false })).toMatchObject({
-        fullHeaders: false,
+        writesHeaders: false,
       });
     });
 

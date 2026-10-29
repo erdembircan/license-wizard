@@ -837,7 +837,7 @@ describe("ReportPresenter verify explanations (plain text)", () => {
     );
   });
 
-  it("explains a template-built LICENSE after a fix, without offering removal when full headers need the token", () => {
+  it("explains a template-built LICENSE after a fix, without offering removal when headers use the token", () => {
     expect(
       present({
         kind: "verifyFixed",

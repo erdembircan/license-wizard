@@ -23,7 +23,7 @@ const verifyReport = (overrides: Partial<VerifyReport> = {}): VerifyReport => ({
   licenseDifference: null,
   savedTokens: [],
   configFile: ".licensewizardrc.json",
-  fullHeaders: false,
+  writesHeaders: false,
   ...overrides,
 });
 
@@ -269,14 +269,14 @@ describe("MessageReporter", () => {
       ]);
     });
 
-    it("withholds the removal offer when the config writes full headers", () => {
+    it("withholds the removal offer when the config writes source-file headers", () => {
       const { sink, reporter } = setup();
       reporter.verifyMismatch(
         verifyReport({
           ...templateBuilt,
           license: "mismatch",
           licenseDifference: DIFFERENCE,
-          fullHeaders: true,
+          writesHeaders: true,
         }),
       );
 

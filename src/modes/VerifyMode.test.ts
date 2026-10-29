@@ -75,7 +75,7 @@ const matchReport: VerifyOutcome = {
   licenseDifference: null,
   savedTokens: [],
   configFile: ".licensewizardrc.json",
-  fullHeaders: false,
+  writesHeaders: false,
 };
 
 describe("VerifyMode", () => {
@@ -119,7 +119,7 @@ describe("VerifyMode", () => {
         licenseDifference: null,
         savedTokens: [],
         configFile: ".licensewizardrc.json",
-        fullHeaders: false,
+        writesHeaders: false,
       }),
       headers,
       configReturning({ licenseId: "MIT" }),
@@ -145,7 +145,7 @@ describe("VerifyMode", () => {
         licenseDifference: null,
         savedTokens: [],
         configFile: ".licensewizardrc.json",
-        fullHeaders: false,
+        writesHeaders: false,
       }),
       headers,
       configReturning({ licenseId: "MIT" }),

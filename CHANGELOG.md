@@ -40,8 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     SPDX License List 3.29.0 changed it for GPL-2.0-or-later, LGPL-2.1-or-later and ISC,
     failing strict verification in projects that had not changed. When such a `LICENSE`
     drifts, both `--verify` and `--verify --strict` now say so and, unless the config
-    writes full headers, point out that removing the saved `tokens` builds `LICENSE` from
-    the plain text instead.
+    writes source-file headers (which use the tokens too), point out that removing the
+    saved `tokens` builds `LICENSE` from the plain text instead.
 
   This part changes output only: exit codes and file writes are unchanged, and runs where
   `LICENSE` itself matched print exactly as before. (#179)
