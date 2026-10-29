@@ -21,12 +21,12 @@ import type { LicenseRepository } from "@licensing/LicenseRepository.js";
 const LICENSE = "LICENSE";
 
 // What a report carries beyond the outcome when nothing about the LICENSE is
-// worth explaining: built from the plain text, no difference, the default
-// license's one field, no saved tokens, and no full headers.
+// worth explaining: built from the plain text, no difference, no saved tokens,
+// and no full headers.
 const REPORT_DEFAULTS = {
   builtFrom: "licenseText",
   licenseDifference: null,
-  tokens: { saved: [], unknown: [], fields: ["<year>"] },
+  savedTokens: [],
   configFile: ".licensewizardrc.json",
   fullHeaders: false,
 };
@@ -210,7 +210,7 @@ describe("LicenseVerifier", () => {
         kind: "fixed",
         licenseId: "MIT",
         ...REPORT_DEFAULTS,
-        tokens: { saved: ["<year>"], unknown: [], fields: ["<year>"] },
+        savedTokens: ["<year>"],
         licenseDifference: {
           line: 1,
           column: 1,
@@ -353,7 +353,7 @@ describe("LicenseVerifier", () => {
 
         expect(outcome).toMatchObject({
           kind: "match",
-          tokens: { unknown: [] },
+          savedTokens: ["<yyyy>", "<year>"],
         });
       });
     });
@@ -362,7 +362,7 @@ describe("LicenseVerifier", () => {
       const outcome = await verifier.verify({ fix: false });
 
       expect(outcome).toMatchObject({
-        tokens: { saved: [], unknown: [], fields: ["<year>"] },
+        savedTokens: [],
       });
       expect(generator.renderCalls).toEqual([
         { licenseId: "MIT", slotValues: {} },

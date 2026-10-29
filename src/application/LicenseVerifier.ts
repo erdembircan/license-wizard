@@ -47,7 +47,7 @@ export type VerifyReport = {
   manifests: ManifestCheck[];
   builtFrom: LicenseRenderBasis;
   licenseDifference: TextDifference | null;
-  tokens: TokenCheck;
+  savedTokens: string[];
   configFile: string | null;
   fullHeaders: boolean;
 };
@@ -179,7 +179,7 @@ export class LicenseVerifier {
       manifests,
       builtFrom: rendering.builtFrom,
       licenseDifference: difference,
-      tokens: tokenCheck,
+      savedTokens: tokenCheck.saved,
       configFile,
       fullHeaders: config.headers?.style === "full",
     };

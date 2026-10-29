@@ -21,7 +21,7 @@ const verifyReport = (overrides: Partial<VerifyReport> = {}): VerifyReport => ({
   manifests: [],
   builtFrom: "licenseText",
   licenseDifference: null,
-  tokens: { saved: [], unknown: [], fields: [] },
+  savedTokens: [],
   configFile: ".licensewizardrc.json",
   fullHeaders: false,
   ...overrides,
@@ -238,11 +238,7 @@ describe("MessageReporter", () => {
   describe("verify notes", () => {
     const templateBuilt: Partial<VerifyReport> = {
       builtFrom: "standardLicenseTemplate",
-      tokens: {
-        saved: ["<yyyy>", "<name of author>"],
-        unknown: [],
-        fields: ["<yyyy>", "<name of author>"],
-      },
+      savedTokens: ["<yyyy>", "<name of author>"],
     };
 
     it("passes the difference through and notes a template-built LICENSE, offering removal", () => {
@@ -289,7 +285,7 @@ describe("MessageReporter", () => {
       });
     });
 
-    it("has no note when the LICENSE was built from the plain text with no unrecognized tokens", () => {
+    it("has no note when the LICENSE was built from the plain text", () => {
       const { sink, reporter } = setup();
       reporter.verifyMismatch(
         verifyReport({ license: "mismatch", licenseDifference: DIFFERENCE }),

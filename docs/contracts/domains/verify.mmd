@@ -30,7 +30,7 @@ classDiagram
     +manifests: ManifestCheck[]
     +builtFrom: LicenseRenderBasis
     +licenseDifference: TextDifference | null
-    +tokens: TokenCheck
+    +savedTokens: string[]
     +configFile: string | null
     +fullHeaders: boolean
   }
@@ -76,7 +76,6 @@ classDiagram
   VerifyOutcome ..> UnknownTokensReport : carries
   VerifyReport ..> ManifestCheck : aggregates
   VerifyReport ..> DriftStatus : statuses by
-  VerifyReport ..> TokenCheck : checks saved tokens with
   VerifyReport ..> TextDifference : pinpoints LICENSE drift with
   UnknownTokensReport ..> TokenCheck : names unrecognized tokens with
   ManifestCheck ..> DriftStatus : status by

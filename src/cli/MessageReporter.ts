@@ -272,7 +272,7 @@ export class MessageReporter implements IReporter {
     }
     return {
       kind: "templateBuilt",
-      tokens: report.tokens.saved,
+      tokens: report.savedTokens,
       configFile: report.configFile,
       offerRemoval: !report.fullHeaders,
     };
