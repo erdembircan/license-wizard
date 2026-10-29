@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Generation runs already rejected such fields passed with `--set`; this applies the same
   rule to the tokens saved in the config. Because these runs now fail where they used to
   pass, the release that ships this is not a patch. (#179)
+
 - **`--verify` now explains a drifted `LICENSE`** — a `LICENSE` that no longer matches
   the saved configuration used to be reported only as `LICENSE does not match`. Now:
   - `--verify --strict` shows the first difference: the line and column, the line found
