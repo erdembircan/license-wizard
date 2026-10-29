@@ -434,6 +434,7 @@ describe("LicenseGenerator", () => {
       });
 
       const rendering = await generator.renderDetailed("Unlicense", {
+        "<year>": "2026",
         "<holder>": "Acme",
       });
 

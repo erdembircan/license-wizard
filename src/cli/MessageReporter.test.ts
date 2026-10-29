@@ -27,7 +27,7 @@ const verifyReport = (overrides: Partial<VerifyReport> = {}): VerifyReport => ({
   ...overrides,
 });
 
-const DIFFERENCE = { line: 2, column: 5, found: "abc", expected: "abd" };
+const DIFFERENCE = { line: 2, column: 3, found: "abc", expected: "abd" };
 
 /**
  * These tests pin the reporter's *data surface* — the semantic OutputMessage it

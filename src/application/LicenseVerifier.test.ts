@@ -70,9 +70,9 @@ class FakeReader implements IFileSystemReader {
 }
 
 /**
- * Fake generator that renders a controllable string and records both render and
- * generate calls so tests can assert what the verifier asked for and whether it
- * rewrote the file.
+ * Fake generator that renders a controllable string, reports a controllable
+ * basis for it, and records both renderDetailed and generate calls so tests can
+ * assert what the verifier asked for and whether it rewrote the file.
  */
 class FakeGenerator {
   rendered = "";

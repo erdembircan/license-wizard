@@ -670,6 +670,9 @@ const ISSUE_TY_COON_SPACED =
 const RECONCILE_LINE =
   "Run license-wizard --verify to reconcile, or update the configuration to match.";
 
+// These cases pin exact strings rather than inline snapshots: the caret's column
+// and the made-visible whitespace are the behaviour under test, and spelling
+// them out with `.repeat(n)` keeps that legible.
 describe("ReportPresenter verify explanations (plain text)", () => {
   const strictMismatch = (
     licenseId: string,
